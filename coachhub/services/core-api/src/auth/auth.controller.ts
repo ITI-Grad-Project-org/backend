@@ -6,26 +6,43 @@ import {
 	Post,
 	Req,
 	UseGuards,
-}                                        from '@nestjs/common';
+} from '@nestjs/common';
 import {
 	ApiBearerAuth,
 	ApiBody,
-	ApiConsumes,
 	ApiOperation,
 	ApiResponse,
 	ApiTags,
-}                                        from '@nestjs/swagger';
-import { Throttle }                      from '@nestjs/throttler';
-import { AuthService }                   from './services/auth.service';
-import { LoginDto }                      from './dto/login.dto';
-import { ForgetPasswordDto }             from './dto/forget-password.dto';
-import { ResetPasswordDto }              from './dto/reset-password.dto';
+} from '@nestjs/swagger';
+import {
+	Throttle
+} from '@nestjs/throttler';
+import {
+	AuthService
+} from './services/auth.service';
+import {
+	LoginDto
+} from './dto/login.dto';
+import {
+	ForgetPasswordDto
+} from './dto/forget-password.dto';
+import {
+	ResetPasswordDto
+} from './dto/reset-password.dto';
 import {
 	AuthPayload
-}                                        from 'src/common/interfaces/authPayload.interface';
-import { JwtAuthGuard, JwtRefreshGuard } from './guards';
-import { CurrentUser, Public }           from './decorators';
-import { RegisterDto }                   from '../users/dto/register-user.dto';
+} from 'src/common/interfaces/authPayload.interface';
+import {
+	JwtAuthGuard,
+	JwtRefreshGuard
+} from './guards';
+import {
+	CurrentUser,
+	Public
+} from './decorators';
+import {
+	RegisterDto
+} from '../users/dto/register-user.dto';
 
 @ApiTags( 'Auth' )
 @Controller( 'auth' )
@@ -35,7 +52,7 @@ export class AuthController {
 	@Public()
 	@Throttle( { default: { ttl: 60_000, limit: 10 } } )
 	@Post( 'register' )
-	@ApiConsumes( 'multipart/form-data' )
+	// @ApiConsumes( 'multipart/form-data' )
 	@ApiOperation( {
 		summary: 'Register a new agent (auto-creates a tenant)',
 	} )

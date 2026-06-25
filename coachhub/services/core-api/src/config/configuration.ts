@@ -6,7 +6,7 @@ export default () => ( {
 		frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 	},
 	database: {
-		uri: process.env.MONGODB_URI_PROD,
+		uri: process.env.DATABASE_URL,
 	},
 
 	jwt: {

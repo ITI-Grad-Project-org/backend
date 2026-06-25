@@ -2,6 +2,9 @@
 node_modules/
 dist/
 .env
+.env.developement
+.env.production
+.env.*
 *.local
 
 # Java / Maven
