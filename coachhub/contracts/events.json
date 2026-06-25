@@ -1,0 +1,20 @@
+{
+  "_comment": "Placeholder event stubs — payloads not yet defined",
+  "events": [
+    { "name": "client.invited",     "payload": {} },
+    { "name": "plan.assigned",      "payload": {} },
+    { "name": "checkin.due",        "payload": {} },
+    { "name": "checkin.submitted",  "payload": {} },
+    { "name": "workout.logged",     "payload": {} },
+    { "name": "message.sent",       "payload": {} },
+    { "name": "ai.requested",       "payload": {} },
+    { "name": "ai.completed",       "payload": {} }
+  ],
+  "envelope": {
+    "tenantId":       "string (UUID)",
+    "correlationId":  "string (UUID)",
+    "messageType":    "string",
+    "timestamp":      "ISO-8601",
+    "schemaVersion":  "string (semver)"
+  }
+}

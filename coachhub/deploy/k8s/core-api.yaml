@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-api
+  namespace: coachhub
+  labels:
+    app: core-api
+spec:
+  replicas: 1  # TODO: set production replica count
+  selector:
+    matchLabels:
+      app: core-api
+  template:
+    metadata:
+      labels:
+        app: core-api
+    spec:
+      containers:
+        - name: core-api
+          image: coachhub/core-api:latest  # TODO: set image tag
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: coachhub-config
+            - secretRef:
+                name: coachhub-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            # TODO: tune thresholds
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"     # TODO: tune
+              memory: "256Mi" # TODO: tune
+            limits:
+              cpu: "500m"     # TODO: tune
+              memory: "512Mi" # TODO: tune
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-api-service
+  namespace: coachhub
+spec:
+  selector:
+    app: core-api
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: ClusterIP

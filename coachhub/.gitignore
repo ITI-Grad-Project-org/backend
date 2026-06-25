@@ -1,0 +1,39 @@
+# Node / NestJS
+node_modules/
+dist/
+.env
+*.local
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+.mvn/
+.settings/
+.classpath
+.project
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal

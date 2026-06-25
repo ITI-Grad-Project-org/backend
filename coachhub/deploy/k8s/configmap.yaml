@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coachhub-config
+  namespace: coachhub
+data:
+  # TODO: add non-sensitive environment config keys
+  RABBITMQ_HOST: "rabbitmq-service"
+  RABBITMQ_PORT: "5672"
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "coachhub"
+  MONGO_HOST: "mongodb-service"
+  MONGO_PORT: "27017"

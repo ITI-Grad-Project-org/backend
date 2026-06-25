@@ -1,0 +1,31 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: ai-service
+
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://coachhub:secret@localhost:27017/coachhub?authSource=admin}
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:coachhub}
+    password: ${SPRING_RABBITMQ_PASSWORD:secret}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# TODO: add Gemini API key config
+gemini:
+  api-key: ${GEMINI_API_KEY:changeme}
+  model: ${GEMINI_MODEL:gemini-1.5-pro}

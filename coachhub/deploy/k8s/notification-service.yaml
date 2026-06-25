@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: coachhub
+  labels:
+    app: notification-service
+spec:
+  replicas: 1  # TODO: set production replica count
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: coachhub/notification-service:latest  # TODO: set image tag
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: coachhub-config
+            - secretRef:
+                name: coachhub-secrets
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"     # TODO: tune
+              memory: "128Mi" # TODO: tune
+            limits:
+              cpu: "300m"     # TODO: tune
+              memory: "256Mi" # TODO: tune
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service-service
+  namespace: coachhub
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - protocol: TCP
+      port: 8083
+      targetPort: 8083
+  type: ClusterIP
