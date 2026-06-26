@@ -15,6 +15,7 @@ import { ThrottlerModule }     from '@nestjs/throttler';
 import { TenantModule }        from './tenant/tenant.module';
 import { APP_GUARD }           from '@nestjs/core';
 import { ProxyThrottlerGuard } from './common/guards/proxy-throttler.guard';
+import { InvitationModule }    from './invitation/invitation.module';
 import { JwtAuthGuard }        from './auth';
 
 @Module( {
@@ -37,15 +38,11 @@ import { JwtAuthGuard }        from './auth';
 		EventsModule,
 		HealthModule,
 		UsersModule,
-		TenantModule
+		TenantModule,
+		InvitationModule
 	],
-	
+
 	providers: [
-		// Order matters: throttle first, then authenticate. JwtAuthGuard is the
-		// tenant-user ('jwt') guard and runs on every route by default — routes
-		// that should be reachable without a tenant-user access token must opt
-		// out with @Public() (genuinely public endpoints, and client routes that
-		// authenticate via their own ClientJwt guards).
 		{ provide: APP_GUARD, useClass: ProxyThrottlerGuard },
 		{ provide: APP_GUARD, useClass: JwtAuthGuard },
 	],

@@ -1,12 +1,11 @@
 import { Module }                      from '@nestjs/common';
-import { MessagingController }         from './messaging.controller';
 import { EventPublisherService }       from './event-publisher.service';
 import { RabbitMQModule }              from '@golevelup/nestjs-rabbitmq';
 import { ConfigModule, ConfigService } from '../config';
 import { EVENTS_EXCHANGE }             from './events';
 
 @Module( {
-	controllers: [ MessagingController ],
+	controllers: [],
 	providers: [ EventPublisherService ],
 	exports: [ EventPublisherService ],
 	imports: [
