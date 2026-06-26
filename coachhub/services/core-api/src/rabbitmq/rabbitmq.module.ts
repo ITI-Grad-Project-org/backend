@@ -12,7 +12,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         useFactory: (config: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [config.get<string>('RABBITMQ_URL', 'amqp://localhost:5672')],
+            urls: [config.getOrThrow<string>('rabbitmq.url')],
             queue: 'coachhub_main',
             queueOptions: { durable: true },
           },

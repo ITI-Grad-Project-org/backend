@@ -10,6 +10,9 @@ export const ConfigSchema = z.object( {
 	database: z.object( {
 		uri: z.string(),
 	} ),
+	rabbitmq: z.object( {
+		url: z.string(),
+	} ),
 	jwt: z.object( {
 		accessToken: z.object( {
 			secret: z.string(),

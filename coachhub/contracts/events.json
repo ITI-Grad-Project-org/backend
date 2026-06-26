@@ -1,20 +1,143 @@
 {
-  "_comment": "Placeholder event stubs — payloads not yet defined",
-  "events": [
-    { "name": "client.invited",     "payload": {} },
-    { "name": "plan.assigned",      "payload": {} },
-    { "name": "checkin.due",        "payload": {} },
-    { "name": "checkin.submitted",  "payload": {} },
-    { "name": "workout.logged",     "payload": {} },
-    { "name": "message.sent",       "payload": {} },
-    { "name": "ai.requested",       "payload": {} },
-    { "name": "ai.completed",       "payload": {} }
-  ],
+  "_comment": "CoachHub event contract. messageType doubles as the RabbitMQ routing key on the 'coachhub.events' topic exchange. Every message is the envelope below with a typed 'payload'.",
+  "exchange": {
+    "name": "coachhub.events",
+    "type": "topic"
+  },
   "envelope": {
-    "tenantId":       "string (UUID)",
-    "correlationId":  "string (UUID)",
-    "messageType":    "string",
-    "timestamp":      "ISO-8601",
-    "schemaVersion":  "string (semver)"
-  }
+    "tenantId": "string (UUID)",
+    "correlationId": "string (UUID)",
+    "messageType": "string (== routing key)",
+    "timestamp": "ISO-8601",
+    "schemaVersion": "string (semver)",
+    "payload": "object (see events[].payload)"
+  },
+  "events": [
+    {
+      "name": "client.invited",
+      "routingKey": "client.invited",
+      "consumers": [
+        "notification-service"
+      ],
+      "payload": {
+        "inviteId": "string (UUID)",
+        "coachId": "string (UUID)",
+        "coachName": "string",
+        "clientEmail": "string (email)",
+        "clientName": "string | null",
+        "inviteToken": "string",
+        "acceptUrl": "string (URL)",
+        "expiresAt": "ISO-8601"
+      }
+    },
+    {
+      "name": "plan.assigned",
+      "routingKey": "plan.assigned",
+      "consumers": [
+        "notification-service",
+        "analytics-service"
+      ],
+      "payload": {
+        "planId": "string (UUID)",
+        "planTitle": "string",
+        "coachId": "string (UUID)",
+        "coachName": "string",
+        "clientId": "string (UUID)",
+        "clientEmail": "string (email)",
+        "clientName": "string",
+        "startsAt": "ISO-8601"
+      }
+    },
+    {
+      "name": "checkin.due",
+      "routingKey": "checkin.due",
+      "consumers": [
+        "notification-service"
+      ],
+      "payload": {
+        "checkinId": "string (UUID)",
+        "clientId": "string (UUID)",
+        "clientEmail": "string (email)",
+        "clientName": "string",
+        "coachName": "string",
+        "dueAt": "ISO-8601"
+      }
+    },
+    {
+      "name": "checkin.submitted",
+      "routingKey": "checkin.submitted",
+      "consumers": [
+        "analytics-service",
+        "notification-service"
+      ],
+      "payload": {
+        "checkinId": "string (UUID)",
+        "clientId": "string (UUID)",
+        "coachId": "string (UUID)",
+        "submittedAt": "ISO-8601",
+        "metrics": "object (free-form key/number)"
+      }
+    },
+    {
+      "name": "workout.logged",
+      "routingKey": "workout.logged",
+      "consumers": [
+        "analytics-service"
+      ],
+      "payload": {
+        "workoutId": "string (UUID)",
+        "clientId": "string (UUID)",
+        "loggedAt": "ISO-8601",
+        "exerciseCount": "number",
+        "durationMinutes": "number"
+      }
+    },
+    {
+      "name": "message.sent",
+      "routingKey": "message.sent",
+      "consumers": [
+        "notification-service"
+      ],
+      "payload": {
+        "messageId": "string (UUID)",
+        "threadId": "string (UUID)",
+        "fromUserId": "string (UUID)",
+        "fromName": "string",
+        "toUserId": "string (UUID)",
+        "toEmail": "string (email)",
+        "preview": "string",
+        "sentAt": "ISO-8601"
+      }
+    },
+    {
+      "name": "ai.requested",
+      "routingKey": "ai.requested",
+      "consumers": [
+        "ai-service"
+      ],
+      "payload": {
+        "requestId": "string (UUID)",
+        "clientId": "string (UUID)",
+        "coachId": "string (UUID)",
+        "kind": "string (e.g. plan_suggestion | form_review)",
+        "prompt": "string"
+      }
+    },
+    {
+      "name": "ai.completed",
+      "routingKey": "ai.completed",
+      "consumers": [
+        "analytics-service",
+        "notification-service"
+      ],
+      "payload": {
+        "requestId": "string (UUID)",
+        "clientId": "string (UUID)",
+        "coachId": "string (UUID)",
+        "coachEmail": "string (email)",
+        "status": "string (succeeded | failed)",
+        "summary": "string"
+      }
+    }
+  ]
 }

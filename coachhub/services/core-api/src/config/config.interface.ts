@@ -9,6 +9,10 @@ export interface DatabaseConfig {
 	uri: string;
 }
 
+export interface RabbitmqConfig {
+	url: string;
+}
+
 export interface JwtTokenConfig {
 	secret: string;
 	expiresIn: string;
@@ -50,6 +54,7 @@ export interface GoogleOAuthConfig {
 export interface Config {
 	app: AppConfig;
 	database: DatabaseConfig;
+	rabbitmq: RabbitmqConfig;
 	jwt: JwtConfig;
 	aws: AwsConfig;
 	imageTypes: ImageTypes;

@@ -14,6 +14,10 @@ export class ConfigService {
 		return this.configService.getOrThrow<Config['database']>( 'database' );
 	}
 
+	get rabbitmqConfig (): Config['rabbitmq'] {
+		return this.configService.getOrThrow<Config['rabbitmq']>( 'rabbitmq' );
+	}
+
 	get jwtConfig (): Config['jwt'] {
 		return this.configService.getOrThrow<Config['jwt']>( 'jwt' );
 	}
