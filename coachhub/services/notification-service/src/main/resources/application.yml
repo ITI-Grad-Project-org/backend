@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8083}
+  port: 8083
 
 spring:
   application:
@@ -10,7 +10,17 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:coachhub}
     password: ${SPRING_RABBITMQ_PASSWORD:secret}
-    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        # On failure, don't requeue endlessly — let retry handle it, then DLQ.
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2000ms
+          multiplier: 2.0
+          max-interval: 10000ms
 
   mail:
     host: ${MAIL_HOST:localhost}
@@ -28,7 +38,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
       show-details: always
