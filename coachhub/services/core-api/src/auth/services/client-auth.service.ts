@@ -8,13 +8,24 @@ import {
 }                                                  from '@nestjs/common';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import * as crypto                                 from 'crypto';
-import { TokenProvider }                           from '../providers/token.provider';
+import {
+	TokenProvider
+}                                                  from '../providers/token.provider';
 import { UserStatus }                              from '../enums';
 import { ConfigService }                           from 'src/config';
 import { ClientAuthPayload }                       from '../../common';
-import { ClientService }                           from '../../clients/client.service';
-import { Client }                                  from '../../clients/entities/client.entity';
-import { CreateClientDto }                         from '../../clients/dto/create-client.dto';
+import {
+	ClientService
+}                                                  from '../../clients/client.service';
+import {
+	ClientMembershipService
+}                                                  from '../../clients/client-membership.service';
+import {
+	Client
+}                                                  from '../../clients/entities/client.entity';
+import {
+	CreateClientDto
+}                                                  from '../../clients/dto/create-client.dto';
 
 @Injectable()
 export class ClientAuthService {
@@ -23,6 +34,7 @@ export class ClientAuthService {
 
 	constructor (
 		private readonly clientService: ClientService,
+		private readonly membershipService: ClientMembershipService,
 		private readonly tokenProvider: TokenProvider,
 		private readonly configService: ConfigService,
 	) {
@@ -32,25 +44,29 @@ export class ClientAuthService {
 	}
 
 	async register ( createClientDto: CreateClientDto ) {
-		const existing = await this.clientService.findOneByEmail( createClientDto.email );
+		const existing = await this.clientService.findOneByEmail(
+			createClientDto.email );
 		if ( existing ) {
 			throw new BadRequestException( 'Email already in use' );
 		}
 
-		const hashedPassword = await this.tokenProvider.hashPassword( createClientDto.password );
+		const hashedPassword = await this.tokenProvider.hashPassword(
+			createClientDto.password );
 
 		const client = await this.clientService.create( {
 			...createClientDto,
 			password: hashedPassword,
 		} );
 
-		return this.issueTokens( client );
+		// A freshly registered client has no tenant yet; they gain access to a
+		// tenant only by accepting an invitation, then switching into it.
+		return this.issueTokens( client, null );
 	}
 
 	async signInWithGoogle ( idToken: string ) {
 		const payload = await this.verifyGoogleIdToken( idToken );
 
-		const email    = payload.email!.toLowerCase().trim();
+		const email = payload.email!.toLowerCase().trim();
 		const googleId = payload.sub;
 
 		let client = await this.clientService.findByGoogleId( googleId );
@@ -72,7 +88,6 @@ export class ClientAuthService {
 				email,
 				password: null,
 				confirmPassword: null,
-				tenantId: null,
 			} as unknown as CreateClientDto );
 			await this.clientService.updateGoogleInfo( client.id, {
 				googleId,
@@ -81,38 +96,70 @@ export class ClientAuthService {
 			client = await this.clientService.findProfileById( client.id );
 		}
 
-		if ( client!.status === UserStatus.BLOCKED ) {
-			throw new ForbiddenException(
-				`Client is blocked. Reason: ${ client!.blockReason || 'No reason provided' }`,
-			);
-		}
-
 		await this.clientService.updateLastLoginAt( client!.id );
-		return this.issueTokens( client! );
+		const tenantId = await this.membershipService.resolveDefaultTenantId(
+			client!.id );
+		return this.issueTokens( client!, tenantId );
 	}
 
 	async login ( loginDto: { email: string; password: string } ) {
-		const client = await this.validateClient( loginDto.email, loginDto.password );
+		const client = await this.validateClient( loginDto.email,
+			loginDto.password );
 		if ( !client ) {
 			throw new BadRequestException( 'Invalid credentials' );
 		}
-		if ( client.status === UserStatus.BLOCKED ) {
+
+		await this.clientService.updateLastLoginAt( client.id );
+		const tenantId = await this.membershipService.resolveDefaultTenantId(
+			client.id );
+		return this.issueTokens( client, tenantId );
+	}
+
+	/**
+	 * Switches the active tenant for an authenticated client. The client must
+	 * already hold an active membership in the target tenant; the new token
+	 * pair carries that tenant as the active scope.
+	 */
+	async switchTenant ( clientId: number, tenantId: number ) {
+		const membership = await this.membershipService.findMembership(
+			clientId,
+			tenantId,
+		);
+		if ( !membership ) {
+			throw new ForbiddenException( 'You are not a member of this tenant' );
+		}
+		if ( membership.status === UserStatus.BLOCKED ) {
 			throw new ForbiddenException(
-				`Client is blocked. Reason: ${ client.blockReason || 'No reason provided' }`,
+				`Access to this tenant is blocked. Reason: ${membership.blockReason || 'No reason provided'}`,
+			);
+		}
+		if ( membership.status !== UserStatus.ACTIVE ) {
+			throw new ForbiddenException(
+				'Your membership in this tenant is not active',
 			);
 		}
 
-		await this.clientService.updateLastLoginAt( client.id );
-		return this.issueTokens( client );
+		const client = await this.clientService.findById( clientId );
+		if ( !client ) {
+			throw new NotFoundException( 'Client not found' );
+		}
+
+		await this.membershipService.markActiveNow( membership.id );
+		return this.issueTokens( client, tenantId );
 	}
 
-	async refreshTokens ( clientId: string, refreshToken: string ) {
-		const client = await this.clientService.findByIdWithRefreshToken( parseInt( clientId ) );
-		if (
-			!client ||
-			!client.hashedRefreshToken ||
-			client.status === UserStatus.BLOCKED
-		) {
+	listMemberships ( clientId: number ) {
+		return this.membershipService.findMemberships( clientId );
+	}
+
+	async refreshTokens (
+		clientId: string,
+		refreshToken: string,
+		tenantId: string | null,
+	) {
+		const client = await this.clientService.findByIdWithRefreshToken(
+			parseInt( clientId ) );
+		if ( !client || !client.hashedRefreshToken ) {
 			throw new ForbiddenException( 'Access denied' );
 		}
 
@@ -124,11 +171,15 @@ export class ClientAuthService {
 			throw new ForbiddenException( 'Access denied' );
 		}
 
-		const payload                = this.buildPayload( client );
-		const tokens                 = await this.tokenProvider.generateTokens( payload );
-		const hashedNewRefreshToken  = this.tokenProvider.hashToken( tokens.refreshToken );
+		// Preserve whichever tenant the session was already scoped to.
+		const activeTenantId = tenantId ? parseInt( tenantId ) : null;
+		const payload = this.buildPayload( client, activeTenantId );
+		const tokens = await this.tokenProvider.generateTokens( payload );
+		const hashedNewRefreshToken = this.tokenProvider.hashToken(
+			tokens.refreshToken );
 
-		await this.clientService.updateRefreshToken( client.id, hashedNewRefreshToken );
+		await this.clientService.updateRefreshToken( client.id,
+			hashedNewRefreshToken );
 		return tokens;
 	}
 
@@ -146,8 +197,9 @@ export class ClientAuthService {
 			return genericResponse;
 		}
 
-		const rawToken    = crypto.randomBytes( 32 ).toString( 'hex' );
-		const hashedToken = crypto.createHash( 'sha256' ).update( rawToken ).digest( 'hex' );
+		const rawToken = crypto.randomBytes( 32 ).toString( 'hex' );
+		const hashedToken = crypto.createHash( 'sha256' ).update( rawToken ).digest(
+			'hex' );
 
 		await this.clientService.setResetPasswordToken(
 			client.id,
@@ -159,8 +211,10 @@ export class ClientAuthService {
 	}
 
 	async resetPassword ( token: string, newPassword: string ) {
-		const hashedToken = crypto.createHash( 'sha256' ).update( token ).digest( 'hex' );
-		const client      = await this.clientService.findByValidResetToken( hashedToken );
+		const hashedToken = crypto.createHash( 'sha256' ).update( token ).digest(
+			'hex' );
+		const client = await this.clientService.findByValidResetToken(
+			hashedToken );
 
 		if ( !client ) {
 			throw new ForbiddenException( 'Invalid or expired password reset token' );
@@ -172,7 +226,8 @@ export class ClientAuthService {
 	}
 
 	async getMe ( clientId: string ) {
-		const client = await this.clientService.findProfileById( parseInt( clientId ) );
+		const client = await this.clientService.findProfileById(
+			parseInt( clientId ) );
 		if ( !client ) {
 			throw new NotFoundException( 'Client not found' );
 		}
@@ -188,7 +243,7 @@ export class ClientAuthService {
 			} );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
-			this.logger.warn( `Google ID token verification failed: ${ message }` );
+			this.logger.warn( `Google ID token verification failed: ${message}` );
 			throw new UnauthorizedException( 'Invalid Google ID token' );
 		}
 
@@ -211,28 +266,31 @@ export class ClientAuthService {
 			return null;
 		}
 
-		const isPasswordValid = await this.tokenProvider.comparePassword( password, client.password );
+		const isPasswordValid = await this.tokenProvider.comparePassword( password,
+			client.password );
 		if ( !isPasswordValid ) {
 			return null;
 		}
 		return client;
 	}
 
-	private async issueTokens ( client: Client ) {
-		const payload          = this.buildPayload( client );
-		const tokens           = await this.tokenProvider.generateTokens( payload );
-		const hashedRefreshToken = this.tokenProvider.hashToken( tokens.refreshToken );
+	private async issueTokens ( client: Client, tenantId: number | null ) {
+		const payload = this.buildPayload( client, tenantId );
+		const tokens = await this.tokenProvider.generateTokens( payload );
+		const hashedRefreshToken = this.tokenProvider.hashToken(
+			tokens.refreshToken );
 
-		await this.clientService.updateRefreshToken( client.id, hashedRefreshToken );
+		await this.clientService.updateRefreshToken( client.id,
+			hashedRefreshToken );
 		return { client, ...tokens };
 	}
 
-	private buildPayload ( client: Client ): ClientAuthPayload {
+	private buildPayload ( client: Client, tenantId: number | null ): ClientAuthPayload {
 		return {
 			clientId: client.id.toString(),
-			tenantId: client.tenant?.id?.toString() ?? null,
-			email:    client.email,
-			type:     'client',
+			tenantId: tenantId !== null ? tenantId.toString() : null,
+			email: client.email,
+			type: 'client',
 		};
 	}
 }

@@ -1,9 +1,37 @@
 package com.coachhub.notification.rabbitmq;
 
+import com.coachhub.notification.config.RabbitMqConfig;
+import com.coachhub.notification.rabbitmq.payload.ClientInvitedPayload;
+import com.coachhub.notification.service.email.EmailService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
-// TODO: implement listeners for events that trigger notifications
 @Component
+@RequiredArgsConstructor
 public class NotificationEventListener {
-    // TODO: implement
+	private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);
+
+	private final EmailService emailService;
+	private final ObjectMapper objectMapper;
+
+	@RabbitListener(queues = RabbitMqConfig.QUEUE)
+	public void onEvent(EventEnvelope event) {
+		log.info("received {} (correlationId={})", event.messageType(), event.correlationId());
+
+		switch (event.messageType()) {
+			case "client.invited" -> {
+				ClientInvitedPayload clientInvitedPayload = objectMapper.convertValue(event.payload(),
+								ClientInvitedPayload.class);
+				emailService.sendClientInvite(clientInvitedPayload);
+			}
+			// case "plan.assigned"  -> ...
+			// case "checkin.due"    -> ...
+			// case "message.sent"   -> ...
+			default -> log.warn("unknown message type {}", event.messageType());
+		}
+	}
 }

@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Get,
 	HttpCode,
 	HttpStatus,
 	Post,
@@ -44,7 +45,17 @@ import {
 import {
 	CurrentClient
 } from './decorators/current-client.decorator';
+import {
+	Public
+} from './decorators';
+import {
+	SwitchTenantDto
+} from './dto/switch-tenant.dto';
 
+// Client routes authenticate against the separate 'client-jwt' strategy, so
+// they opt out of the global tenant-user guard with @Public(). The protected
+// ones still enforce auth through their explicit ClientJwt* guards below.
+@Public()
 @ApiTags( 'Customer Auth' )
 @Controller( 'auth/customer' )
 export class ClientAuthController {
@@ -100,6 +111,39 @@ export class ClientAuthController {
 		return this.customerAuthService.refreshTokens(
 			req.user.clientId,
 			req.user.refreshToken,
+			req.user.tenantId,
+		);
+	}
+
+	@UseGuards( ClientJwtAuthGuard )
+	@Get( 'memberships' )
+	@ApiBearerAuth()
+	@ApiOperation( {
+		summary: 'List the tenants this customer belongs to (for switching)',
+	} )
+	@ApiResponse( { status: 200, description: 'Memberships retrieved' } )
+	@HttpCode( HttpStatus.OK )
+	memberships ( @CurrentClient( 'clientId' ) clientId: string ) {
+		return this.customerAuthService.listMemberships( parseInt( clientId ) );
+	}
+
+	@UseGuards( ClientJwtAuthGuard )
+	@Post( 'switch-tenant' )
+	@ApiBearerAuth()
+	@ApiOperation( {
+		summary: 'Switch the active tenant and receive a re-scoped token pair',
+	} )
+	@ApiBody( { type: SwitchTenantDto } )
+	@ApiResponse( { status: 200, description: 'Switched tenant successfully' } )
+	@ApiResponse( { status: 403, description: 'Not a member of this tenant' } )
+	@HttpCode( HttpStatus.OK )
+	switchTenant (
+		@CurrentClient( 'clientId' ) clientId: string,
+		@Body() switchTenantDto: SwitchTenantDto,
+	) {
+		return this.customerAuthService.switchTenant(
+			parseInt( clientId ),
+			switchTenantDto.tenantId,
 		);
 	}
 

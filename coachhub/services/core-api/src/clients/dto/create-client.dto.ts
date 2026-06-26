@@ -1,15 +1,12 @@
 import {
 	IsEmail,
-	IsInt,
 	IsNotEmpty,
-	IsOptional,
 	IsString,
 	MinLength,
 	Validate,
-}                                           from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MatchConstraint }                  from 'src/common';
-import { Type }                             from 'class-transformer';
+}                          from 'class-validator';
+import { ApiProperty }     from '@nestjs/swagger';
+import { MatchConstraint } from 'src/common';
 
 export class CreateClientDto {
 	@ApiProperty( { example: 'Alice Smith' } )
@@ -33,10 +30,4 @@ export class CreateClientDto {
 	@IsNotEmpty()
 	@Validate( MatchConstraint, [ 'password' ] )
 	confirmPassword: string;
-
-	@ApiPropertyOptional( { description: 'Tenant ID of the coach', example: 1 } )
-	@IsOptional()
-	@IsInt()
-	@Type( () => Number )
-	tenantId?: number;
 }

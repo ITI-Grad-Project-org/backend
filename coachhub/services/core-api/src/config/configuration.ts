@@ -6,7 +6,11 @@ export default () => ( {
 		frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 	},
 	database: {
-		uri: process.env.MONGODB_URI_PROD,
+		uri: process.env.DATABASE_URL,
+	},
+
+	rabbitmq: {
+		url: process.env.RABBITMQ_URL || 'amqp://localhost:5672',
 	},
 
 	jwt: {
@@ -26,6 +30,7 @@ export default () => ( {
 		secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 		s3: {
 			bucket: process.env.AWS_S3_BUCKET,
+			acl: process.env.AWS_S3_ACL || 'public-read',
 			baseUrl:
 				process.env.AWS_S3_BASE_URL ||
 				`https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`,

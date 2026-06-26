@@ -1,9 +1,47 @@
 package com.coachhub.notification.service.email;
 
+import com.coachhub.notification.rabbitmq.payload.ClientInvitedPayload;
+import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 
-// TODO: implement email sending via Spring Mail
 @Service
+@RequiredArgsConstructor
 public class EmailService {
-    // TODO: implement
+	private static final Logger log = LoggerFactory.getLogger(EmailService.class);
+	private static final String FROM = "no-reply@coachhub.app";
+
+	private final JavaMailSender mailSender;
+	private final TemplateEngine templateEngine;
+
+	public void sendClientInvite(ClientInvitedPayload payload) {
+		Context ctx = new Context();
+		ctx.setVariable("clientName", payload.clientName() != null ? payload.clientName() : "there");
+		ctx.setVariable("coachName", payload.coachName());
+		ctx.setVariable("acceptUrl", payload.acceptUrl());
+
+		String html = templateEngine.process("client-invited", ctx);
+		send(payload.clientEmail(), payload.coachName() + " invited you to CoachHub", html);
+	}
+
+	private void send(String to, String subject, String html) {
+		try {
+			MimeMessage message = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+			helper.setFrom(FROM);
+			helper.setTo(to);
+			helper.setSubject(subject);
+			helper.setText(html, true);
+			mailSender.send(message);
+			log.info("email sent to {}", to);
+		} catch (Exception e) {
+			throw new RuntimeException("failed to send email to " + to, e);
+		}
+	}
 }

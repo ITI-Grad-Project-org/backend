@@ -2,50 +2,70 @@ import {
 	Body,
 	Controller,
 	Delete,
+	ForbiddenException,
 	Get,
 	Param,
 	ParseIntPipe,
 	Patch,
-	Post
 }                        from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UsersService }  from './users.service';
-import { RegisterDto }   from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiResponse }   from '../common';
-import { User }          from './entities/user.entity';
+import { CurrentUser }   from '../auth';
 
+/**
+ * Self-service profile management for the authenticated coach (tenant owner).
+ *
+ * Account creation goes through `POST /auth/register` (it also provisions the
+ * tenant), so there is no create/list here — a coach may only read and mutate
+ * their own record. The global `JwtAuthGuard` enforces authentication.
+ */
+@ApiTags( 'Users' )
+@ApiBearerAuth()
 @Controller( 'users' )
 export class UsersController {
 	constructor ( private readonly usersService: UsersService ) {}
 
-	@Post()
-	async create ( @Body() createUserDto: RegisterDto ): Promise<ApiResponse<User>> {
-		const user = await this.usersService.create( createUserDto );
-		return {
-			success: true,
-			message: 'User created successfully',
-			data: user,
-		};
-	}
-
-	@Get()
-	findAll () {
-		return this.usersService.findAll();
+	@Get( 'me' )
+	@ApiOperation( { summary: 'Get my profile' } )
+	getMe ( @CurrentUser( 'userId' ) userId: number ) {
+		return this.usersService.findOne( userId );
 	}
 
 	@Get( ':id' )
-	findOne ( @Param( 'id', ParseIntPipe ) id: string ) {
-		return this.usersService.findOne( +id );
+	@ApiOperation( { summary: 'Get a user by id (must be yourself)' } )
+	findOne (
+		@CurrentUser( 'userId' ) userId: number,
+		@Param( 'id', ParseIntPipe ) id: number,
+	) {
+		this.assertSelf( userId, id );
+		return this.usersService.findOne( id );
 	}
 
 	@Patch( ':id' )
-	update ( @Param( 'id',
-		ParseIntPipe ) id: string, @Body() updateUserDto: UpdateUserDto ) {
-		return this.usersService.update( +id, updateUserDto );
+	@ApiOperation( { summary: 'Update my profile' } )
+	update (
+		@CurrentUser( 'userId' ) userId: number,
+		@Param( 'id', ParseIntPipe ) id: number,
+		@Body() updateUserDto: UpdateUserDto,
+	) {
+		this.assertSelf( userId, id );
+		return this.usersService.update( id, updateUserDto );
 	}
 
 	@Delete( ':id' )
-	remove ( @Param( 'id', ParseIntPipe ) id: string ) {
-		return this.usersService.remove( +id );
+	@ApiOperation( { summary: 'Delete my account' } )
+	remove (
+		@CurrentUser( 'userId' ) userId: number,
+		@Param( 'id', ParseIntPipe ) id: number,
+	) {
+		this.assertSelf( userId, id );
+		return this.usersService.remove( id );
+	}
+
+	private assertSelf ( userId: number, targetId: number ) {
+		if ( Number( userId ) !== targetId ) {
+			throw new ForbiddenException( 'You can only access your own account' );
+		}
 	}
 }

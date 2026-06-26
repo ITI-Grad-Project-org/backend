@@ -18,7 +18,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
       POSTGRES_DB: ${POSTGRES_DB:-coachhub}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -31,6 +31,8 @@ services:
 
   mongodb:
     image: mongo:7
+    # --quiet suppresses the per-connection accept/end log spam from the healthcheck
+    command: ["mongod", "--quiet"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-coachhub}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secret}
@@ -70,10 +72,22 @@ services:
       context: ./services/core-api
       dockerfile: Dockerfile
     environment:
+      NODE_ENV: production
+      PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-coachhub}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-coachhub}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-coachhub}:${RABBITMQ_PASSWORD:-secret}@rabbitmq:5672
-      JWT_SECRET: ${JWT_SECRET:-changeme}
-      PORT: 3000
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-changeme_access}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-changeme_refresh}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-placeholder}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-placeholder}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-placeholder}
+      AWS_S3_ACL: ${AWS_S3_ACL:-public-read}
+      AWS_S3_BASE_URL: ${AWS_S3_BASE_URL:-https://placeholder.s3.us-east-1.amazonaws.com}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-placeholder}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     ports:
       - "3000:3000"
     depends_on:
@@ -142,5 +156,15 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      mailhog:
+        condition: service_started
+    networks:
+      - coachhub-net
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI — open http://localhost:8025 to read captured emails
     networks:
       - coachhub-net

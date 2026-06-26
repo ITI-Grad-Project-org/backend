@@ -10,6 +10,13 @@ export class JwtAuthGuard extends AuthGuard( 'jwt' ) {
 	}
 
 	canActivate ( context: ExecutionContext ) {
+		// As a global guard this also sees non-HTTP contexts (e.g. RabbitMQ
+		// message handlers), which carry no request to authenticate — let them
+		// through so transport-layer consumers aren't blocked.
+		if ( context.getType() !== 'http' ) {
+			return true;
+		}
+
 		const isPublic = this.reflector.getAllAndOverride<boolean>( IS_PUBLIC_KEY, [
 			context.getHandler(),
 			context.getClass(),

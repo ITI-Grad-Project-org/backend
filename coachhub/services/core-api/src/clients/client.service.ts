@@ -4,7 +4,6 @@ import { Repository }       from 'typeorm';
 import { Client }           from './entities/client.entity';
 import { CreateClientDto }  from './dto/create-client.dto';
 import { UpdateClientDto }  from './dto/update-client.dto';
-import { Tenant }           from '../tenant/entities/tenant.entity';
 
 @Injectable()
 export class ClientService {
@@ -14,20 +13,19 @@ export class ClientService {
 	) {}
 
 	async create ( createClientDto: CreateClientDto ): Promise<Client> {
-		const { tenantId, ...rest } = createClientDto;
-		const client = this.clientRepository.create( {
-			...rest,
-			tenant: tenantId ? ( { id: tenantId } as Tenant ) : null,
-		} );
+		const client = this.clientRepository.create( createClientDto );
 		return this.clientRepository.save( client );
 	}
 
 	findAll () {
-		return this.clientRepository.find( { relations: { tenant: true } } );
+		return this.clientRepository.find();
 	}
 
 	findOne ( id: number ) {
-		return this.clientRepository.findOne( { where: { id }, relations: { tenant: true } } );
+		return this.clientRepository.findOne( {
+			where: { id },
+			relations: { memberships: { tenant: true } },
+		} );
 	}
 
 	findOneByEmail ( email: string ) {
@@ -37,12 +35,9 @@ export class ClientService {
 				id: true,
 				email: true,
 				password: true,
-				status: true,
-				blockReason: true,
 				googleId: true,
 				profilePicture: true,
 			},
-			relations: { tenant: true },
 		} );
 	}
 
@@ -53,13 +48,14 @@ export class ClientService {
 				id: true,
 				email: true,
 				name: true,
-				status: true,
-				blockReason: true,
 				googleId: true,
 				profilePicture: true,
 			},
-			relations: { tenant: true },
 		} );
+	}
+
+	findById ( id: number ) {
+		return this.clientRepository.findOne( { where: { id } } );
 	}
 
 	findByIdWithRefreshToken ( id: number ) {
@@ -69,16 +65,14 @@ export class ClientService {
 				id: true,
 				email: true,
 				hashedRefreshToken: true,
-				status: true,
 			},
-			relations: { tenant: true },
 		} );
 	}
 
 	findProfileById ( id: number ) {
 		return this.clientRepository.findOne( {
 			where: { id },
-			relations: { tenant: true },
+			relations: { memberships: { tenant: true } },
 		} );
 	}
 
