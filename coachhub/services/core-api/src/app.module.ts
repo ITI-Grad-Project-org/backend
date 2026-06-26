@@ -1,7 +1,6 @@
 import { Module }              from '@nestjs/common';
 import { ConfigModule }        from './config';
 import { DatabaseModule }      from './database/database.module';
-import { RabbitmqModule }      from './rabbitmq/rabbitmq.module';
 import { AuthModule }          from './auth/auth.module';
 import { ClientModule }        from './clients/client.module';
 import { PlansModule }         from './plans/plans.module';
@@ -28,7 +27,6 @@ import { JwtAuthGuard }        from './auth';
 			},
 		] ),
 		DatabaseModule,
-		RabbitmqModule,
 		AuthModule,
 		ClientModule,
 		PlansModule,

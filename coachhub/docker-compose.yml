@@ -31,6 +31,8 @@ services:
 
   mongodb:
     image: mongo:7
+    # --quiet suppresses the per-connection accept/end log spam from the healthcheck
+    command: ["mongod", "--quiet"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-coachhub}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secret}
@@ -154,5 +156,15 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      mailhog:
+        condition: service_started
+    networks:
+      - coachhub-net
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI — open http://localhost:8025 to read captured emails
     networks:
       - coachhub-net
