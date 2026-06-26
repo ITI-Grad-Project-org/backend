@@ -28,7 +28,15 @@ import {
 import {
 	UploadImageDto
 } from './dto/upload.dto';
+import {
+	Public
+} from '../auth';
 
+// TODO(security): uploads are currently open to preserve the existing
+// registration-time upload flow. Once upload is only used by authenticated
+// coaches/clients, drop @Public() (and add a principal-aware guard if clients
+// must upload too — the global guard only accepts tenant-user tokens).
+@Public()
 @ApiTags( 'Upload' )
 @Controller( 'upload' )
 export class S3UploadController {

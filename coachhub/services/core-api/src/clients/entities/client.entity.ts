@@ -3,14 +3,20 @@ import {
 	CreateDateColumn,
 	DeleteDateColumn,
 	Entity,
-	JoinColumn,
-	ManyToOne,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
-}               from 'typeorm';
-import { Tenant }     from '../../tenant/entities/tenant.entity';
-import { UserStatus } from '../../auth/enums';
+}                           from 'typeorm';
+import { ClientMembership } from './client-membership.entity';
 
+/**
+ * Global identity of a client (the person being coached).
+ *
+ * A client exists independently of any tenant; their relationship to a tenant
+ * is expressed through {@link ClientMembership} rows. This lets the same client
+ * be invited into multiple tenants and switch between them, while per-tenant
+ * concerns (status, block reason) live on the membership.
+ */
 @Entity()
 export class Client {
 	@PrimaryGeneratedColumn()
@@ -31,12 +37,6 @@ export class Client {
 	@Column( { nullable: true } )
 	profilePicture: string;
 
-	@Column( { type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE } )
-	status: UserStatus;
-
-	@Column( { nullable: true } )
-	blockReason: string;
-
 	@Column( { nullable: true, select: false } )
 	hashedRefreshToken: string;
 
@@ -49,9 +49,8 @@ export class Client {
 	@Column( { nullable: true } )
 	lastLoginAt: Date;
 
-	@ManyToOne( () => Tenant, { nullable: true } )
-	@JoinColumn( { name: 'tenant_id' } )
-	tenant: Tenant | null;
+	@OneToMany( () => ClientMembership, ( membership ) => membership.client )
+	memberships: ClientMembership[];
 
 	@CreateDateColumn()
 	created_at: Date;

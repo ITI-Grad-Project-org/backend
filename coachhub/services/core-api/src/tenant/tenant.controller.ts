@@ -1,13 +1,13 @@
 import {
 	Body,
 	Controller,
+	ForbiddenException,
 	Get,
 	HttpCode,
 	HttpStatus,
 	Param,
 	ParseIntPipe,
 	Post,
-	UseGuards,
 } from '@nestjs/common';
 import {
 	ApiBearerAuth,
@@ -23,10 +23,6 @@ import {
 	CreateTenantDto
 } from './dto/create-tenant.dto';
 import {
-	JwtAuthGuard,
-	Public
-} from '../auth';
-import {
 	CurrentTenant
 } from '../auth/decorators/current-tenant.decorator';
 
@@ -35,8 +31,8 @@ import {
 export class TenantController {
 	constructor ( private readonly tenantService: TenantService ) {}
 
-	@Public()
 	@Post()
+	@ApiBearerAuth()
 	@ApiOperation( { summary: 'Create a new tenant' } )
 	@ApiResponse( { status: 201, description: 'Tenant created successfully' } )
 	@ApiResponse( { status: 400, description: 'Validation error or slug taken' } )
@@ -46,7 +42,6 @@ export class TenantController {
 	}
 
 	@Get( 'me' )
-	@UseGuards( JwtAuthGuard )
 	@ApiBearerAuth()
 	@ApiOperation( { summary: 'Get the current authenticated user\'s tenant' } )
 	@ApiResponse( { status: 200, description: 'Tenant retrieved successfully' } )
@@ -57,16 +52,26 @@ export class TenantController {
 	}
 
 	@Get( ':id' )
-	@ApiOperation( { summary: 'Get a tenant by ID' } )
-	@ApiParam( { name: 'id', description: 'Tenant MongoDB ID' } )
+	@ApiBearerAuth()
+	@ApiOperation( { summary: 'Get a tenant by ID (must be your own tenant)' } )
+	@ApiParam( { name: 'id', description: 'Tenant ID' } )
 	@ApiResponse( { status: 200, description: 'Tenant retrieved successfully' } )
+	@ApiResponse( { status: 403, description: 'Not your tenant' } )
 	@ApiResponse( { status: 404, description: 'Tenant not found' } )
 	@HttpCode( HttpStatus.OK )
-	findOne ( @Param( 'id', ParseIntPipe ) id: number ) {
+	findOne (
+		@CurrentTenant() tenantId: number,
+		@Param( 'id', ParseIntPipe ) id: number,
+	) {
+		// A user only ever has their own tenant; block cross-tenant reads.
+		if ( id !== Number( tenantId ) ) {
+			throw new ForbiddenException( 'You can only access your own tenant' );
+		}
 		return this.tenantService.findOne( id );
 	}
 
 	@Get( 'slug/:slug' )
+	@ApiBearerAuth()
 	@ApiOperation( { summary: 'Get a tenant by slug' } )
 	@ApiParam( { name: 'slug', description: 'Tenant slug' } )
 	@ApiResponse( { status: 200, description: 'Tenant retrieved successfully' } )

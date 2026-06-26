@@ -105,6 +105,7 @@ export class AuthController {
 		return this.authService.login( loginDto );
 	}
 
+	@Public()
 	@UseGuards( JwtRefreshGuard )
 	@Post( 'refresh' )
 	@ApiBearerAuth()
