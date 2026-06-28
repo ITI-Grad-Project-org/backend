@@ -1,0 +1,8 @@
+# Local secrets — never commit
+.env
+
+# ...but the template IS committed (parent coachhub/.gitignore ignores .env.*)
+!.env.example
+
+# Build output
+target/

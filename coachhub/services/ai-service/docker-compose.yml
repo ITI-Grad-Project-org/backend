@@ -57,18 +57,18 @@ services:
       dockerfile: Dockerfile
     environment:
       SERVER_PORT: 8081
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-coachhub}:${MONGO_PASSWORD:-secret}@mongodb:27017/coachhub?authSource=admin&directConnection=true
+      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:?set SPRING_DATA_MONGODB_URI in .env}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-changeme}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?set GEMINI_API_KEY in .env}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
     ports:
       - "8081:8081"
     depends_on:
-      mongodb:
-        condition: service_healthy
+      #      mongodb:
+      #        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
