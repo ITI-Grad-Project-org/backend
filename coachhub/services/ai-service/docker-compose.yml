@@ -7,22 +7,31 @@ volumes:
   rabbitmq-data:
 
 services:
-  mongodb:
-    image: mongo:7
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-coachhub}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secret}
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-    networks:
-      - ai-service-net
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  #  mongodb:
+  #    # Atlas Local bundles mongod + mongot (search), so it supports the
+  #    # `createSearchIndexes` command the Spring AI vector store needs at startup.
+  #    # The community `mongo:7` image does NOT — it fails with error 59.
+  #    image: mongodb/mongodb-atlas-local:latest
+  #    # Hard-silence Mongo in `docker compose up` output. Remove this block if you
+  #    # need to see Mongo logs again (or use `docker compose logs mongodb`).
+  #    logging:
+  #      driver: "none"
+  #    environment:
+  #      MONGODB_INITDB_ROOT_USERNAME: ${MONGO_USER:-coachhub}
+  #      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secret}
+  #    ports:
+  #      - "27017:27017"
+  #    volumes:
+  #      - mongodb-data:/data/db
+  #    networks:
+  #      - ai-service-net
+  #    healthcheck:
+  #      # Atlas Local is slower to come up (mongot too); give it room via start_period.
+  #      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+  #      interval: 10s
+  #      timeout: 5s
+  #      retries: 10
+  #      start_period: 40s
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -37,7 +46,7 @@ services:
     networks:
       - ai-service-net
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,13 +57,13 @@ services:
       dockerfile: Dockerfile
     environment:
       SERVER_PORT: 8081
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-coachhub}:${MONGO_PASSWORD:-secret}@mongodb:27017/coachhub?authSource=admin
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-coachhub}:${MONGO_PASSWORD:-secret}@mongodb:27017/coachhub?authSource=admin&directConnection=true
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-changeme}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-pro}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
     ports:
       - "8081:8081"
     depends_on:

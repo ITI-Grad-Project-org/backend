@@ -34,4 +34,8 @@ export class ConfigService {
 		return this.configService.getOrThrow<Config['googleOauth']>(
 			'googleOauth' );
 	}
+
+	get aiConfig (): Config['ai'] {
+		return this.configService.getOrThrow<Config['ai']>( 'ai' );
+	}
 }

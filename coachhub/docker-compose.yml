@@ -6,7 +6,6 @@ networks:
 
 volumes:
   postgres-data:
-  mongodb-data:
   rabbitmq-data:
 
 services:
@@ -24,26 +23,7 @@ services:
     networks:
       - coachhub-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coachhub}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mongodb:
-    image: mongo:7
-    # --quiet suppresses the per-connection accept/end log spam from the healthcheck
-    command: ["mongod", "--quiet"]
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-coachhub}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secret}
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-    networks:
-      - coachhub-net
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coachhub}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -61,7 +41,7 @@ services:
     networks:
       - coachhub-net
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -88,6 +68,9 @@ services:
       AWS_S3_BASE_URL: ${AWS_S3_BASE_URL:-https://placeholder.s3.us-east-1.amazonaws.com}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-placeholder}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-placeholder}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-30000}
+
     ports:
       - "3000:3000"
     depends_on:
@@ -103,7 +86,10 @@ services:
       context: ./services/ai-service
       dockerfile: Dockerfile
     environment:
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER:-coachhub}:${MONGO_PASSWORD:-secret}@mongodb:27017/coachhub?authSource=admin
+      # Uses a live MongoDB Atlas cluster (Atlas Search supports the
+      # createSearchIndexes command the Spring AI vector store needs). Override
+      # via the SPRING_DATA_MONGODB_URI env var; default points at the dev cluster.
+      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:-mongodb+srv://dod:ahmeddada111@cluster0.atppyrg.mongodb.net/spring-rag-service?appName=Cluster0}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
@@ -111,8 +97,6 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      mongodb:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:

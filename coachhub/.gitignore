@@ -8,6 +8,8 @@ dist/
 *.local
 
 # Java / Maven
+application-local.yml
+application-local.yaml
 target/
 *.class
 *.jar

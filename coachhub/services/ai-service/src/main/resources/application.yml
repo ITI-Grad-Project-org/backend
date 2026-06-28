@@ -1,5 +1,6 @@
+# services/ai-service/src/main/resources/application.yml
 server:
-  port: ${SERVER_PORT:8081}
+  port: 8081
 
 spring:
   application:
@@ -8,24 +9,81 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://coachhub:secret@localhost:27017/coachhub?authSource=admin}
+      # Required for @Indexed(unique=true) on AiDocument.requestId to take effect
+      # (Spring Boot disables index auto-creation by default).
+      auto-index-creation: true
 
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:coachhub}
     password: ${SPRING_RABBITMQ_PASSWORD:secret}
-    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2000ms
+          multiplier: 2.0
+          max-interval: 10000ms
+
+  # Gemini responses carry fields we don't model (usageMetadata, finishReason…) —
+  # don't fail deserialization on them.
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+
+  # ── Spring AI: Google GenAI embeddings (RAG) ────────────────────────────────
+  # Uses the Gemini Developer API (API-key mode) — same GEMINI_API_KEY as the
+  # chat call. NOTE: property paths shift between Spring AI versions; if the
+  # embedding model can't find the key, also set spring.ai.google.genai.embedding.api-key.
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:changeme}
+        embedding:
+          # The embedding connection uses its OWN prefix (spring.ai.google.genai.embedding)
+          # and does NOT inherit the api-key above. Without this, the embedding connection
+          # falls back to Vertex-AI mode and fails with "Google GenAI project-id must be set!".
+          api-key: ${GEMINI_API_KEY:changeme}
+          text:
+            model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+
+    # ── RAG store: MongoDB Atlas Vector Search ──────────────────────────────
+    # initialize-schema=true creates the collection AND the Atlas vector index
+    # at startup; numDimensions is taken automatically from the embedding model,
+    # so it always matches Gemini. Requires a real Atlas cluster (or Atlas Local)
+    # — community MongoDB does NOT support $vectorSearch.
+    vectorstore:
+      mongodb:
+        initialize-schema: true
+        collection-name: ${RAG_COLLECTION:rag_knowledge}
+        index-name: ${RAG_INDEX:vector_index}
+        path-name: embedding
+        metadata-fields-to-filter: source
+
+# ── CoachHub RAG ────────────────────────────────────────────────────────────
+coachhub:
+  rag:
+    # Seed the Atlas vector store at startup (once; needs a valid GEMINI_API_KEY).
+    # Set false in tests / offline runs.
+    seed-on-startup: ${RAG_SEED_ON_STARTUP:true}
+
+# ── Gemini ────────────────────────────────────────────────────────────────────
+gemini:
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+  api-key: ${GEMINI_API_KEY:changeme}
+  # gemini-2.0-flash was shut down 2026-06-01. 2.5-flash is a safe default;
+  # bump to gemini-3.5-flash if your key has access.
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
       show-details: always
-
-# TODO: add Gemini API key config
-gemini:
-  api-key: ${GEMINI_API_KEY:changeme}
-  model: ${GEMINI_MODEL:gemini-1.5-pro}

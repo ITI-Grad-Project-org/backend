@@ -1,9 +1,16 @@
 package com.coachhub.ai.service.rag;
 
-import org.springframework.stereotype.Service;
+import java.util.List;
 
-// TODO: implement RAG pipeline (embedding, retrieval, augmentation)
-@Service
-public class RagService {
-    // TODO: implement
+/**
+ * Retrieves relevant knowledge-base context for a query (the "R" in RAG).
+ */
+public interface RagService {
+
+	/**
+	 * @param query the user query to find context for
+	 * @param topK  maximum number of chunks to return
+	 * @return the most relevant chunks, ordered best-first (never {@code null})
+	 */
+	List<RagChunk> retrieve(String query, int topK);
 }
