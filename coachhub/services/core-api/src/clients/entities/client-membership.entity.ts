@@ -13,14 +13,6 @@ import { Tenant }     from '../../tenant/entities/tenant.entity';
 import { Client }     from './client.entity';
 import { UserStatus } from '../../auth';
 
-/**
- * Join entity linking a {@link Client} to a {@link Tenant}.
- *
- * A client can hold many memberships (one per tenant they were invited into),
- * which is what enables a client to belong to multiple tenants and switch
- * between them. All per-tenant state (status, block reason, invitation
- * metadata) lives here rather than on the global client identity.
- */
 @Entity()
 @Unique( [ 'client', 'tenant' ] )
 export class ClientMembership {

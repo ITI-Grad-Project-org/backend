@@ -10,7 +10,7 @@ import {
 @Injectable()
 export class ClientJwtRefreshStrategy extends PassportStrategy(
 	Strategy,
-	'customer-jwt-refresh',
+	'client-jwt-refresh',
 ) {
 	constructor ( configService: ConfigService ) {
 		super( {

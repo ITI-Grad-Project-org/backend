@@ -43,9 +43,7 @@ import {
 	ClientJwtRefreshGuard
 } from './guards/client-jwt-refresh.guard';
 import {
-	CurrentClient
-} from './decorators/current-client.decorator';
-import {
+	CurrentClient,
 	Public
 } from './decorators';
 import {
@@ -180,5 +178,16 @@ export class ClientAuthController {
 			resetPasswordDto.token,
 			resetPasswordDto.newPassword,
 		);
+	}
+
+	@UseGuards( ClientJwtAuthGuard )
+	@Get( 'me' )
+	@ApiBearerAuth()
+	@ApiOperation(
+		{ summary: 'Get the currently authenticated customer profile' } )
+	@ApiResponse( { status: 200, description: 'Customer profile retrieved' } )
+	@HttpCode( HttpStatus.OK )
+	getMe ( @CurrentClient( 'clientId' ) clientId: string ) {
+		return this.customerAuthService.getMe( clientId );
 	}
 }

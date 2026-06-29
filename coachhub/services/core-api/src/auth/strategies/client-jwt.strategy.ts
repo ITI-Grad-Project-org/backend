@@ -7,7 +7,7 @@ import { ClientAuthPayload }                 from '../../common';
 @Injectable()
 export class ClientJwtStrategy extends PassportStrategy(
 	Strategy,
-	'customer-jwt',
+	'client-jwt',
 ) {
 	constructor ( configService: ConfigService ) {
 		super( {
