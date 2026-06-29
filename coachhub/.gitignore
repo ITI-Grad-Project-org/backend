@@ -40,3 +40,6 @@ logs/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+
+mydocs
+AGENTS.md

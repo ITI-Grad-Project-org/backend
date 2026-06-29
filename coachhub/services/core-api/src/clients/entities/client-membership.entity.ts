@@ -13,6 +13,29 @@ import { Tenant }     from '../../tenant/entities/tenant.entity';
 import { Client }     from './client.entity';
 import { UserStatus } from '../../auth';
 
+export interface ClientHealthRecord {
+	name: string;
+	notes?: string;
+	severity?: string;
+	diagnosedAt?: string;
+	isActive?: boolean;
+	bodyPart?: string;
+}
+
+export interface ClientBodyMeasurement {
+	measuredAt: string;
+	weight?: number;
+	bodyFatPercentage?: number;
+	muscleMass?: number;
+	muscleRatio?: number;
+	notes?: string;
+}
+
+export interface ClientImageLibraryItem {
+	url: string;
+	description?: string;
+}
+
 /**
  * Join entity linking a {@link Client} to a {@link Tenant}.
  *
@@ -41,6 +64,33 @@ export class ClientMembership {
 
 	@Column( { nullable: true } )
 	blockReason: string;
+
+	@Column( { nullable: true } )
+	fitnessGoal?: string;
+
+	@Column( { type: 'jsonb', nullable: true } )
+	injuryRecords?: ClientHealthRecord[];
+
+	@Column( { type: 'jsonb', nullable: true } )
+	chronicDiseases?: ClientHealthRecord[];
+
+	@Column( { nullable: true } )
+	fitnessLevel?: string;
+
+	@Column( { nullable: true } )
+	trainingDaysPerWeek?: number;
+
+	@Column( { type: 'jsonb', nullable: true } )
+	imageLibrary?: ClientImageLibraryItem[];
+
+	@Column( { type: 'jsonb', nullable: true } )
+	trainingPreferences?: Record<string, unknown>;
+
+	@Column( { type: 'jsonb', nullable: true } )
+	foodPreferences?: Record<string, unknown>;
+
+	@Column( { type: 'jsonb', nullable: true } )
+	bodyMeasurements?: ClientBodyMeasurement[];
 
 	@CreateDateColumn()
 	invitedAt: Date;

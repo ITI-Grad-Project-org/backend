@@ -1,13 +1,14 @@
 import {
-	Column,
-	CreateDateColumn,
-	DeleteDateColumn,
-	Entity,
-	OneToMany,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-}                           from 'typeorm';
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { ClientMembership } from './client-membership.entity';
+import { Gender } from '../enums/gender.enum';
 
 /**
  * Global identity of a client (the person being coached).
@@ -19,45 +20,60 @@ import { ClientMembership } from './client-membership.entity';
  */
 @Entity()
 export class Client {
-	@PrimaryGeneratedColumn()
-	id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-	@Column()
-	name: string;
+  @Column()
+  name: string;
 
-	@Column( { unique: true } )
-	email: string;
+  @Column({ unique: true })
+  email: string;
 
-	@Column( { nullable: true, select: false } )
-	password: string;
+  @Column({ nullable: true, unique: true })
+  username: string;
 
-	@Column( { nullable: true, unique: true } )
-	googleId: string;
+  @Column({ nullable: true, select: false })
+  password: string;
 
-	@Column( { nullable: true } )
-	profilePicture: string;
+  @Column({ nullable: true, unique: true })
+  googleId: string;
 
-	@Column( { nullable: true, select: false } )
-	hashedRefreshToken: string;
+  @Column({ nullable: true })
+  profilePicture: string;
 
-	@Column( { nullable: true, select: false } )
-	resetPasswordToken: string;
+  @Column({ nullable: true })
+  phoneNumber: string;
 
-	@Column( { nullable: true, select: false } )
-	resetPasswordExpires: Date;
+  @Column({ type: 'enum', enum: Gender, nullable: true })
+  gender: Gender;
 
-	@Column( { nullable: true } )
-	lastLoginAt: Date;
+  @Column({ type: 'date', nullable: true })
+  birthDate: string;
 
-	@OneToMany( () => ClientMembership, ( membership ) => membership.client )
-	memberships: ClientMembership[];
+  @Column({ type: 'float', nullable: true })
+  height: number;
 
-	@CreateDateColumn()
-	created_at: Date;
+  @Column({ nullable: true, select: false })
+  hashedRefreshToken: string;
 
-	@UpdateDateColumn()
-	updated_at: Date;
+  @Column({ nullable: true, select: false })
+  resetPasswordToken: string;
 
-	@DeleteDateColumn()
-	deleted_at: Date;
+  @Column({ nullable: true, select: false })
+  resetPasswordExpires: Date;
+
+  @Column({ nullable: true })
+  lastLoginAt: Date;
+
+  @OneToMany(() => ClientMembership, (membership) => membership.client)
+  memberships: ClientMembership[];
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+  @DeleteDateColumn()
+  deleted_at: Date;
 }
