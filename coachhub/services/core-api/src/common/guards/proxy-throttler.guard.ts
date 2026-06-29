@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ExecutionContext } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 /**
@@ -17,6 +17,20 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  */
 @Injectable()
 export class ProxyThrottlerGuard extends ThrottlerGuard {
+  /**
+   * Registered globally (APP_GUARD), so Nest also runs this on WebSocket
+   * gateways and RabbitMQ consumers. Rate-limiting only makes sense for HTTP,
+   * and the base ThrottlerGuard calls `res.header(...)` to set rate-limit
+   * headers — which throws "res.header is not a function" in WS/RMQ contexts
+   * (golevelup reports its context type as 'rmq'). Skip non-HTTP contexts.
+   */
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (context.getType() !== 'http') {
+      return true;
+    }
+    return super.canActivate(context);
+  }
+
   protected async getTracker(req: Record<string, any>): Promise<string> {
     const headers = req.headers ?? {};
 

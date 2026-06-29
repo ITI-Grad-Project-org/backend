@@ -23,7 +23,7 @@ export class AiService {
 	async dispatch ( input: RequestAiInput ) {
 		const requestId = randomUUID();
 		const payload: AiRequestedPayload = {
-			requestId: crypto.randomUUID(),
+			requestId,
 			clientId: input.clientId,
 			coachId: input.coachId,
 			coachEmail: input.coachEmail,

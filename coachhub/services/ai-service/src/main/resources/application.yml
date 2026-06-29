@@ -41,12 +41,12 @@ spring:
   ai:
     google:
       genai:
-        api-key: ${GEMINI_API_KEY:changeme}
+        api-key: ${GEMINI_API_KEY:AIzaSyBVw_8D8ztTd-wXN3i0TaxuWAfwfPRbsyc}
         embedding:
           # The embedding connection uses its OWN prefix (spring.ai.google.genai.embedding)
           # and does NOT inherit the api-key above. Without this, the embedding connection
           # falls back to Vertex-AI mode and fails with "Google GenAI project-id must be set!".
-          api-key: ${GEMINI_API_KEY:changeme}
+          api-key: ${GEMINI_API_KEY:AIzaSyBVw_8D8ztTd-wXN3i0TaxuWAfwfPRbsyc}
           text:
             model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
 
@@ -73,7 +73,7 @@ coachhub:
 # ── Gemini ────────────────────────────────────────────────────────────────────
 gemini:
   base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-  api-key: ${GEMINI_API_KEY:changeme}
+  api-key: ${GEMINI_API_KEY:AIzaSyBVw_8D8ztTd-wXN3i0TaxuWAfwfPRbsyc}
   # gemini-2.0-flash was shut down 2026-06-01. 2.5-flash is a safe default;
   # bump to gemini-3.5-flash if your key has access.
   model: ${GEMINI_MODEL:gemini-2.5-flash}

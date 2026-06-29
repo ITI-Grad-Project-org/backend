@@ -64,6 +64,9 @@ export class AiGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	pushCompleted ( payload: AiCompletedPayload ) {
+		// this.logger.debug(
+		// 	`pushCompleted: requestId=${payload.requestId},
+		// result=${payload.summary}`, );
 		this.cancelTimeout( payload.requestId );
 		this.server.to( this.room( payload.requestId ) ).emit(
 			EventType.AI_COMPLETED,
