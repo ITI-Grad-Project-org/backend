@@ -13,6 +13,10 @@ export const ConfigSchema = z.object( {
 	rabbitmq: z.object( {
 		url: z.string(),
 	} ),
+	ai: z.object( {
+		geminiApiKey: z.string(),
+		aiRequestTimeoutMs: z.coerce.number().default( 30000 ),
+	} ),
 	jwt: z.object( {
 		accessToken: z.object( {
 			secret: z.string(),

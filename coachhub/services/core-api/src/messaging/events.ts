@@ -10,6 +10,8 @@ export const EventType = {
 	MESSAGE_SENT: 'message.sent',
 	AI_REQUESTED: 'ai.requested',
 	AI_COMPLETED: 'ai.completed',
+	AI_ACCEPTED: 'ai.accepted',
+	AI_TIMED_OUT: 'ai.timed_out',
 } as const;
 
 export type EventType = ( typeof EventType )[keyof typeof EventType];
@@ -43,4 +45,22 @@ export interface PlanAssignedPayload {
 	clientEmail: string;
 	clientName: string;
 	startsAt: string;
+}
+
+export interface AiRequestedPayload {
+	requestId: string;
+	clientId: string;
+	coachId: string;
+	coachEmail: string;
+	kind: string;
+	prompt: string;
+}
+
+export interface AiCompletedPayload {
+	requestId: string;
+	clientId: string;
+	coachId: string;
+	coachEmail: string;
+	status: 'succeeded' | 'failed';
+	summary: string;
 }

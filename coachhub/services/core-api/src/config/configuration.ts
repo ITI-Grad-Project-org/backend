@@ -24,6 +24,12 @@ export default () => ( {
 		},
 	},
 
+	ai: {
+		geminiApiKey: process.env.GEMINI_API_KEY,
+		aiRequestTimeoutMs: parseInt( process.env.AI_REQUEST_TIMEOUT_MS as string,
+			10 ) || 30000,
+	},
+
 	aws: {
 		region: process.env.AWS_REGION || 'us-east-1',
 		accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -40,7 +46,7 @@ export default () => ( {
 	googleOauth: {
 		clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
 	},
-	
+
 	imageTypes: {
 		coach: {
 			width: 400,
