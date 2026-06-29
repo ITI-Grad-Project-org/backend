@@ -13,10 +13,6 @@ export class ClientMembershipService {
 		private readonly membershipRepository: Repository<ClientMembership>,
 	) {}
 
-	/**
-	 * Every tenant the client is linked to, regardless of status, ordered by
-	 * most recently active. Used to render the "switch tenant" picker.
-	 */
 	findMemberships ( clientId: number ): Promise<ClientMembership[]> {
 		return this.membershipRepository.find( {
 			where: { client: { id: clientId } },
@@ -35,11 +31,6 @@ export class ClientMembershipService {
 		} );
 	}
 
-	/**
-	 * Every client linked to a tenant, with the client identity loaded. This is
-	 * the tenant-scoped "my clients" list a coach sees — it can only ever return
-	 * clients that belong to the caller's own tenant.
-	 */
 	findTenantMembers ( tenantId: number ): Promise<ClientMembership[]> {
 		return this.membershipRepository.find( {
 			where: { tenant: { id: tenantId } },
@@ -48,11 +39,6 @@ export class ClientMembershipService {
 		} );
 	}
 
-	/**
-	 * A single client's membership within a tenant, with the client identity
-	 * loaded. Returns `null` when the client is not a member of that tenant,
-	 * which callers translate into a 404 so tenants cannot probe each other.
-	 */
 	findTenantMember (
 		tenantId: number,
 		clientId: number,
@@ -63,16 +49,10 @@ export class ClientMembershipService {
 		} );
 	}
 
-	/** Removes a client from a single tenant without touching other tenants. */
 	removeFromTenant ( membershipId: number ) {
 		return this.membershipRepository.softDelete( membershipId );
 	}
 
-	/**
-	 * The tenant a freshly-authenticated client should land in: the most
-	 * recently active membership that is currently active. Returns `null` when
-	 * the client has no usable membership yet (e.g. only pending invitations).
-	 */
 	async resolveDefaultTenantId ( clientId: number ): Promise<number | null> {
 		const membership = await this.membershipRepository.findOne( {
 			where: { client: { id: clientId }, status: UserStatus.ACTIVE },
@@ -83,11 +63,6 @@ export class ClientMembershipService {
 		return membership?.tenant?.id ?? null;
 	}
 
-	/**
-	 * Links a client to a tenant. Used when seeding and, later, when an
-	 * invitation is accepted. Defaults to PENDING so an invite must be accepted
-	 * before the client can switch into the tenant.
-	 */
 	async createMembership (
 		clientId: number,
 		tenantId: number,

@@ -9,14 +9,6 @@ import {
 }                           from 'typeorm';
 import { ClientMembership } from './client-membership.entity';
 
-/**
- * Global identity of a client (the person being coached).
- *
- * A client exists independently of any tenant; their relationship to a tenant
- * is expressed through {@link ClientMembership} rows. This lets the same client
- * be invited into multiple tenants and switch between them, while per-tenant
- * concerns (status, block reason) live on the membership.
- */
 @Entity()
 export class Client {
 	@PrimaryGeneratedColumn()
