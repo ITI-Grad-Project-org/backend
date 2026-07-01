@@ -19,7 +19,6 @@ import {
 } from '@nestjs/swagger';
 import { CurrentTenant, JwtAuthGuard } from '../auth';
 import { ClientMembershipService } from './client-membership.service';
-import { UpdateClientMembershipProfileDto } from './dto/update-client-membership-profile.dto';
 
 /**
  * Coach-facing view of the clients in the authenticated coach's tenant.
@@ -89,26 +88,26 @@ export class ClientController {
     return { message: 'Client removed from tenant' };
   }
 
-  @Patch(':id/profile')
-  @ApiOperation({
-    summary: 'Update a client profile within my tenant',
-  })
-  @ApiResponse({ status: 200, description: 'Client profile updated' })
-  @ApiResponse({ status: 404, description: 'Client not found in this tenant' })
-  @HttpCode(HttpStatus.OK)
-  async updateProfile(
-    @CurrentTenant() tenantId: number,
-    @Param('id', ParseIntPipe) clientId: number,
-    @Body() dto: UpdateClientMembershipProfileDto,
-  ) {
-    const membership = await this.membershipService.updateTenantMemberProfile(
-      tenantId,
-      clientId,
-      dto,
-    );
-    if (!membership) {
-      throw new NotFoundException('Client not found in this tenant');
-    }
-    return membership;
-  }
+  // @Patch(':id/profile')
+  // @ApiOperation({
+  //   summary: 'Update a client profile within my tenant',
+  // })
+  // @ApiResponse({ status: 200, description: 'Client profile updated' })
+  // @ApiResponse({ status: 404, description: 'Client not found in this tenant' })
+  // @HttpCode(HttpStatus.OK)
+  // async updateProfile(
+  //   @CurrentTenant() tenantId: number,
+  //   @Param('id', ParseIntPipe) clientId: number,
+  //   @Body() dto: UpdateClientMembershipProfileDto,
+  // ) {
+  //   const membership = await this.membershipService.updateTenantMemberProfile(
+  //     tenantId,
+  //     clientId,
+  //     dto,
+  //   );
+  //   if (!membership) {
+  //     throw new NotFoundException('Client not found in this tenant');
+  //   }
+  //   return membership;
+  // }
 }

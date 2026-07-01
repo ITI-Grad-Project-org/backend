@@ -16,6 +16,7 @@ import { APP_GUARD }           from '@nestjs/core';
 import { ProxyThrottlerGuard } from './common/guards/proxy-throttler.guard';
 import { InvitationModule }    from './invitation/invitation.module';
 import { JwtAuthGuard }        from './auth';
+import { ReviewsModule }       from './reviews/reviews.module';
 
 @Module( {
 	imports: [
@@ -37,7 +38,8 @@ import { JwtAuthGuard }        from './auth';
 		HealthModule,
 		UsersModule,
 		TenantModule,
-		InvitationModule
+		InvitationModule,
+		ReviewsModule
 	],
 
 	providers: [

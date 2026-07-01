@@ -67,12 +67,12 @@ export class ClientMembershipService {
     return this.membershipRepository.softDelete(membershipId);
   }
 
-  async updateTenantMemberProfile(
-    tenantId: number,
+  async updateClientOwnTenantProfile(
     clientId: number,
+    tenantId: number,
     dto: UpdateClientMembershipProfileDto,
   ): Promise<ClientMembership | null> {
-    const membership = await this.findTenantMember(tenantId, clientId);
+    const membership = await this.findMembership(clientId, tenantId);
     if (!membership) {
       return null;
     }

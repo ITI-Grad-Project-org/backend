@@ -53,6 +53,9 @@ export class Client {
   @Column({ type: 'float', nullable: true })
   height: number;
 
+  @Column({ type: 'float', nullable: true })
+  weight: number;
+
   @Column({ nullable: true, select: false })
   hashedRefreshToken: string;
 

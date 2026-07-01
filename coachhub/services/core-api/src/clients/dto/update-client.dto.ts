@@ -39,6 +39,12 @@ export class UpdateClientDto extends PartialType(CreateClientDto) {
   @Min(0)
   height?: number;
 
+  @ApiPropertyOptional({ example: 70 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  weight?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsUrl()
