@@ -4,31 +4,29 @@ import {
 	Injectable,
 	NotFoundException,
 	UnauthorizedException,
-}                        from '@nestjs/common';
-import { TenantService } from '../../tenant/tenant.service';
-import { TokenProvider } from '../providers/token.provider';
-import { AuthPayload }   from 'src/common/interfaces/authPayload.interface';
-import { LoginDto }      from '../dto/login.dto';
-import * as crypto       from 'crypto';
-import { User }          from '../../users/entities/user.entity';
-import { RegisterDto }   from '../../users/dto/register-user.dto';
-import { UsersService }  from '../../users/users.service';
+}                           from '@nestjs/common';
+import { TokenProvider }    from '../providers/token.provider';
+import { AuthPayload }      from 'src/common/interfaces/authPayload.interface';
+import { LoginDto }         from '../dto/login.dto';
+import * as crypto          from 'crypto';
+import { Coach }            from '../../coaches/entities/coach.entity';
+import { RegisterCoachDto } from '../../coaches/dto/register-coach.dto';
+import { CoachesService }   from '../../coaches/coaches.service';
 
 @Injectable()
 export class AuthService {
 	constructor (
-		private readonly userService: UsersService,
-		private readonly tenantService: TenantService,
+		private readonly coachesService: CoachesService,
 		private readonly tokenProvider: TokenProvider,
 	) {}
 
-	async register ( registerDto: RegisterDto ) {
+	async register ( registerDto: RegisterCoachDto ) {
 
-		const existingUser = await this.userService.findOneByEmail(
+		const existingCoach = await this.coachesService.findOneByEmail(
 			registerDto.email
 		);
 
-		if ( existingUser ) {
+		if ( existingCoach ) {
 			throw new BadRequestException( 'Email is already in use' );
 		}
 
@@ -36,55 +34,55 @@ export class AuthService {
 			registerDto.password,
 		);
 
-		const user = await this.userService.create(
+		const coach = await this.coachesService.create(
 			{ ...registerDto, password: hashedPassword } );
 
-		const result = await this.issueTokens( user );
-		return { user, ...result };
+		const result = await this.issueTokens( coach );
+		return { user: coach, ...result };
 	}
 
 	async login ( loginDto: LoginDto ) {
 		const { email, password } = loginDto;
-		const user = await this.userService.findOneByEmail( email );
-		if ( !user ) {
+		const coach = await this.coachesService.findOneByEmail( email );
+		if ( !coach ) {
 			throw new UnauthorizedException( 'Invalid credentials' );
 		}
 
-		const validatedUser = await this.validateUser( email, password );
-		if ( !validatedUser ) {
+		const validatedCoach = await this.validateCoach( email, password );
+		if ( !validatedCoach ) {
 			throw new UnauthorizedException( 'Invalid credentials' );
 		}
-		return this.issueTokens( validatedUser );
+		return this.issueTokens( validatedCoach );
 	}
 
-	async refreshTokens ( userId: number, refreshToken: string ) {
-		const user = await this.userService.findByIdWithRefreshToken( userId );
+	async refreshTokens ( coachId: string, refreshToken: string ) {
+		const coach = await this.coachesService.findByIdWithRefreshToken( coachId );
 
 		const isTokenValid = this.tokenProvider.compareToken(
 			refreshToken,
-			user.hashedRefreshToken,
+			coach.hashedRefreshToken,
 		);
 		if ( !isTokenValid ) {
 			throw new ForbiddenException( 'Access denied' );
 		}
 
-		const payload = this.buildPayload( user );
+		const payload = this.buildPayload( coach );
 		const tokens = await this.tokenProvider.generateTokens( payload );
 		const hashedNewRefreshToken = this.tokenProvider.hashToken(
 			tokens.refreshToken,
 		);
 
-		await this.userService.updateRefreshToken(
-			user.id,
+		await this.coachesService.updateRefreshToken(
+			coach.id,
 			hashedNewRefreshToken,
 		);
 
 		return tokens;
 	}
 
-	async logout ( userId: number ) {
-		await this.userService.logout(
-			userId
+	async logout ( coachId: string ) {
+		await this.coachesService.logout(
+			coachId
 		);
 	}
 
@@ -93,8 +91,8 @@ export class AuthService {
 			message: 'If an account exists, a password reset email has been sent',
 		};
 
-		const user = await this.userService.findOneByEmail( email );
-		if ( !user ) {
+		const coach = await this.coachesService.findOneByEmail( email );
+		if ( !coach ) {
 			return genericResponse;
 		}
 
@@ -104,8 +102,8 @@ export class AuthService {
 			.update( rawToken )
 			.digest( 'hex' );
 
-		await this.userService.setResetPasswordToken(
-			user.id,
+		await this.coachesService.setResetPasswordToken(
+			coach.id,
 			hashedToken,
 			new Date( Date.now() + 15 * 60 * 1000 ),
 		);
@@ -115,61 +113,61 @@ export class AuthService {
 
 	async resetPassword ( token: string, newPassword: string ) {
 		const hashedToken = crypto.createHash( 'sha256' ).update( token ).digest( 'hex' );
-		const user = await this.userService.findByValidResetToken( hashedToken );
+		const coach = await this.coachesService.findByValidResetToken( hashedToken );
 
-		if ( !user ) {
+		if ( !coach ) {
 			throw new ForbiddenException( 'Invalid or expired password reset token' );
 		}
 
 		const hashedPassword = await this.tokenProvider.hashPassword( newPassword );
-		await this.userService.resetUserPassword( user.id, hashedPassword );
+		await this.coachesService.resetCoachPassword( coach.id, hashedPassword );
 		return { message: 'Password reset successful' };
 	}
 
-	async getMe ( userId: number ) {
-		const user = await this.userService.findProfileById( userId );
-		if ( !user ) {
-			throw new NotFoundException( 'User not found' );
+	async getMe ( coachId: string ) {
+		const coach = await this.coachesService.findProfileById( coachId );
+		if ( !coach ) {
+			throw new NotFoundException( 'Coach not found' );
 		}
-		return user;
+		return coach;
 	}
 
-	private async validateUser (
+	private async validateCoach (
 		email: string,
 		password: string,
-	): Promise<User | null> {
-		const user = await this.userService.findOneByEmail( email );
+	): Promise<Coach | null> {
+		const coach = await this.coachesService.findOneByEmail( email );
 
-		if ( !user ) {
+		if ( !coach ) {
 			return null;
 		}
 
 		const isPasswordValid = await this.tokenProvider.comparePassword(
 			password,
-			user.password,
+			coach.password,
 		);
 		if ( !isPasswordValid ) {
 			return null;
 		}
-		return user;
+		return coach;
 	}
 
-	private buildPayload ( user: User ): AuthPayload {
+	private buildPayload ( coach: Coach ): AuthPayload {
 		return {
-			userId: user.id,
-			email: user.email,
-			tenantId: user.tenant.id,
+			userId: coach.id,
+			email: coach.email,
+			tenantId: coach.tenants?.[0]?.id,
 			type: 'tenant-user',
 		};
 	}
 
-	private async issueTokens ( user: User ) {
-		const payload = this.buildPayload( user );
+	private async issueTokens ( coach: Coach ) {
+		const payload = this.buildPayload( coach );
 		const tokens = await this.tokenProvider.generateTokens( payload );
 		const hashedRefreshToken = this.tokenProvider.hashToken( tokens.refreshToken );
 
-		await this.userService.updateRefreshToken( user.id, hashedRefreshToken );
+		await this.coachesService.updateRefreshToken( coach.id, hashedRefreshToken );
 
-		return { user, ...tokens };
+		return { user: coach, ...tokens };
 	}
 }

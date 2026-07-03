@@ -50,9 +50,6 @@ import {
 	SwitchTenantDto
 } from './dto/switch-tenant.dto';
 
-// Client routes authenticate against the separate 'client-jwt' strategy, so
-// they opt out of the global tenant-user guard with @Public(). The protected
-// ones still enforce auth through their explicit ClientJwt* guards below.
 @Public()
 @ApiTags( 'Customer Auth' )
 @Controller( 'auth/customer' )
@@ -122,7 +119,7 @@ export class ClientAuthController {
 	@ApiResponse( { status: 200, description: 'Memberships retrieved' } )
 	@HttpCode( HttpStatus.OK )
 	memberships ( @CurrentClient( 'clientId' ) clientId: string ) {
-		return this.customerAuthService.listMemberships( parseInt( clientId ) );
+		return this.customerAuthService.listMemberships( clientId );
 	}
 
 	@UseGuards( ClientJwtAuthGuard )
@@ -140,7 +137,7 @@ export class ClientAuthController {
 		@Body() switchTenantDto: SwitchTenantDto,
 	) {
 		return this.customerAuthService.switchTenant(
-			parseInt( clientId ),
+			clientId,
 			switchTenantDto.tenantId,
 		);
 	}

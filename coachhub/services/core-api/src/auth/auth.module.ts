@@ -19,12 +19,12 @@ import { TenantModule }                from '../tenant/tenant.module';
 import { ConfigModule }   from 'src/config/config.module';
 import { S3UploadModule } from '../s3-upload/s3-upload.module';
 
-import { UsersModule }  from '../users/users.module';
-import { ClientModule } from '../clients/client.module';
+import { CoachesModule } from '../coaches/coaches.module';
+import { ClientModule }  from '../clients/client.module';
 
 @Module( {
 	imports: [
-		UsersModule,
+		CoachesModule,
 		ClientModule,
 		TenantModule,
 		ConfigModule,

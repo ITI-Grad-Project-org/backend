@@ -9,13 +9,13 @@ import {
 }                              from 'typeorm';
 import { InvitaionStatusEnum } from '../enums/invitaion-status.enum';
 import { Client }              from '../../clients/entities/client.entity';
-import { User }                from '../../users/entities/user.entity';
+import { Coach }               from '../../coaches/entities/coach.entity';
 import { Tenant }              from '../../tenant/entities/tenant.entity';
 
-@Entity()
+@Entity( 'invitations' )
 export class Invitation {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@PrimaryGeneratedColumn( 'uuid' )
+	id: string;
 
 	@Column()
 	email: string;
@@ -34,18 +34,17 @@ export class Invitation {
 	@Column()
 	token: string;
 
-	@Column( { type: 'timestamp' } )
+	@Column( { type: 'timestamptz' } )
 	expiresAt: Date;
 
-	@ManyToOne( () => User, ( user ) => user.id,
-		{ nullable: false, onDelete: 'CASCADE' } )
-	sender: User;
+	@ManyToOne( () => Coach, { nullable: false, onDelete: 'CASCADE' } )
+	sender: Coach;
 
 	@ManyToOne( () => Tenant, { nullable: false, onDelete: 'CASCADE' } )
 	tenant: Tenant;
 
 	/** Set when the invitation is accepted by a logged-in client. */
-	@ManyToOne( () => Client, ( client ) => client.id, { nullable: true } )
+	@ManyToOne( () => Client, { nullable: true } )
 	receiver: Client | null;
 
 	@CreateDateColumn()

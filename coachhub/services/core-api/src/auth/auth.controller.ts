@@ -42,8 +42,8 @@ import {
 	Public
 } from './decorators';
 import {
-	RegisterDto
-} from '../users/dto/register-user.dto';
+	RegisterCoachDto
+} from '../coaches/dto/register-coach.dto';
 
 @ApiTags( 'Auth' )
 @Controller( 'auth' )
@@ -53,34 +53,13 @@ export class AuthController {
 	@Public()
 	@Throttle( { default: { ttl: 60_000, limit: 10 } } )
 	@Post( 'register' )
-	// @ApiConsumes( 'multipart/form-data' )
 	@ApiOperation( {
-		summary: 'Register a new agent (auto-creates a tenant)',
+		summary: 'Register a new coach (auto-creates their tenant and seeds the exercise library)',
 	} )
-	@ApiBody( {
-		schema: {
-			type: 'object',
-			required: [
-				'name',
-				'email',
-				'password',
-				'confirmPassword',
-				'phoneNumber',
-				'whatsappNumber',
-			],
-			properties: {
-				name: { type: 'string', example: 'Jane Smith' },
-				email: { type: 'string', example: 'jane@acme.com' },
-				password: { type: 'string', minLength: 6, example: 'password123' },
-				confirmPassword: { type: 'string', example: 'password123' },
-				phoneNumber: { type: 'string', example: '+966500000000' },
-				whatsappNumber: { type: 'string', example: '+966500000000' },
-			},
-		},
-	} )
+	@ApiBody( { type: RegisterCoachDto } )
 	@ApiResponse( {
 		status: 201,
-		description: 'Tenant and owner registered successfully',
+		description: 'Coach and tenant registered successfully',
 	} )
 	@ApiResponse( {
 		status: 400,
@@ -88,7 +67,7 @@ export class AuthController {
 	} )
 	@HttpCode( HttpStatus.CREATED )
 	register (
-		@Body() registerDto: RegisterDto,
+		@Body() registerDto: RegisterCoachDto,
 	) {
 		return this.authService.register( registerDto );
 	}
@@ -127,7 +106,7 @@ export class AuthController {
 	@ApiOperation( { summary: 'Logout and invalidate refresh token' } )
 	@ApiResponse( { status: 200, description: 'Logged out successfully' } )
 	@HttpCode( HttpStatus.OK )
-	logout ( @CurrentUser( 'userId' ) userId: number ) {
+	logout ( @CurrentUser( 'userId' ) userId: string ) {
 		return this.authService.logout( userId );
 	}
 

@@ -14,10 +14,10 @@ import { InvitaionStatusEnum }     from './enums/invitaion-status.enum';
 import { EventPublisherService }   from '../messaging/event-publisher.service';
 import { EventType }               from '../messaging/events';
 import { ConfigService }           from '../config';
-import { UsersService }            from '../users/users.service';
+import { CoachesService }          from '../coaches/coaches.service';
 import { ClientService }           from '../clients/client.service';
 import { ClientMembershipService } from '../clients/client-membership.service';
-import { UserStatus }              from '../auth';
+import { MembershipStatus }        from '../common';
 
 const INVITATION_TTL_DAYS = 7;
 
@@ -30,14 +30,14 @@ export class InvitationService {
 		private readonly invitationRepository: Repository<Invitation>,
 		private readonly eventPublisherService: EventPublisherService,
 		private readonly configService: ConfigService,
-		private readonly usersService: UsersService,
+		private readonly coachesService: CoachesService,
 		private readonly clientService: ClientService,
 		private readonly membershipService: ClientMembershipService,
 	) {}
 
 	async create (
-		coachId: number,
-		tenantId: number,
+		coachId: string,
+		tenantId: string,
 		createInvitationDto: CreateInvitationDto,
 	): Promise<Invitation> {
 		const email = createInvitationDto.email.trim().toLowerCase();
@@ -55,7 +55,7 @@ export class InvitationService {
 			);
 		}
 
-		const coach = await this.usersService.findOne( coachId );
+		const coach = await this.coachesService.findOne( coachId );
 		if ( !coach ) {
 			throw new NotFoundException( 'Inviting coach not found' );
 		}
@@ -78,16 +78,16 @@ export class InvitationService {
 		await this.eventPublisherService.publish(
 			EventType.CLIENT_INVITED,
 			{
-				inviteId: String( saved.id ),
-				coachId: String( coachId ),
-				coachName: coach.name,
+				inviteId: saved.id,
+				coachId: coachId,
+				coachName: `${ coach.firstName } ${ coach.lastName }`,
 				clientEmail: email,
 				clientName: saved.clientName,
 				inviteToken: token,
 				acceptUrl: this.buildAcceptUrl( token ),
 				expiresAt: expiresAt.toISOString(),
 			},
-			{ tenantId: String( tenantId ) },
+			{ tenantId },
 		);
 
 		this.logger.debug(
@@ -97,14 +97,14 @@ export class InvitationService {
 		return saved;
 	}
 
-	findAll ( tenantId: number ): Promise<Invitation[]> {
+	findAll ( tenantId: string ): Promise<Invitation[]> {
 		return this.invitationRepository.find( {
 			where: { tenant: { id: tenantId } },
 			order: { created_at: 'DESC' },
 		} );
 	}
 
-	findOne ( tenantId: number, id: number ): Promise<Invitation | null> {
+	findOne ( tenantId: string, id: string ): Promise<Invitation | null> {
 		return this.invitationRepository.findOne( {
 			where: { id, tenant: { id: tenantId } },
 		} );
@@ -121,7 +121,7 @@ export class InvitationService {
 		return invitation;
 	}
 
-	async revoke ( tenantId: number, id: number ): Promise<Invitation> {
+	async revoke ( tenantId: string, id: string ): Promise<Invitation> {
 		const invitation = await this.findOne( tenantId, id );
 		if ( !invitation ) {
 			throw new NotFoundException( 'Invitation not found' );
@@ -136,7 +136,7 @@ export class InvitationService {
 		return this.invitationRepository.save( invitation );
 	}
 
-	async accept ( clientId: number, token: string ): Promise<Invitation> {
+	async accept ( clientId: string, token: string ): Promise<Invitation> {
 		const invitation = await this.invitationRepository.findOne( {
 			where: { token },
 			relations: { tenant: true },
@@ -169,7 +169,7 @@ export class InvitationService {
 		await this.membershipService.createMembership(
 			clientId,
 			invitation.tenant.id,
-			UserStatus.ACTIVE,
+			MembershipStatus.ACTIVE,
 		);
 
 		invitation.status = InvitaionStatusEnum.ACCEPTED;

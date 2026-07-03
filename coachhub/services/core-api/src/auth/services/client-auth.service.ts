@@ -11,7 +11,7 @@ import * as crypto                                 from 'crypto';
 import {
 	TokenProvider
 }                                                  from '../providers/token.provider';
-import { UserStatus }                              from '../enums';
+import { MembershipStatus }                        from '../../common';
 import { ConfigService }                           from 'src/config';
 import { ClientAuthPayload }                       from '../../common';
 import {
@@ -76,7 +76,7 @@ export class ClientAuthService {
 			if ( byEmail ) {
 				await this.clientService.updateGoogleInfo( byEmail.id, {
 					googleId,
-					profilePicture: byEmail.profilePicture ?? payload.picture,
+					avatarUrl: byEmail.avatarUrl ?? payload.picture,
 				} );
 				client = await this.clientService.findProfileById( byEmail.id );
 			}
@@ -84,14 +84,19 @@ export class ClientAuthService {
 
 		if ( !client ) {
 			client = await this.clientService.create( {
-				name: payload.name ?? email.split( '@' )[0],
+				firstName: payload.given_name
+					?? payload.name?.split( ' ' )[0]
+					?? email.split( '@' )[0],
+				lastName: payload.family_name
+					?? payload.name?.split( ' ' ).slice( 1 ).join( ' ' )
+					?? '',
 				email,
 				password: null,
 				confirmPassword: null,
 			} as unknown as CreateClientDto );
 			await this.clientService.updateGoogleInfo( client.id, {
 				googleId,
-				profilePicture: payload.picture,
+				avatarUrl: payload.picture,
 			} );
 			client = await this.clientService.findProfileById( client.id );
 		}
@@ -120,7 +125,7 @@ export class ClientAuthService {
 	 * already hold an active membership in the target tenant; the new token
 	 * pair carries that tenant as the active scope.
 	 */
-	async switchTenant ( clientId: number, tenantId: number ) {
+	async switchTenant ( clientId: string, tenantId: string ) {
 		const membership = await this.membershipService.findMembership(
 			clientId,
 			tenantId,
@@ -128,12 +133,12 @@ export class ClientAuthService {
 		if ( !membership ) {
 			throw new ForbiddenException( 'You are not a member of this tenant' );
 		}
-		if ( membership.status === UserStatus.BLOCKED ) {
+		if ( membership.status === MembershipStatus.BLOCKED ) {
 			throw new ForbiddenException(
 				`Access to this tenant is blocked. Reason: ${membership.blockReason || 'No reason provided'}`,
 			);
 		}
-		if ( membership.status !== UserStatus.ACTIVE ) {
+		if ( membership.status !== MembershipStatus.ACTIVE ) {
 			throw new ForbiddenException(
 				'Your membership in this tenant is not active',
 			);
@@ -148,7 +153,7 @@ export class ClientAuthService {
 		return this.issueTokens( client, tenantId );
 	}
 
-	listMemberships ( clientId: number ) {
+	listMemberships ( clientId: string ) {
 		return this.membershipService.findMemberships( clientId );
 	}
 
@@ -158,7 +163,7 @@ export class ClientAuthService {
 		tenantId: string | null,
 	) {
 		const client = await this.clientService.findByIdWithRefreshToken(
-			parseInt( clientId ) );
+			clientId );
 		if ( !client || !client.hashedRefreshToken ) {
 			throw new ForbiddenException( 'Access denied' );
 		}
@@ -172,8 +177,7 @@ export class ClientAuthService {
 		}
 
 		// Preserve whichever tenant the session was already scoped to.
-		const activeTenantId = tenantId ? parseInt( tenantId ) : null;
-		const payload = this.buildPayload( client, activeTenantId );
+		const payload = this.buildPayload( client, tenantId );
 		const tokens = await this.tokenProvider.generateTokens( payload );
 		const hashedNewRefreshToken = this.tokenProvider.hashToken(
 			tokens.refreshToken );
@@ -184,7 +188,7 @@ export class ClientAuthService {
 	}
 
 	async logout ( clientId: string ) {
-		await this.clientService.logout( parseInt( clientId ) );
+		await this.clientService.logout( clientId );
 	}
 
 	async forgetPassword ( email: string ) {
@@ -226,8 +230,7 @@ export class ClientAuthService {
 	}
 
 	async getMe ( clientId: string ) {
-		const client = await this.clientService.findProfileById(
-			parseInt( clientId ) );
+		const client = await this.clientService.findProfileById( clientId );
 		if ( !client ) {
 			throw new NotFoundException( 'Client not found' );
 		}
@@ -274,7 +277,7 @@ export class ClientAuthService {
 		return client;
 	}
 
-	private async issueTokens ( client: Client, tenantId: number | null ) {
+	private async issueTokens ( client: Client, tenantId: string | null ) {
 		const payload = this.buildPayload( client, tenantId );
 		const tokens = await this.tokenProvider.generateTokens( payload );
 		const hashedRefreshToken = this.tokenProvider.hashToken(
@@ -285,10 +288,10 @@ export class ClientAuthService {
 		return { client, ...tokens };
 	}
 
-	private buildPayload ( client: Client, tenantId: number | null ): ClientAuthPayload {
+	private buildPayload ( client: Client, tenantId: string | null ): ClientAuthPayload {
 		return {
-			clientId: client.id.toString(),
-			tenantId: tenantId !== null ? tenantId.toString() : null,
+			clientId: client.id,
+			tenantId: tenantId,
 			email: client.email,
 			type: 'client',
 		};

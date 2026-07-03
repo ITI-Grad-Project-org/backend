@@ -21,7 +21,7 @@ export class ClientService {
 		return this.clientRepository.find();
 	}
 
-	findOne ( id: number ) {
+	findOne ( id: string ) {
 		return this.clientRepository.findOne( {
 			where: { id },
 			relations: { memberships: { tenant: true } },
@@ -36,7 +36,7 @@ export class ClientService {
 				email: true,
 				password: true,
 				googleId: true,
-				profilePicture: true,
+				avatarUrl: true,
 			},
 		} );
 	}
@@ -47,18 +47,19 @@ export class ClientService {
 			select: {
 				id: true,
 				email: true,
-				name: true,
+				firstName: true,
+				lastName: true,
 				googleId: true,
-				profilePicture: true,
+				avatarUrl: true,
 			},
 		} );
 	}
 
-	findById ( id: number ) {
+	findById ( id: string ) {
 		return this.clientRepository.findOne( { where: { id } } );
 	}
 
-	findByIdWithRefreshToken ( id: number ) {
+	findByIdWithRefreshToken ( id: string ) {
 		return this.clientRepository.findOne( {
 			where: { id },
 			select: {
@@ -69,7 +70,7 @@ export class ClientService {
 		} );
 	}
 
-	findProfileById ( id: number ) {
+	findProfileById ( id: string ) {
 		return this.clientRepository.findOne( {
 			where: { id },
 			relations: { memberships: { tenant: true } },
@@ -86,26 +87,26 @@ export class ClientService {
 			.getOne();
 	}
 
-	updateRefreshToken ( id: number, hashedRefreshToken: string | null ) {
+	updateRefreshToken ( id: string, hashedRefreshToken: string | null ) {
 		return this.clientRepository.update( id, { hashedRefreshToken } );
 	}
 
-	updateLastLoginAt ( id: number ) {
+	updateLastLoginAt ( id: string ) {
 		return this.clientRepository.update( id, { lastLoginAt: new Date() } );
 	}
 
-	updateGoogleInfo ( id: number, data: { googleId: string; profilePicture?: string } ) {
+	updateGoogleInfo ( id: string, data: { googleId: string; avatarUrl?: string } ) {
 		return this.clientRepository.update( id, data );
 	}
 
-	setResetPasswordToken ( id: number, token: string, expires: Date ) {
+	setResetPasswordToken ( id: string, token: string, expires: Date ) {
 		return this.clientRepository.update( id, {
 			resetPasswordToken: token,
 			resetPasswordExpires: expires,
 		} );
 	}
 
-	resetClientPassword ( id: number, hashedPassword: string ) {
+	resetClientPassword ( id: string, hashedPassword: string ) {
 		return this.clientRepository.update( id, {
 			password: hashedPassword,
 			resetPasswordToken: null,
@@ -114,15 +115,16 @@ export class ClientService {
 		} );
 	}
 
-	logout ( id: number ) {
+	logout ( id: string ) {
 		return this.clientRepository.update( id, { hashedRefreshToken: null } );
 	}
 
-	update ( id: number, updateClientDto: UpdateClientDto ) {
-		return this.clientRepository.update( id, updateClientDto );
+	update ( id: string, updateClientDto: UpdateClientDto ) {
+		const { confirmPassword, password, ...profile } = updateClientDto;
+		return this.clientRepository.update( id, profile );
 	}
 
-	remove ( id: number ) {
+	remove ( id: string ) {
 		return this.clientRepository.softDelete( id );
 	}
 }

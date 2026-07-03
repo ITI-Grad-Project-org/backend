@@ -4,7 +4,7 @@ import { Repository }                      from 'typeorm';
 import {
 	ClientMembership
 }                                          from './entities/client-membership.entity';
-import { UserStatus }                      from '../auth';
+import { MembershipStatus }                from '../common';
 
 @Injectable()
 export class ClientMembershipService {
@@ -13,17 +13,17 @@ export class ClientMembershipService {
 		private readonly membershipRepository: Repository<ClientMembership>,
 	) {}
 
-	findMemberships ( clientId: number ): Promise<ClientMembership[]> {
+	findMemberships ( clientId: string ): Promise<ClientMembership[]> {
 		return this.membershipRepository.find( {
 			where: { client: { id: clientId } },
 			relations: { tenant: true },
-			order: { lastActiveAt: 'DESC', invitedAt: 'DESC' },
+			order: { lastActiveAt: 'DESC', createdAt: 'DESC' },
 		} );
 	}
 
 	findMembership (
-		clientId: number,
-		tenantId: number,
+		clientId: string,
+		tenantId: string,
 	): Promise<ClientMembership | null> {
 		return this.membershipRepository.findOne( {
 			where: { client: { id: clientId }, tenant: { id: tenantId } },
@@ -31,17 +31,24 @@ export class ClientMembershipService {
 		} );
 	}
 
-	findTenantMembers ( tenantId: number ): Promise<ClientMembership[]> {
+	findById ( membershipId: string ): Promise<ClientMembership | null> {
+		return this.membershipRepository.findOne( {
+			where: { id: membershipId },
+			relations: { tenant: true, client: true },
+		} );
+	}
+
+	findTenantMembers ( tenantId: string ): Promise<ClientMembership[]> {
 		return this.membershipRepository.find( {
 			where: { tenant: { id: tenantId } },
 			relations: { client: true },
-			order: { invitedAt: 'DESC' },
+			order: { createdAt: 'DESC' },
 		} );
 	}
 
 	findTenantMember (
-		tenantId: number,
-		clientId: number,
+		tenantId: string,
+		clientId: string,
 	): Promise<ClientMembership | null> {
 		return this.membershipRepository.findOne( {
 			where: { tenant: { id: tenantId }, client: { id: clientId } },
@@ -49,24 +56,24 @@ export class ClientMembershipService {
 		} );
 	}
 
-	removeFromTenant ( membershipId: number ) {
+	removeFromTenant ( membershipId: string ) {
 		return this.membershipRepository.softDelete( membershipId );
 	}
 
-	async resolveDefaultTenantId ( clientId: number ): Promise<number | null> {
+	async resolveDefaultTenantId ( clientId: string ): Promise<string | null> {
 		const membership = await this.membershipRepository.findOne( {
-			where: { client: { id: clientId }, status: UserStatus.ACTIVE },
+			where: { client: { id: clientId }, status: MembershipStatus.ACTIVE },
 			relations: { tenant: true },
-			order: { lastActiveAt: 'DESC', invitedAt: 'DESC' },
+			order: { lastActiveAt: 'DESC', createdAt: 'DESC' },
 		} );
 
 		return membership?.tenant?.id ?? null;
 	}
 
 	async createMembership (
-		clientId: number,
-		tenantId: number,
-		status: UserStatus = UserStatus.PENDING,
+		clientId: string,
+		tenantId: string,
+		status: MembershipStatus = MembershipStatus.INVITED,
 	): Promise<ClientMembership> {
 		const existing = await this.findMembership( clientId, tenantId );
 		if ( existing ) {
@@ -79,12 +86,12 @@ export class ClientMembershipService {
 			client: { id: clientId },
 			tenant: { id: tenantId },
 			status,
-			joinedAt: status === UserStatus.ACTIVE ? new Date() : null,
+			joinedAt: status === MembershipStatus.ACTIVE ? new Date() : null,
 		} );
 		return this.membershipRepository.save( membership );
 	}
 
-	markActiveNow ( membershipId: number ) {
+	markActiveNow ( membershipId: string ) {
 		return this.membershipRepository.update( membershipId, {
 			lastActiveAt: new Date(),
 		} );

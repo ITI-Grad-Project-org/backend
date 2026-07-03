@@ -6,7 +6,7 @@ import {
 	HttpCode,
 	HttpStatus,
 	Param,
-	ParseIntPipe,
+	ParseUUIDPipe,
 	Post,
 } from '@nestjs/common';
 import {
@@ -47,7 +47,7 @@ export class TenantController {
 	@ApiResponse( { status: 200, description: 'Tenant retrieved successfully' } )
 	@ApiResponse( { status: 404, description: 'Tenant not found' } )
 	@HttpCode( HttpStatus.OK )
-	findMine ( @CurrentTenant() tenantId: number ) {
+	findMine ( @CurrentTenant() tenantId: string ) {
 		return this.tenantService.findOne( tenantId );
 	}
 
@@ -60,11 +60,11 @@ export class TenantController {
 	@ApiResponse( { status: 404, description: 'Tenant not found' } )
 	@HttpCode( HttpStatus.OK )
 	findOne (
-		@CurrentTenant() tenantId: number,
-		@Param( 'id', ParseIntPipe ) id: number,
+		@CurrentTenant() tenantId: string,
+		@Param( 'id', ParseUUIDPipe ) id: string,
 	) {
-		// A user only ever has their own tenant; block cross-tenant reads.
-		if ( id !== Number( tenantId ) ) {
+		// A coach only ever has their own tenant; block cross-tenant reads.
+		if ( id !== tenantId ) {
 			throw new ForbiddenException( 'You can only access your own tenant' );
 		}
 		return this.tenantService.findOne( id );

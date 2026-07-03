@@ -5,7 +5,7 @@ import { InvitationController }  from './invitation.controller';
 import { Invitation }           from './entities/invitation.entity';
 import { MessagingModule }       from '../messaging/messaging.module';
 import { ConfigModule }          from '../config';
-import { UsersModule }           from '../users/users.module';
+import { CoachesModule }         from '../coaches/coaches.module';
 import { ClientModule }          from '../clients/client.module';
 
 @Module( {
@@ -15,7 +15,7 @@ import { ClientModule }          from '../clients/client.module';
 		TypeOrmModule.forFeature( [ Invitation ] ),
 		MessagingModule,
 		ConfigModule,
-		UsersModule,
+		CoachesModule,
 		ClientModule,
 	],
 	exports: [ InvitationService ],

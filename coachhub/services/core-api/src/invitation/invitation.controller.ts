@@ -7,7 +7,7 @@ import {
 	HttpStatus,
 	NotFoundException,
 	Param,
-	ParseIntPipe,
+	ParseUUIDPipe,
 	Post,
 	UseGuards,
 }                              from '@nestjs/common';
@@ -39,8 +39,8 @@ export class InvitationController {
 	@ApiResponse( { status: 400, description: 'A pending invitation already exists' } )
 	@HttpCode( HttpStatus.CREATED )
 	create (
-		@CurrentUser( 'userId' ) coachId: number,
-		@CurrentTenant() tenantId: number,
+		@CurrentUser( 'userId' ) coachId: string,
+		@CurrentTenant() tenantId: string,
 		@Body() createInvitationDto: CreateInvitationDto,
 	) {
 		return this.invitationService.create(
@@ -54,7 +54,7 @@ export class InvitationController {
 	@ApiOperation( { summary: 'List invitations in my tenant' } )
 	@ApiResponse( { status: 200, description: 'Invitations retrieved' } )
 	@HttpCode( HttpStatus.OK )
-	findAll ( @CurrentTenant() tenantId: number ) {
+	findAll ( @CurrentTenant() tenantId: string ) {
 		return this.invitationService.findAll( tenantId );
 	}
 
@@ -64,8 +64,8 @@ export class InvitationController {
 	@ApiResponse( { status: 404, description: 'Invitation not found in this tenant' } )
 	@HttpCode( HttpStatus.OK )
 	async findOne (
-		@CurrentTenant() tenantId: number,
-		@Param( 'id', ParseIntPipe ) id: number,
+		@CurrentTenant() tenantId: string,
+		@Param( 'id', ParseUUIDPipe ) id: string,
 	) {
 		const invitation = await this.invitationService.findOne( tenantId, id );
 		if ( !invitation ) {
@@ -80,8 +80,8 @@ export class InvitationController {
 	@ApiResponse( { status: 404, description: 'Invitation not found in this tenant' } )
 	@HttpCode( HttpStatus.OK )
 	revoke (
-		@CurrentTenant() tenantId: number,
-		@Param( 'id', ParseIntPipe ) id: number,
+		@CurrentTenant() tenantId: string,
+		@Param( 'id', ParseUUIDPipe ) id: string,
 	) {
 		return this.invitationService.revoke( tenantId, id );
 	}
@@ -111,6 +111,6 @@ export class InvitationController {
 		@CurrentClient( 'clientId' ) clientId: string,
 		@Param( 'token' ) token: string,
 	) {
-		return this.invitationService.accept( parseInt( clientId, 10 ), token );
+		return this.invitationService.accept( clientId, token );
 	}
 }
