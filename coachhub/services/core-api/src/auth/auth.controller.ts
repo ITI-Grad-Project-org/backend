@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Get,
 	HttpCode,
 	HttpStatus,
 	Post,
@@ -158,7 +159,7 @@ export class AuthController {
 	}
 
 	@UseGuards( JwtAuthGuard )
-	@Post( 'me' )
+	@Get( 'me' )
 	@ApiBearerAuth()
 	@ApiOperation( {
 		summary:

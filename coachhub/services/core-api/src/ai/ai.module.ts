@@ -1,9 +1,14 @@
-import { Module } from '@nestjs/common';
-import { AiService } from './ai.service';
+import { Module }       from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 
-// Async job-ticket client to ai-service over RabbitMQ
-@Module({
-  providers: [AiService],
-  exports: [AiService],
-})
+import { MessagingModule }     from '../messaging/messaging.module';
+import { AiService }           from './ai.service';
+import { AiCompletedConsumer } from './ai-completed.consumer';
+import { AiGateway }           from './ai.gateway';
+import { ConfigService }       from '../config';
+
+@Module( {
+	imports: [ ConfigModule, MessagingModule ],
+	providers: [ AiService, AiCompletedConsumer, AiGateway, ConfigService ],
+} )
 export class AiModule {}
