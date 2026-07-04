@@ -11,7 +11,6 @@ import { ClientMembership } from '../../../clients/entities/client-membership.en
 import { Food } from './food.entity';
 import { MealSlot, numericTransformer } from '../../../common';
 
-/** Client food diary; macros are snapshotted at log time (design §5.4). */
 @Entity('nutrition_logs')
 @Index('ix_nutrition_logs_day', ['membershipId', 'loggedAt'])
 export class NutritionLog {
@@ -47,7 +46,6 @@ export class NutritionLog {
 	@JoinColumn({ name: 'food_id' })
 	food: Food | null;
 
-	/** Free-text entry when the food isn't in the library. */
 	@Column({ name: 'free_text', length: 200, nullable: true })
 	freeText: string | null;
 
@@ -60,7 +58,6 @@ export class NutritionLog {
 	})
 	quantity: number | null;
 
-	// Macro snapshot at log time.
 	@Column({
 		type: 'numeric',
 		precision: 7,

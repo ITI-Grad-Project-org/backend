@@ -1,59 +1,43 @@
 import {
+	ArrayMaxSize,
+	ArrayMinSize,
+	IsEnum,
 	IsInt,
 	IsNumber,
 	IsOptional,
 	IsString,
 	IsUUID,
 	Matches,
-	Max,
 	Min,
 	ValidateIf,
+	ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IntensityType, SetType } from 'src/common';
 
-/**
- * Design §7.4 — THE DROP POPUP. One dragged exercise onto a (week, day) grid
- * cell; the server finds or lazily creates the program_workout for that cell.
- */
-export class PrescribeExerciseDto {
-	@ApiProperty({ format: 'uuid' })
-	@IsUUID()
-	exerciseId: string;
-
-	@ApiProperty({ example: 1, description: 'Grid cell — week' })
-	@IsInt()
-	@Min(1)
-	weekNumber: number;
-
-	@ApiProperty({ example: 3, description: 'Grid cell — day (1..7)' })
-	@IsInt()
-	@Min(1)
-	@Max(7)
-	dayNumber: number;
-
-	@ApiPropertyOptional({ description: 'Default: append to the end of the day' })
+export class PrescribedSetDto {
+	@ApiPropertyOptional({ enum: SetType, default: SetType.WORKING })
 	@IsOptional()
-	@IsInt()
-	@Min(1)
-	position?: number;
-
-	// popup fields
-	@ApiProperty({ example: 4, minimum: 1, maximum: 20 })
-	@IsInt()
-	@Min(1)
-	@Max(20)
-	sets: number;
+	@IsEnum(SetType)
+	setType?: SetType;
 
 	@ApiPropertyOptional({
 		example: 8,
-		description: 'Required unless durationSeconds is set',
+		description: 'Required unless time-based or amrap/to_failure/drop_set',
 	})
-	@ValidateIf((o) => o.durationSeconds == null)
+	@ValidateIf(
+		(o) =>
+			o.durationSeconds == null &&
+			![SetType.AMRAP, SetType.TO_FAILURE, SetType.DROP_SET].includes(
+				o.setType,
+			),
+	)
 	@IsInt()
 	@Min(1)
 	repsMin?: number;
 
-	@ApiPropertyOptional({ example: 12, description: 'Omit = fixed reps' })
+	@ApiPropertyOptional({ example: 10, description: 'Omit = fixed reps' })
 	@IsOptional()
 	@IsInt()
 	@Min(1)
@@ -63,7 +47,7 @@ export class PrescribeExerciseDto {
 		example: 60,
 		description: 'Time-based alternative (planks, cardio)',
 	})
-	@ValidateIf((o) => o.repsMin == null)
+	@IsOptional()
 	@IsInt()
 	@Min(1)
 	durationSeconds?: number;
@@ -73,6 +57,39 @@ export class PrescribeExerciseDto {
 	@IsNumber()
 	@Min(0)
 	weightKg?: number;
+
+	@ApiPropertyOptional({ enum: IntensityType })
+	@ValidateIf((o) => o.intensityValue != null)
+	@IsEnum(IntensityType)
+	intensityType?: IntensityType;
+
+	@ApiPropertyOptional({
+		example: 8,
+		description: 'RPE 8.5 / RIR 2 / 75 (%1RM)',
+	})
+	@ValidateIf((o) => o.intensityType != null)
+	@IsNumber()
+	intensityValue?: number;
+}
+
+export class PrescribeExerciseDto {
+	@ApiProperty({ format: 'uuid' })
+	@IsUUID()
+	exerciseId: string;
+
+	@ApiPropertyOptional({ description: 'Default: append to the end of the day' })
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	position?: number;
+
+	@ApiPropertyOptional({
+		example: 1,
+		description: 'Exercises sharing a group are a superset',
+	})
+	@IsOptional()
+	@IsInt()
+	supersetGroup?: number;
 
 	@ApiPropertyOptional({ example: 90, default: 90 })
 	@IsOptional()
@@ -85,23 +102,18 @@ export class PrescribeExerciseDto {
 	@Matches(/^\d-\d-\d-\d$/)
 	tempo?: string;
 
-	@ApiPropertyOptional({ example: 8, minimum: 1, maximum: 10 })
-	@IsOptional()
-	@IsNumber()
-	@Min(1)
-	@Max(10)
-	targetRpe?: number;
-
 	@ApiPropertyOptional({ description: 'The blue "Coach note" banner' })
 	@IsOptional()
 	@IsString()
 	coachNotes?: string;
 
-	@ApiPropertyOptional({
-		example: 1,
-		description: 'Exercises sharing a group are a superset',
+	@ApiProperty({
+		type: [PrescribedSetDto],
+		description: 'One entry per set, in order',
 	})
-	@IsOptional()
-	@IsInt()
-	supersetGroup?: number;
+	@ValidateNested({ each: true })
+	@Type(() => PrescribedSetDto)
+	@ArrayMinSize(1)
+	@ArrayMaxSize(20)
+	sets: PrescribedSetDto[];
 }

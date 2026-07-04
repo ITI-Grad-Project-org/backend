@@ -1,6 +1,5 @@
 import {
 	IsEnum,
-	IsInt,
 	IsNumber,
 	IsOptional,
 	IsString,
@@ -27,16 +26,17 @@ export class ItemOverrideDto {
 	quantity: number;
 }
 
+/**
+ * Design §7.6 — THE DROP POPUP for meals. The drop target day is in the
+ * route (POST /meal-plans/:planId/days/:mealPlanDayId/meals). The service
+ * loads the library meal's items, applies overrides, and inserts
+ * plan_meals (name copied, source_meal_id set) + plan_meal_items in one
+ * transaction: copy-on-drop.
+ */
 export class AddMealToPlanDto {
 	@ApiProperty({ format: 'uuid' })
 	@IsUUID()
 	mealLibraryId: string;
-
-	@ApiProperty({ example: 1, minimum: 1, maximum: 7 })
-	@IsInt()
-	@Min(1)
-	@Max(7)
-	dayNumber: number;
 
 	@ApiProperty({ enum: MealSlot, example: MealSlot.LUNCH })
 	@IsEnum(MealSlot)

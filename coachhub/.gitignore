@@ -27,6 +27,7 @@ target/
 *.ntvs*
 *.njsproj
 *.sln
+.editorconfig
 
 # OS
 .DS_Store
@@ -42,3 +43,4 @@ logs/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+

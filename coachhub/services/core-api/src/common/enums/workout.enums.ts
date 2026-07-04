@@ -27,6 +27,20 @@ export enum DifficultyLevel {
 	ADVANCED = 'advanced',
 }
 
+export enum SetType {
+	WORKING = 'working',
+	WARMUP = 'warmup',
+	DROP_SET = 'drop_set',
+	AMRAP = 'amrap',
+	TO_FAILURE = 'to_failure',
+}
+
+export enum IntensityType {
+	RPE = 'rpe',
+	RIR = 'rir',
+	PERCENT_1RM = 'percent_1rm',
+}
+
 export enum AssignmentStatus {
 	SCHEDULED = 'scheduled',
 	ACTIVE = 'active',

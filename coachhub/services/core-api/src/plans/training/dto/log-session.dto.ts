@@ -81,7 +81,6 @@ export class SessionExerciseDto {
 	setLogs: SetLogDto[];
 }
 
-/** Client app "finish workout" payload → workout_sessions tree (design §4.5). */
 export class LogSessionDto {
 	@ApiPropertyOptional({
 		format: 'uuid',
@@ -93,11 +92,11 @@ export class LogSessionDto {
 
 	@ApiPropertyOptional({
 		format: 'uuid',
-		description: 'Planned workout day this session fulfils (omit = ad-hoc)',
+		description: 'Planned board day this session fulfils (omit = ad-hoc)',
 	})
 	@IsOptional()
 	@IsUUID()
-	programWorkoutId?: string;
+	programDayId?: string;
 
 	@ApiPropertyOptional({ example: '2026-07-03T18:30:00Z' })
 	@IsOptional()

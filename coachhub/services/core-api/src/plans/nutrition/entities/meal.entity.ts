@@ -14,9 +14,6 @@ import { Coach } from '../../../coaches/entities/coach.entity';
 import { Food } from './food.entity';
 import { numericTransformer } from '../../../common';
 
-/**
- * The draggable meal cards
- */
 @Entity('meal_library')
 @Unique(['tenant', 'name'])
 export class Meal {
@@ -34,7 +31,6 @@ export class Meal {
 	@JoinColumn({ name: 'created_by' })
 	createdBy: Coach;
 
-	/** e.g. "Chicken & Rice Bowl". */
 	@Column({ length: 150 })
 	name: string;
 
@@ -44,7 +40,6 @@ export class Meal {
 	@Column({ name: 'photo_url', type: 'text', nullable: true })
 	photoUrl: string | null;
 
-	/** Cooking/prep instructions. */
 	@Column({ name: 'prep_notes', type: 'text', nullable: true })
 	prepNotes: string | null;
 
@@ -85,7 +80,6 @@ export class MealLibraryItem {
 	@JoinColumn({ name: 'food_id' })
 	food: Food;
 
-	/** Default composition (× the food's serving). */
 	@Column({
 		type: 'numeric',
 		precision: 7,

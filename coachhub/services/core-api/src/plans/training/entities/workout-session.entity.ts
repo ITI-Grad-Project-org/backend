@@ -11,11 +11,10 @@ import {
 import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import { ProgramAssignment } from './program-assignment.entity';
-import { ProgramWorkout } from './program-workout.entity';
+import { ProgramDay } from './program-day.entity';
 import { SessionExercise } from './session-exercise.entity';
 import { SessionStatus } from '../../../common';
 
-/** A workout the client actually performed (design §4.5). */
 @Entity('workout_sessions')
 @Index('ix_sessions_membership_date', ['membershipId', 'performedAt'])
 export class WorkoutSession {
@@ -40,10 +39,9 @@ export class WorkoutSession {
 	@JoinColumn({ name: 'assignment_id' })
 	assignment: ProgramAssignment | null;
 
-	/** NULL = ad-hoc session not tied to a planned workout day. */
-	@ManyToOne(() => ProgramWorkout, { nullable: true })
-	@JoinColumn({ name: 'program_workout_id' })
-	programWorkout: ProgramWorkout | null;
+	@ManyToOne(() => ProgramDay, { nullable: true })
+	@JoinColumn({ name: 'program_day_id' })
+	programDay: ProgramDay | null;
 
 	@Column({ name: 'performed_at', type: 'timestamptz', default: () => 'now()' })
 	performedAt: Date;

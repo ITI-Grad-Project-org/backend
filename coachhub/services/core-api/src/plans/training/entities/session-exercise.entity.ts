@@ -26,7 +26,6 @@ export class SessionExercise {
 	@JoinColumn({ name: 'session_id' })
 	session: WorkoutSession;
 
-	/** Link back to the prescription that was being followed (if any). */
 	@ManyToOne(() => WorkoutExercise, { nullable: true })
 	@JoinColumn({ name: 'workout_exercise_id' })
 	workoutExercise: WorkoutExercise | null;

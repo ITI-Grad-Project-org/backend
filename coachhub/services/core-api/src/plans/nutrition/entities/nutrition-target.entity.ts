@@ -10,7 +10,6 @@ import {
 import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 
-/** Daily macro targets, effective-dated per membership (design §5.4). */
 @Entity('nutrition_targets')
 @Unique(['membership', 'effectiveFrom'])
 export class NutritionTarget {

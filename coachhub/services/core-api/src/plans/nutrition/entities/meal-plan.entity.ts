@@ -10,9 +10,8 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { Coach } from '../../../coaches/entities/coach.entity';
-import { PlanMeal } from './plan-meal.entity';
+import { MealPlanWeek } from './meal-plan-week.entity';
 
-/** The weekly nutrition grid  */
 @Entity('meal_plans')
 export class MealPlan {
 	@PrimaryGeneratedColumn('uuid')
@@ -53,8 +52,10 @@ export class MealPlan {
 	@Column({ name: 'is_archived', default: false })
 	isArchived: boolean;
 
-	@OneToMany(() => PlanMeal, (planMeal) => planMeal.mealPlan)
-	meals: PlanMeal[];
+	@OneToMany(() => MealPlanWeek, (week) => week.mealPlan, {
+		cascade: ['insert'],
+	})
+	weeks: MealPlanWeek[];
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
 	createdAt: Date;

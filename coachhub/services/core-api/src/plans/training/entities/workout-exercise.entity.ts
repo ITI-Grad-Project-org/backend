@@ -1,25 +1,26 @@
 import {
-	Check,
 	Column,
 	Entity,
+	Index,
 	JoinColumn,
 	ManyToOne,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	Unique,
 } from 'typeorm';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
-import { ProgramWorkout } from './program-workout.entity';
+import { ProgramDay } from './program-day.entity';
+import { WorkoutExerciseSet } from './workout-exercise-set.entity';
 import { Exercise } from '../../../exercises/entities/exercise.entity';
-import { numericTransformer } from '../../../common';
 
 /**
- * One dragged exercise — THE DROP POPUP WRITES HERE (design §4.4). This is
- * the prescription (sets/reps/weight); the definition stays in `exercises`.
+ * One dragged exercise on a day (design §4.4). Holds what is common to the
+ * whole exercise — position, superset, rest, tempo, note. The set-by-set
+ * prescription lives in `workout_exercise_sets`.
  */
 @Entity('workout_exercises')
-@Unique(['programWorkout', 'position'])
-@Check(`"sets" BETWEEN 1 AND 20`)
-@Check(`"reps_min" IS NOT NULL OR "duration_seconds" IS NOT NULL`)
+@Unique(['programDay', 'position'])
+@Index('ix_we_day', ['programDayId'])
 export class WorkoutExercise {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
@@ -31,15 +32,15 @@ export class WorkoutExercise {
 	@JoinColumn({ name: 'tenant_id' })
 	tenant: Tenant;
 
-	@Column({ name: 'program_workout_id', type: 'uuid' })
-	programWorkoutId: string;
+	@Column({ name: 'program_day_id', type: 'uuid' })
+	programDayId: string;
 
-	@ManyToOne(() => ProgramWorkout, (workout) => workout.exercises, {
+	@ManyToOne(() => ProgramDay, (day) => day.exercises, {
 		nullable: false,
 		onDelete: 'CASCADE',
 	})
-	@JoinColumn({ name: 'program_workout_id' })
-	programWorkout: ProgramWorkout;
+	@JoinColumn({ name: 'program_day_id' })
+	programDay: ProgramDay;
 
 	@Column({ name: 'exercise_id', type: 'uuid' })
 	exerciseId: string;
@@ -51,52 +52,23 @@ export class WorkoutExercise {
 	@Column({ type: 'smallint' })
 	position: number;
 
+	/** Exercises sharing a value form a superset. */
 	@Column({ name: 'superset_group', type: 'smallint', nullable: true })
 	supersetGroup: number | null;
 
-	// ↓ prescription (popup fields)
-	@Column({ type: 'smallint' })
-	sets: number;
-
-	@Column({ name: 'reps_min', type: 'smallint', nullable: true })
-	repsMin: number | null;
-
-	@Column({ name: 'reps_max', type: 'smallint', nullable: true })
-	repsMax: number | null;
-
-	/** Time-based alternative (planks, cardio). */
-	@Column({ name: 'duration_seconds', type: 'int', nullable: true })
-	durationSeconds: number | null;
-
-	/** "70 kg" in the UI; NULL = bodyweight / coach left it open. */
-	@Column({
-		name: 'weight_kg',
-		type: 'numeric',
-		precision: 6,
-		scale: 2,
-		nullable: true,
-		transformer: numericTransformer,
-	})
-	weightKg: number | null;
-
+	/** Rest between sets. */
 	@Column({ name: 'rest_seconds', type: 'int', default: 90 })
 	restSeconds: number;
 
-	/** e.g. "3-1-1-0". */
 	@Column({ length: 7, nullable: true })
 	tempo: string | null;
-
-	@Column({
-		name: 'target_rpe',
-		type: 'numeric',
-		precision: 3,
-		scale: 1,
-		nullable: true,
-		transformer: numericTransformer,
-	})
-	targetRpe: number | null;
 
 	/** The blue "Coach note" banner in the app. */
 	@Column({ name: 'coach_notes', type: 'text', nullable: true })
 	coachNotes: string | null;
+
+	@OneToMany(() => WorkoutExerciseSet, (set) => set.workoutExercise, {
+		cascade: ['insert'],
+	})
+	sets: WorkoutExerciseSet[];
 }

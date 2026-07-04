@@ -13,7 +13,6 @@ import { ClientMembership } from '../../../clients/entities/client-membership.en
 import { AssignmentStatus } from '../../../common';
 
 @Entity('program_assignments')
-// One ACTIVE program per membership at a time (design §4.5 partial index).
 @Index('ux_active_assignment', ['membershipId'], {
 	unique: true,
 	where: `status = 'active'`,

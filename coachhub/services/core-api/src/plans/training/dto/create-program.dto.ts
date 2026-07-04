@@ -9,8 +9,12 @@ import {
 	MaxLength,
 	Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PartialType } from '@nestjs/swagger';
+import {
+	ApiProperty,
+	ApiPropertyOptional,
+	OmitType,
+	PartialType,
+} from '@nestjs/swagger';
 import { DifficultyLevel, FitnessGoal } from 'src/common';
 
 export class CreateProgramDto {
@@ -35,12 +39,16 @@ export class CreateProgramDto {
 	@IsEnum(DifficultyLevel)
 	difficulty?: DifficultyLevel;
 
-	@ApiPropertyOptional({ example: 8, minimum: 1, maximum: 52 })
-	@IsOptional()
+	@ApiProperty({
+		example: 8,
+		minimum: 1,
+		maximum: 52,
+		description: 'Server inserts this many weeks + 7 days each',
+	})
 	@IsInt()
 	@Min(1)
 	@Max(52)
-	durationWeeks?: number;
+	weeks: number;
 
 	@ApiPropertyOptional({ default: true })
 	@IsOptional()
@@ -48,4 +56,7 @@ export class CreateProgramDto {
 	isTemplate?: boolean;
 }
 
-export class UpdateProgramDto extends PartialType(CreateProgramDto) {}
+/** Weeks are managed via add/duplicate-week endpoints, not by update. */
+export class UpdateProgramDto extends PartialType(
+	OmitType(CreateProgramDto, ['weeks'] as const),
+) {}

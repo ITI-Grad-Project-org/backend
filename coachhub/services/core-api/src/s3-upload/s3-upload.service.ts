@@ -7,9 +7,10 @@ import { ConfigService, ImageDimensions } from '../config';
 
 import * as AWS from 'aws-sdk';
 import { v4 as uuid } from 'uuid';
-// sharp's CJS entry is `module.exports = sharp`, so require() returns the callable
-// factory directly. Using require (cast to the typed default export) avoids relying
-// on esModuleInterop/__importDefault, which the dev compiler wasn't applying.
+// sharp's CJS entry is `module.exports = sharp`, so require() returns the
+// callable factory directly. Using require (cast to the typed default export)
+// avoids relying on esModuleInterop/__importDefault, which the dev compiler
+// wasn't applying.
 const sharp = require('sharp') as typeof import('sharp').default;
 
 export interface UploadResult {

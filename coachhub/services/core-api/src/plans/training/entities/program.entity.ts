@@ -11,10 +11,9 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { Coach } from '../../../coaches/entities/coach.entity';
-import { ProgramWorkout } from './program-workout.entity';
+import { ProgramWeek } from './program-week.entity';
 import { DifficultyLevel, FitnessGoal } from '../../../common';
 
-/** The weekly grid the coach drags exercises onto (design §4.3). */
 @Entity('programs')
 @Index('ix_programs_tenant', ['tenantId'])
 export class Program {
@@ -54,17 +53,16 @@ export class Program {
 	})
 	difficulty: DifficultyLevel | null;
 
-	@Column({ name: 'duration_weeks', type: 'smallint', nullable: true })
-	durationWeeks: number | null;
-
 	@Column({ name: 'is_template', default: true })
 	isTemplate: boolean;
 
 	@Column({ name: 'is_archived', default: false })
 	isArchived: boolean;
 
-	@OneToMany(() => ProgramWorkout, (workout) => workout.program)
-	workouts: ProgramWorkout[];
+	@OneToMany(() => ProgramWeek, (week) => week.program, {
+		cascade: ['insert'],
+	})
+	weeks: ProgramWeek[];
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
 	createdAt: Date;
