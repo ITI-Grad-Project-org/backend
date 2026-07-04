@@ -14,7 +14,7 @@ export const EventType = {
 	AI_TIMED_OUT: 'ai.timed_out',
 } as const;
 
-export type EventType = ( typeof EventType )[keyof typeof EventType];
+export type EventType = (typeof EventType)[keyof typeof EventType];
 
 export interface EventEnvelope<T = unknown> {
 	tenantId: string;

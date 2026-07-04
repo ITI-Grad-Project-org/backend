@@ -5,15 +5,15 @@ import { ValueTransformer } from 'typeorm';
  * the entity property a `number` in both directions.
  */
 export class NumericTransformer implements ValueTransformer {
-	to ( value?: number | null ): number | null | undefined {
+	to(value?: number | null): number | null | undefined {
 		return value;
 	}
 
-	from ( value?: string | null ): number | null {
-		if ( value === null || value === undefined ) {
+	from(value?: string | null): number | null {
+		if (value === null || value === undefined) {
 			return null;
 		}
-		return parseFloat( value );
+		return parseFloat(value);
 	}
 }
 

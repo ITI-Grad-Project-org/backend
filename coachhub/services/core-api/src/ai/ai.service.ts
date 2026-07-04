@@ -1,8 +1,6 @@
-import { Injectable }                    from '@nestjs/common';
-import {
-	EventPublisherService
-}                                        from '../messaging/event-publisher.service';
-import { randomUUID }                    from 'node:crypto';
+import { Injectable } from '@nestjs/common';
+import { EventPublisherService } from '../messaging/event-publisher.service';
+import { randomUUID } from 'node:crypto';
 import { AiRequestedPayload, EventType } from '../messaging/events';
 
 interface RequestAiInput {
@@ -16,11 +14,9 @@ interface RequestAiInput {
 
 @Injectable()
 export class AiService {
-	constructor (
-		private readonly event: EventPublisherService
-	) {}
+	constructor(private readonly event: EventPublisherService) {}
 
-	async dispatch ( input: RequestAiInput ) {
+	async dispatch(input: RequestAiInput) {
 		const requestId = randomUUID();
 		const payload: AiRequestedPayload = {
 			requestId,
@@ -31,9 +27,10 @@ export class AiService {
 			prompt: input.prompt,
 		};
 
-		await this.event.publish( EventType.AI_REQUESTED, payload,
-			{ tenantId: input.tenantId } );
+		await this.event.publish(EventType.AI_REQUESTED, payload, {
+			tenantId: input.tenantId,
+		});
 
 		return requestId;
-	};
+	}
 }

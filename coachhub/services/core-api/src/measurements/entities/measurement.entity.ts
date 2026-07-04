@@ -5,111 +5,109 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	Unique,
-}                             from 'typeorm';
-import { Tenant }             from '../../tenant/entities/tenant.entity';
-import {
-	ClientMembership
-}                             from '../../clients/entities/client-membership.entity';
+} from 'typeorm';
+import { Tenant } from '../../tenant/entities/tenant.entity';
+import { ClientMembership } from '../../clients/entities/client-membership.entity';
 import { numericTransformer } from '../../common';
 
 //! This is the same as checkins ya KOBROOOO
-@Entity( 'measurements' )
-@Unique( [ 'membership', 'measuredAt' ] )
+@Entity('measurements')
+@Unique(['membership', 'measuredAt'])
 export class Measurement {
-	@PrimaryGeneratedColumn( 'uuid' )
+	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column( { name: 'tenant_id', type: 'uuid' } )
+	@Column({ name: 'tenant_id', type: 'uuid' })
 	tenantId: string;
 
-	@ManyToOne( () => Tenant, { nullable: false, onDelete: 'CASCADE' } )
-	@JoinColumn( { name: 'tenant_id' } )
+	@ManyToOne(() => Tenant, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'tenant_id' })
 	tenant: Tenant;
 
-	@Column( { name: 'membership_id', type: 'uuid' } )
+	@Column({ name: 'membership_id', type: 'uuid' })
 	membershipId: string;
 
-	@ManyToOne( () => ClientMembership, { nullable: false, onDelete: 'CASCADE' } )
-	@JoinColumn( { name: 'membership_id' } )
+	@ManyToOne(() => ClientMembership, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'membership_id' })
 	membership: ClientMembership;
 
-	@Column( {
+	@Column({
 		name: 'measured_at',
 		type: 'date',
 		default: () => 'CURRENT_DATE',
-	} )
+	})
 	measuredAt: string;
 
-	@Column( {
+	@Column({
 		name: 'weight_kg',
 		type: 'numeric',
 		precision: 5,
 		scale: 2,
 		nullable: true,
 		transformer: numericTransformer,
-	} )
+	})
 	weightKg: number | null;
 
-	@Column( {
+	@Column({
 		name: 'body_fat_pct',
 		type: 'numeric',
 		precision: 4,
 		scale: 1,
 		nullable: true,
 		transformer: numericTransformer,
-	} )
+	})
 	bodyFatPct: number | null;
 
-	@Column( {
+	@Column({
 		name: 'chest_cm',
 		type: 'numeric',
 		precision: 5,
 		scale: 1,
 		nullable: true,
 		transformer: numericTransformer,
-	} )
+	})
 	chestCm: number | null;
 
-	@Column( {
+	@Column({
 		name: 'waist_cm',
 		type: 'numeric',
 		precision: 5,
 		scale: 1,
 		nullable: true,
 		transformer: numericTransformer,
-	} )
+	})
 	waistCm: number | null;
 
-	@Column( {
+	@Column({
 		name: 'hips_cm',
 		type: 'numeric',
 		precision: 5,
 		scale: 1,
 		nullable: true,
 		transformer: numericTransformer,
-	} )
+	})
 	hipsCm: number | null;
 
-	@Column( {
+	@Column({
 		name: 'arm_cm',
 		type: 'numeric',
 		precision: 5,
 		scale: 1,
 		nullable: true,
 		transformer: numericTransformer,
-	} )
+	})
 	armCm: number | null;
 
-	@Column( {
+	@Column({
 		name: 'thigh_cm',
 		type: 'numeric',
 		precision: 5,
 		scale: 1,
 		nullable: true,
 		transformer: numericTransformer,
-	} )
+	})
 	thighCm: number | null;
 
-	@Column( { type: 'jsonb', default: () => '\'[]\'' } )
+	@Column({ type: 'jsonb', default: () => "'[]'" })
 	photos: string[];
 }

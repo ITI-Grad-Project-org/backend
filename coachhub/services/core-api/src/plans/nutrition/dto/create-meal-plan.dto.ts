@@ -5,18 +5,14 @@ import {
 	IsString,
 	MaxLength,
 	Min,
-}                                           from 'class-validator';
-import {
-	ApiProperty,
-	ApiPropertyOptional,
-	PartialType,
-}                                           from '@nestjs/swagger';
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export class CreateMealPlanDto {
-	@ApiProperty( { example: 'Cutting Plan — 2200 kcal' } )
+	@ApiProperty({ example: 'Cutting Plan — 2200 kcal' })
 	@IsString()
 	@IsNotEmpty()
-	@MaxLength( 150 )
+	@MaxLength(150)
 	name: string;
 
 	@ApiPropertyOptional()
@@ -24,29 +20,29 @@ export class CreateMealPlanDto {
 	@IsString()
 	description?: string;
 
-	@ApiPropertyOptional( { example: 2200 } )
+	@ApiPropertyOptional({ example: 2200 })
 	@IsOptional()
 	@IsInt()
-	@Min( 0 )
+	@Min(0)
 	targetCalories?: number;
 
-	@ApiPropertyOptional( { example: 180 } )
+	@ApiPropertyOptional({ example: 180 })
 	@IsOptional()
 	@IsInt()
-	@Min( 0 )
+	@Min(0)
 	targetProteinG?: number;
 
-	@ApiPropertyOptional( { example: 200 } )
+	@ApiPropertyOptional({ example: 200 })
 	@IsOptional()
 	@IsInt()
-	@Min( 0 )
+	@Min(0)
 	targetCarbsG?: number;
 
-	@ApiPropertyOptional( { example: 70 } )
+	@ApiPropertyOptional({ example: 70 })
 	@IsOptional()
 	@IsInt()
-	@Min( 0 )
+	@Min(0)
 	targetFatG?: number;
 }
 
-export class UpdateMealPlanDto extends PartialType( CreateMealPlanDto ) {}
+export class UpdateMealPlanDto extends PartialType(CreateMealPlanDto) {}

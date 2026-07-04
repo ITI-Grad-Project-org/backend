@@ -9,32 +9,32 @@ import {
 	MaxLength,
 	Min,
 	ValidateNested,
-}                                           from 'class-validator';
-import { Type }                             from 'class-transformer';
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import {
 	ApiProperty,
 	ApiPropertyOptional,
 	OmitType,
 	PartialType,
-}                                           from '@nestjs/swagger';
+} from '@nestjs/swagger';
 
 export class MealItemDto {
-	@ApiProperty( { format: 'uuid' } )
+	@ApiProperty({ format: 'uuid' })
 	@IsUUID()
 	foodId: string;
 
-	@ApiProperty( { example: 1.5, description: '× the food\'s serving' } )
+	@ApiProperty({ example: 1.5, description: "× the food's serving" })
 	@IsNumber()
-	@Min( 0.1 )
+	@Min(0.1)
 	quantity: number;
 }
 
 /** Design §7.5 → meal_library + meal_library_items. */
 export class CreateMealDto {
-	@ApiProperty( { example: 'Chicken & Rice Bowl' } )
+	@ApiProperty({ example: 'Chicken & Rice Bowl' })
 	@IsString()
 	@IsNotEmpty()
-	@MaxLength( 150 )
+	@MaxLength(150)
 	name: string;
 
 	@ApiPropertyOptional()
@@ -42,23 +42,23 @@ export class CreateMealDto {
 	@IsString()
 	description?: string;
 
-	@ApiPropertyOptional( { example: 'https://cdn.coachhub.app/meals/bowl.jpg' } )
+	@ApiPropertyOptional({ example: 'https://cdn.coachhub.app/meals/bowl.jpg' })
 	@IsOptional()
 	@IsUrl()
 	photoUrl?: string;
 
-	@ApiPropertyOptional( { description: 'Cooking/prep instructions' } )
+	@ApiPropertyOptional({ description: 'Cooking/prep instructions' })
 	@IsOptional()
 	@IsString()
 	prepNotes?: string;
 
-	@ApiProperty( { type: [ MealItemDto ] } )
-	@ValidateNested( { each: true } )
-	@Type( () => MealItemDto )
-	@ArrayMinSize( 1 )
+	@ApiProperty({ type: [MealItemDto] })
+	@ValidateNested({ each: true })
+	@Type(() => MealItemDto)
+	@ArrayMinSize(1)
 	items: MealItemDto[];
 }
 
 export class UpdateMealDto extends PartialType(
-	OmitType( CreateMealDto, [ 'items' ] as const ),
+	OmitType(CreateMealDto, ['items'] as const),
 ) {}

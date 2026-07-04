@@ -1,19 +1,19 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { ApiPropertyOptional }          from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ExerciseCategory, MuscleGroup } from 'src/common';
 
 export class QueryExercisesDto {
-	@ApiPropertyOptional( { enum: ExerciseCategory } )
+	@ApiPropertyOptional({ enum: ExerciseCategory })
 	@IsOptional()
-	@IsEnum( ExerciseCategory )
+	@IsEnum(ExerciseCategory)
 	category?: ExerciseCategory;
 
-	@ApiPropertyOptional( { enum: MuscleGroup } )
+	@ApiPropertyOptional({ enum: MuscleGroup })
 	@IsOptional()
-	@IsEnum( MuscleGroup )
+	@IsEnum(MuscleGroup)
 	primaryMuscle?: MuscleGroup;
 
-	@ApiPropertyOptional( { description: 'Case-insensitive name search' } )
+	@ApiPropertyOptional({ description: 'Case-insensitive name search' })
 	@IsOptional()
 	@IsString()
 	search?: string;

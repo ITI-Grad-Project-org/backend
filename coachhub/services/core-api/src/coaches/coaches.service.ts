@@ -1,34 +1,28 @@
-import { Injectable }                            from '@nestjs/common';
-import { InjectRepository }                      from '@nestjs/typeorm';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { Coach }                                 from './entities/coach.entity';
-import {
-	Tenant
-}                                                from '../tenant/entities/tenant.entity';
-import {
-	TenantService
-}                                                from '../tenant/tenant.service';
-import {
-	RegisterCoachDto
-}                                                from './dto/register-coach.dto';
-import { UpdateCoachDto }                        from './dto/update-coach.dto';
+import { Coach } from './entities/coach.entity';
+import { Tenant } from '../tenant/entities/tenant.entity';
+import { TenantService } from '../tenant/tenant.service';
+import { RegisterCoachDto } from './dto/register-coach.dto';
+import { UpdateCoachDto } from './dto/update-coach.dto';
 
 @Injectable()
 export class CoachesService {
-	constructor (
-		@InjectRepository( Coach )
+	constructor(
+		@InjectRepository(Coach)
 		private readonly coachRepository: Repository<Coach>,
 		private readonly tenantService: TenantService,
 		private readonly dataSource: DataSource,
 	) {}
 
-	async create ( registerDto: RegisterCoachDto ): Promise<Coach> {
+	async create(registerDto: RegisterCoachDto): Promise<Coach> {
 		const slug = await this.tenantService.generateAvailableSlug(
 			registerDto.businessName,
 		);
 
-		return this.dataSource.transaction( async ( manager ) => {
-			const coach = manager.create( Coach, {
+		return this.dataSource.transaction(async (manager) => {
+			const coach = manager.create(Coach, {
 				firstName: registerDto.firstName,
 				lastName: registerDto.lastName,
 				email: registerDto.email,
@@ -38,38 +32,38 @@ export class CoachesService {
 				specialties: registerDto.specialties ?? [],
 				yearsExperience: registerDto.yearsExperience ?? null,
 				certifications: registerDto.certifications ?? [],
-			} );
-			const savedCoach = await manager.save( coach );
+			});
+			const savedCoach = await manager.save(coach);
 
-			const tenant = manager.create( Tenant, {
+			const tenant = manager.create(Tenant, {
 				ownerCoach: savedCoach,
 				name: registerDto.businessName,
 				slug,
-				...( registerDto.timezone ? { timezone: registerDto.timezone } : {} ),
-				...( registerDto.currency ? { currency: registerDto.currency } : {} ),
-			} );
-			const savedTenant = await manager.save( tenant );
+				...(registerDto.timezone ? { timezone: registerDto.timezone } : {}),
+				...(registerDto.currency ? { currency: registerDto.currency } : {}),
+			});
+			const savedTenant = await manager.save(tenant);
 
-			await this.seedExerciseLibrary( manager, savedTenant.id );
+			await this.seedExerciseLibrary(manager, savedTenant.id);
 
-			savedCoach.tenants = [ savedTenant ];
+			savedCoach.tenants = [savedTenant];
 			return savedCoach;
-		} );
+		});
 	}
 
-	findAll () {
+	findAll() {
 		return this.coachRepository.find();
 	}
 
-	findOne ( id: string ) {
-		return this.coachRepository.findOne( {
+	findOne(id: string) {
+		return this.coachRepository.findOne({
 			where: { id },
 			relations: { tenants: true },
-		} );
+		});
 	}
 
-	findOneByEmail ( email: string ) {
-		return this.coachRepository.findOne( {
+	findOneByEmail(email: string) {
+		return this.coachRepository.findOne({
 			where: { email },
 			select: {
 				id: true,
@@ -79,69 +73,67 @@ export class CoachesService {
 				lastName: true,
 			},
 			relations: { tenants: true },
-		} );
+		});
 	}
 
-	findByIdWithRefreshToken ( id: string ) {
-		return this.coachRepository.findOne( {
+	findByIdWithRefreshToken(id: string) {
+		return this.coachRepository.findOne({
 			where: { id },
 			select: { id: true, email: true, hashedRefreshToken: true },
 			relations: { tenants: true },
-		} );
+		});
 	}
 
-	findProfileById ( id: string ) {
-		return this.coachRepository.findOne( {
+	findProfileById(id: string) {
+		return this.coachRepository.findOne({
 			where: { id },
 			relations: { tenants: true },
-		} );
+		});
 	}
 
-	async findByValidResetToken ( hashedToken: string ) {
+	async findByValidResetToken(hashedToken: string) {
 		return this.coachRepository
-		           .createQueryBuilder( 'coach' )
-		           .addSelect( 'coach.resetPasswordToken' )
-		           .addSelect( 'coach.resetPasswordExpires' )
-		           .where( 'coach.resetPasswordToken = :token',
-			           { token: hashedToken } )
-		           .andWhere( 'coach.resetPasswordExpires > :now',
-			           { now: new Date() } )
-		           .getOne();
+			.createQueryBuilder('coach')
+			.addSelect('coach.resetPasswordToken')
+			.addSelect('coach.resetPasswordExpires')
+			.where('coach.resetPasswordToken = :token', { token: hashedToken })
+			.andWhere('coach.resetPasswordExpires > :now', { now: new Date() })
+			.getOne();
 	}
 
-	updateRefreshToken ( id: string, hashedRefreshToken: string | null ) {
-		return this.coachRepository.update( id, { hashedRefreshToken } );
+	updateRefreshToken(id: string, hashedRefreshToken: string | null) {
+		return this.coachRepository.update(id, { hashedRefreshToken });
 	}
 
-	setResetPasswordToken ( id: string, token: string, expires: Date ) {
-		return this.coachRepository.update( id, {
+	setResetPasswordToken(id: string, token: string, expires: Date) {
+		return this.coachRepository.update(id, {
 			resetPasswordToken: token,
 			resetPasswordExpires: expires,
-		} );
+		});
 	}
 
-	resetCoachPassword ( id: string, hashedPassword: string ) {
-		return this.coachRepository.update( id, {
+	resetCoachPassword(id: string, hashedPassword: string) {
+		return this.coachRepository.update(id, {
 			password: hashedPassword,
 			resetPasswordToken: null,
 			resetPasswordExpires: null,
 			hashedRefreshToken: null,
-		} );
+		});
 	}
 
-	logout ( id: string ) {
-		return this.coachRepository.update( id, { hashedRefreshToken: null } );
+	logout(id: string) {
+		return this.coachRepository.update(id, { hashedRefreshToken: null });
 	}
 
-	update ( id: string, updateCoachDto: UpdateCoachDto ) {
-		return this.coachRepository.update( id, updateCoachDto );
+	update(id: string, updateCoachDto: UpdateCoachDto) {
+		return this.coachRepository.update(id, updateCoachDto);
 	}
 
-	remove ( id: string ) {
-		return this.coachRepository.softDelete( id );
+	remove(id: string) {
+		return this.coachRepository.softDelete(id);
 	}
 
-	private seedExerciseLibrary ( manager: EntityManager, tenantId: string ) {
+	private seedExerciseLibrary(manager: EntityManager, tenantId: string) {
 		return manager.query(
 			`INSERT INTO exercises
        (tenant_id, source_seed_id, name, category, primary_muscle,
@@ -161,7 +153,7 @@ export class CoachesService {
               s.instruction_steps
        FROM exercise_seeds s
        WHERE s.is_active`,
-			[ tenantId ],
+			[tenantId],
 		);
 	}
 }

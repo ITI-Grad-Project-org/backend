@@ -1,4 +1,4 @@
 export enum TenantType {
-  INDIVIDUAL = 'individual',
-  AGENCY = 'agency',
+	INDIVIDUAL = 'individual',
+	AGENCY = 'agency',
 }

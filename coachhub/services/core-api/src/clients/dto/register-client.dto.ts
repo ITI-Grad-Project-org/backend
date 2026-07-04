@@ -12,7 +12,7 @@ import {
 	Max,
 	MaxLength,
 	Min,
-}                                           from 'class-validator';
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	ActivityLevel,
@@ -21,7 +21,7 @@ import {
 	FitnessGoal,
 	Gender,
 	TrainingExperience,
-}                                           from 'src/common';
+} from 'src/common';
 
 /**
  * Design §7.2 — invitation-flow registration. One transaction writes:
@@ -29,88 +29,91 @@ import {
  * first `measurements` row (weightKg).
  */
 export class RegisterClientDto {
-	@ApiProperty( { format: 'uuid' } )
+	@ApiProperty({ format: 'uuid' })
 	@IsUUID()
 	invitationToken: string;
 
 	// → clients
-	@ApiProperty( { example: 'Sara' } )
+	@ApiProperty({ example: 'Sara' })
 	@IsString()
-	@MaxLength( 100 )
+	@MaxLength(100)
 	firstName: string;
 
-	@ApiProperty( { example: 'Adel' } )
+	@ApiProperty({ example: 'Adel' })
 	@IsString()
-	@MaxLength( 100 )
+	@MaxLength(100)
 	lastName: string;
 
-	@ApiProperty( { example: 'sara@example.com', description: 'Must match the invitation' } )
+	@ApiProperty({
+		example: 'sara@example.com',
+		description: 'Must match the invitation',
+	})
 	@IsEmail()
 	email: string;
 
-	@ApiPropertyOptional( { example: '+201001234567' } )
+	@ApiPropertyOptional({ example: '+201001234567' })
 	@IsOptional()
 	@IsPhoneNumber()
 	phone?: string;
 
-	@ApiProperty( { example: 'S3cure!pass' } )
+	@ApiProperty({ example: 'S3cure!pass' })
 	@IsStrongPassword()
 	password: string;
 
-	@ApiProperty( { example: '1998-04-12' } )
+	@ApiProperty({ example: '1998-04-12' })
 	@IsDateString()
 	dateOfBirth: string;
 
-	@ApiProperty( { enum: Gender } )
-	@IsEnum( Gender )
+	@ApiProperty({ enum: Gender })
+	@IsEnum(Gender)
 	gender: Gender;
 
-	@ApiProperty( { example: 168, minimum: 50, maximum: 300 } )
+	@ApiProperty({ example: 168, minimum: 50, maximum: 300 })
 	@IsNumber()
-	@Min( 50 )
-	@Max( 300 )
+	@Min(50)
+	@Max(300)
 	heightCm: number;
 
 	// → measurements (first row)
-	@ApiProperty( { example: 72.5, minimum: 20, maximum: 500 } )
+	@ApiProperty({ example: 72.5, minimum: 20, maximum: 500 })
 	@IsNumber()
-	@Min( 20 )
-	@Max( 500 )
+	@Min(20)
+	@Max(500)
 	weightKg: number;
 
 	// → client_intakes
-	@ApiProperty( { enum: FitnessGoal } )
-	@IsEnum( FitnessGoal )
+	@ApiProperty({ enum: FitnessGoal })
+	@IsEnum(FitnessGoal)
 	goal: FitnessGoal;
 
-	@ApiProperty( { enum: ActivityLevel } )
-	@IsEnum( ActivityLevel )
+	@ApiProperty({ enum: ActivityLevel })
+	@IsEnum(ActivityLevel)
 	activityLevel: ActivityLevel;
 
-	@ApiProperty( { enum: TrainingExperience } )
-	@IsEnum( TrainingExperience )
+	@ApiProperty({ enum: TrainingExperience })
+	@IsEnum(TrainingExperience)
 	trainingExperience: TrainingExperience;
 
-	@ApiPropertyOptional( { example: 4, minimum: 1, maximum: 7 } )
+	@ApiPropertyOptional({ example: 4, minimum: 1, maximum: 7 })
 	@IsOptional()
 	@IsInt()
-	@Min( 1 )
-	@Max( 7 )
+	@Min(1)
+	@Max(7)
 	trainingDaysPerWeek?: number;
 
-	@ApiPropertyOptional( { enum: EquipmentType, isArray: true } )
+	@ApiPropertyOptional({ enum: EquipmentType, isArray: true })
 	@IsOptional()
-	@IsEnum( EquipmentType, { each: true } )
+	@IsEnum(EquipmentType, { each: true })
 	availableEquipment?: EquipmentType[];
 
-	@ApiPropertyOptional( { enum: DietaryPreference, isArray: true } )
+	@ApiPropertyOptional({ enum: DietaryPreference, isArray: true })
 	@IsOptional()
-	@IsEnum( DietaryPreference, { each: true } )
+	@IsEnum(DietaryPreference, { each: true })
 	dietaryPreferences?: DietaryPreference[];
 
-	@ApiPropertyOptional( { type: [ String ], example: [ 'peanuts' ] } )
+	@ApiPropertyOptional({ type: [String], example: ['peanuts'] })
 	@IsOptional()
-	@IsString( { each: true } )
+	@IsString({ each: true })
 	allergies?: string[];
 
 	@ApiPropertyOptional()

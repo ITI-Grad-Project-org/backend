@@ -8,49 +8,51 @@ import {
 	PrimaryGeneratedColumn,
 	Unique,
 	UpdateDateColumn,
-}                           from 'typeorm';
-import { Tenant }           from '../../tenant/entities/tenant.entity';
-import { Client }           from './client.entity';
+} from 'typeorm';
+import { Tenant } from '../../tenant/entities/tenant.entity';
+import { Client } from './client.entity';
 import { MembershipStatus } from '../../common';
 
-@Entity( 'memberships' )
-@Unique( [ 'tenant', 'client' ] )
+@Entity('memberships')
+@Unique(['tenant', 'client'])
 export class ClientMembership {
-	@PrimaryGeneratedColumn( 'uuid' )
+	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@ManyToOne( () => Tenant, { nullable: false, onDelete: 'CASCADE' } )
-	@JoinColumn( { name: 'tenant_id' } )
+	@ManyToOne(() => Tenant, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'tenant_id' })
 	tenant: Tenant;
 
-	@ManyToOne( () => Client, ( client ) => client.memberships,
-		{ nullable: true, onDelete: 'CASCADE' } )
-	@JoinColumn( { name: 'client_id' } )
+	@ManyToOne(() => Client, (client) => client.memberships, {
+		nullable: true,
+		onDelete: 'CASCADE',
+	})
+	@JoinColumn({ name: 'client_id' })
 	client: Client | null;
 
-	@Column( {
+	@Column({
 		type: 'enum',
 		enum: MembershipStatus,
 		enumName: 'membership_status',
 		default: MembershipStatus.INVITED,
-	} )
+	})
 	status: MembershipStatus;
 
-	@Column( { type: 'text', nullable: true } )
+	@Column({ type: 'text', nullable: true })
 	blockReason: string | null;
 
-	@Column( { name: 'joined_at', type: 'timestamptz', nullable: true } )
+	@Column({ name: 'joined_at', type: 'timestamptz', nullable: true })
 	joinedAt: Date | null;
 
-	@Column( { name: 'last_active_at', type: 'timestamptz', nullable: true } )
+	@Column({ name: 'last_active_at', type: 'timestamptz', nullable: true })
 	lastActiveAt: Date | null;
 
-	@CreateDateColumn( { name: 'created_at', type: 'timestamptz' } )
+	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
 	createdAt: Date;
 
-	@UpdateDateColumn( { name: 'updated_at', type: 'timestamptz' } )
+	@UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
 	updatedAt: Date;
 
-	@DeleteDateColumn( { name: 'deleted_at', type: 'timestamptz' } )
+	@DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz' })
 	deletedAt: Date | null;
 }

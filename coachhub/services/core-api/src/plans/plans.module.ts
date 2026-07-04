@@ -3,6 +3,6 @@ import { TrainingModule } from './training/training.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 
 @Module({
-  imports: [TrainingModule, NutritionModule],
+	imports: [TrainingModule, NutritionModule],
 })
 export class PlansModule {}

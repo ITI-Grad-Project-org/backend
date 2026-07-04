@@ -8,16 +8,16 @@ import {
 	Max,
 	MaxLength,
 	Min,
-}                                           from 'class-validator';
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PartialType }                      from '@nestjs/swagger';
-import { DifficultyLevel, FitnessGoal }     from 'src/common';
+import { PartialType } from '@nestjs/swagger';
+import { DifficultyLevel, FitnessGoal } from 'src/common';
 
 export class CreateProgramDto {
-	@ApiProperty( { example: 'Push Pull Legs — 8 weeks' } )
+	@ApiProperty({ example: 'Push Pull Legs — 8 weeks' })
 	@IsString()
 	@IsNotEmpty()
-	@MaxLength( 150 )
+	@MaxLength(150)
 	name: string;
 
 	@ApiPropertyOptional()
@@ -25,27 +25,27 @@ export class CreateProgramDto {
 	@IsString()
 	description?: string;
 
-	@ApiPropertyOptional( { enum: FitnessGoal } )
+	@ApiPropertyOptional({ enum: FitnessGoal })
 	@IsOptional()
-	@IsEnum( FitnessGoal )
+	@IsEnum(FitnessGoal)
 	goal?: FitnessGoal;
 
-	@ApiPropertyOptional( { enum: DifficultyLevel } )
+	@ApiPropertyOptional({ enum: DifficultyLevel })
 	@IsOptional()
-	@IsEnum( DifficultyLevel )
+	@IsEnum(DifficultyLevel)
 	difficulty?: DifficultyLevel;
 
-	@ApiPropertyOptional( { example: 8, minimum: 1, maximum: 52 } )
+	@ApiPropertyOptional({ example: 8, minimum: 1, maximum: 52 })
 	@IsOptional()
 	@IsInt()
-	@Min( 1 )
-	@Max( 52 )
+	@Min(1)
+	@Max(52)
 	durationWeeks?: number;
 
-	@ApiPropertyOptional( { default: true } )
+	@ApiPropertyOptional({ default: true })
 	@IsOptional()
 	@IsBoolean()
 	isTemplate?: boolean;
 }
 
-export class UpdateProgramDto extends PartialType( CreateProgramDto ) {}
+export class UpdateProgramDto extends PartialType(CreateProgramDto) {}

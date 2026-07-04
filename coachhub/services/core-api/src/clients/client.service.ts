@@ -1,35 +1,35 @@
-import { Injectable }       from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository }       from 'typeorm';
-import { Client }           from './entities/client.entity';
-import { CreateClientDto }  from './dto/create-client.dto';
-import { UpdateClientDto }  from './dto/update-client.dto';
+import { Repository } from 'typeorm';
+import { Client } from './entities/client.entity';
+import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
 
 @Injectable()
 export class ClientService {
-	constructor (
-		@InjectRepository( Client )
+	constructor(
+		@InjectRepository(Client)
 		private readonly clientRepository: Repository<Client>,
 	) {}
 
-	async create ( createClientDto: CreateClientDto ): Promise<Client> {
-		const client = this.clientRepository.create( createClientDto );
-		return this.clientRepository.save( client );
+	async create(createClientDto: CreateClientDto): Promise<Client> {
+		const client = this.clientRepository.create(createClientDto);
+		return this.clientRepository.save(client);
 	}
 
-	findAll () {
+	findAll() {
 		return this.clientRepository.find();
 	}
 
-	findOne ( id: string ) {
-		return this.clientRepository.findOne( {
+	findOne(id: string) {
+		return this.clientRepository.findOne({
 			where: { id },
 			relations: { memberships: { tenant: true } },
-		} );
+		});
 	}
 
-	findOneByEmail ( email: string ) {
-		return this.clientRepository.findOne( {
+	findOneByEmail(email: string) {
+		return this.clientRepository.findOne({
 			where: { email },
 			select: {
 				id: true,
@@ -38,11 +38,11 @@ export class ClientService {
 				googleId: true,
 				avatarUrl: true,
 			},
-		} );
+		});
 	}
 
-	findByGoogleId ( googleId: string ) {
-		return this.clientRepository.findOne( {
+	findByGoogleId(googleId: string) {
+		return this.clientRepository.findOne({
 			where: { googleId },
 			select: {
 				id: true,
@@ -52,79 +52,79 @@ export class ClientService {
 				googleId: true,
 				avatarUrl: true,
 			},
-		} );
+		});
 	}
 
-	findById ( id: string ) {
-		return this.clientRepository.findOne( { where: { id } } );
+	findById(id: string) {
+		return this.clientRepository.findOne({ where: { id } });
 	}
 
-	findByIdWithRefreshToken ( id: string ) {
-		return this.clientRepository.findOne( {
+	findByIdWithRefreshToken(id: string) {
+		return this.clientRepository.findOne({
 			where: { id },
 			select: {
 				id: true,
 				email: true,
 				hashedRefreshToken: true,
 			},
-		} );
+		});
 	}
 
-	findProfileById ( id: string ) {
-		return this.clientRepository.findOne( {
+	findProfileById(id: string) {
+		return this.clientRepository.findOne({
 			where: { id },
 			relations: { memberships: { tenant: true } },
-		} );
+		});
 	}
 
-	async findByValidResetToken ( hashedToken: string ) {
+	async findByValidResetToken(hashedToken: string) {
 		return this.clientRepository
-			.createQueryBuilder( 'client' )
-			.addSelect( 'client.resetPasswordToken' )
-			.addSelect( 'client.resetPasswordExpires' )
-			.where( 'client.resetPasswordToken = :token', { token: hashedToken } )
-			.andWhere( 'client.resetPasswordExpires > :now', { now: new Date() } )
+			.createQueryBuilder('client')
+			.addSelect('client.resetPasswordToken')
+			.addSelect('client.resetPasswordExpires')
+			.where('client.resetPasswordToken = :token', { token: hashedToken })
+			.andWhere('client.resetPasswordExpires > :now', { now: new Date() })
 			.getOne();
 	}
 
-	updateRefreshToken ( id: string, hashedRefreshToken: string | null ) {
-		return this.clientRepository.update( id, { hashedRefreshToken } );
+	updateRefreshToken(id: string, hashedRefreshToken: string | null) {
+		return this.clientRepository.update(id, { hashedRefreshToken });
 	}
 
-	updateLastLoginAt ( id: string ) {
-		return this.clientRepository.update( id, { lastLoginAt: new Date() } );
+	updateLastLoginAt(id: string) {
+		return this.clientRepository.update(id, { lastLoginAt: new Date() });
 	}
 
-	updateGoogleInfo ( id: string, data: { googleId: string; avatarUrl?: string } ) {
-		return this.clientRepository.update( id, data );
+	updateGoogleInfo(id: string, data: { googleId: string; avatarUrl?: string }) {
+		return this.clientRepository.update(id, data);
 	}
 
-	setResetPasswordToken ( id: string, token: string, expires: Date ) {
-		return this.clientRepository.update( id, {
+	setResetPasswordToken(id: string, token: string, expires: Date) {
+		return this.clientRepository.update(id, {
 			resetPasswordToken: token,
 			resetPasswordExpires: expires,
-		} );
+		});
 	}
 
-	resetClientPassword ( id: string, hashedPassword: string ) {
-		return this.clientRepository.update( id, {
+	resetClientPassword(id: string, hashedPassword: string) {
+		return this.clientRepository.update(id, {
 			password: hashedPassword,
 			resetPasswordToken: null,
 			resetPasswordExpires: null,
 			hashedRefreshToken: null,
-		} );
+		});
 	}
 
-	logout ( id: string ) {
-		return this.clientRepository.update( id, { hashedRefreshToken: null } );
+	logout(id: string) {
+		return this.clientRepository.update(id, { hashedRefreshToken: null });
 	}
 
-	update ( id: string, updateClientDto: UpdateClientDto ) {
+	update(id: string, updateClientDto: UpdateClientDto) {
 		const { confirmPassword, password, ...profile } = updateClientDto;
-		return this.clientRepository.update( id, profile );
+		return this.clientRepository.update(id, profile);
 	}
 
-	remove ( id: string ) {
-		return this.clientRepository.softDelete( id );
+	remove(id: string) {
+		return this.clientRepository.softDelete(id);
 	}
 }

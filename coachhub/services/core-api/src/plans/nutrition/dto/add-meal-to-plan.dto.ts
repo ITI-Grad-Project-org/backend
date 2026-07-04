@@ -8,52 +8,54 @@ import {
 	Max,
 	Min,
 	ValidateNested,
-}                                           from 'class-validator';
-import { Type }                             from 'class-transformer';
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MealSlot }                         from 'src/common';
+import { MealSlot } from 'src/common';
 
 export class ItemOverrideDto {
-	@ApiProperty( { format: 'uuid' } )
+	@ApiProperty({ format: 'uuid' })
 	@IsUUID()
 	foodId: string;
 
-	@ApiProperty(
-		{ example: 2, description: '0 = remove this item for this plan' } )
+	@ApiProperty({
+		example: 2,
+		description: '0 = remove this item for this plan',
+	})
 	@IsNumber()
-	@Min( 0 )
+	@Min(0)
 	quantity: number;
 }
 
 export class AddMealToPlanDto {
-	@ApiProperty( { format: 'uuid' } )
+	@ApiProperty({ format: 'uuid' })
 	@IsUUID()
 	mealLibraryId: string;
 
-	@ApiProperty( { example: 1, minimum: 1, maximum: 7 } )
+	@ApiProperty({ example: 1, minimum: 1, maximum: 7 })
 	@IsInt()
-	@Min( 1 )
-	@Max( 7 )
+	@Min(1)
+	@Max(7)
 	dayNumber: number;
 
-	@ApiProperty( { enum: MealSlot, example: MealSlot.LUNCH } )
-	@IsEnum( MealSlot )
+	@ApiProperty({ enum: MealSlot, example: MealSlot.LUNCH })
+	@IsEnum(MealSlot)
 	slot: MealSlot;
 
 	// popup fields
-	@ApiProperty( { example: 1, minimum: 0.25, maximum: 10, default: 1 } )
+	@ApiProperty({ example: 1, minimum: 0.25, maximum: 10, default: 1 })
 	@IsNumber()
-	@Min( 0.25 )
-	@Max( 10 )
+	@Min(0.25)
+	@Max(10)
 	servings: number;
 
-	@ApiPropertyOptional( {
-		type: [ ItemOverrideDto ],
+	@ApiPropertyOptional({
+		type: [ItemOverrideDto],
 		description: 'Tweak individual quantities at drop time',
-	} )
+	})
 	@IsOptional()
-	@ValidateNested( { each: true } )
-	@Type( () => ItemOverrideDto )
+	@ValidateNested({ each: true })
+	@Type(() => ItemOverrideDto)
 	itemOverrides?: ItemOverrideDto[];
 
 	@ApiPropertyOptional()
