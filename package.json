@@ -1,0 +1,16 @@
+{
+  "name": "iti-graduation-project-backend",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10"
+  },
+  "lint-staged": {
+    "coachhub/services/core-api/**/*.ts": [
+      "prettier --config coachhub/services/core-api/.prettierrc.json --write"
+    ]
+  }
+}
