@@ -10,7 +10,6 @@ import { Tenant } from '../../tenant/entities/tenant.entity';
 import { ClientMembership } from '../../clients/entities/client-membership.entity';
 import { numericTransformer } from '../../common';
 
-//! This is the same as checkins ya KOBROOOO
 @Entity('measurements')
 @Unique(['membership', 'measuredAt'])
 export class Measurement {

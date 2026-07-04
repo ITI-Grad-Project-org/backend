@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 /**
@@ -10,7 +10,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  *
  * Resolution order (most → least trustworthy for this deployment):
  *   1. `cf-connecting-ip`  — Cloudflare's true client IP (overwritten by
- *                            Cloudflare on every request; not client-spoofable).
+ *                            Cloudflare on every request; not
+ * client-spoofable).
  *   2. `true-client-ip`    — Cloudflare Enterprise / some CDNs.
  *   3. left-most `x-forwarded-for` entry — originating client behind proxies.
  *   4. `req.ip`            — direct connections / local dev.

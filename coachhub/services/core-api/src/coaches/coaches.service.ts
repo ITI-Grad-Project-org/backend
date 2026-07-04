@@ -136,23 +136,23 @@ export class CoachesService {
 	private seedExerciseLibrary(manager: EntityManager, tenantId: string) {
 		return manager.query(
 			`INSERT INTO exercises
-       (tenant_id, source_seed_id, name, category, primary_muscle,
-        secondary_muscles,
-        equipment, demo_video_url, demo_gif_url, thumbnail_url,
-        instruction_steps)
-       SELECT $1,
-              s.id,
-              s.name,
-              s.category,
-              s.primary_muscle,
-              s.secondary_muscles,
-              s.equipment,
-              s.demo_video_url,
-              s.demo_gif_url,
-              s.thumbnail_url,
-              s.instruction_steps
-       FROM exercise_seeds s
-       WHERE s.is_active`,
+			 (tenant_id, source_seed_id, name, category, primary_muscle,
+			  secondary_muscles,
+			  equipment, demo_video_url, demo_gif_url, thumbnail_url,
+			  instruction_steps)
+			 SELECT $1,
+			        s.id,
+			        s.name,
+			        s.category,
+			        s.primary_muscle,
+			        s.secondary_muscles,
+			        s.equipment,
+			        s.demo_video_url,
+			        s.demo_gif_url,
+			        s.thumbnail_url,
+			        s.instruction_steps
+			 FROM exercise_seeds s
+			 WHERE s.is_active`,
 			[tenantId],
 		);
 	}

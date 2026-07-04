@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 
 interface PublishOptions {
 	tenantId: string;
-	/** Pass through an existing correlationId to keep a trace across services. */
 	correlationId?: string;
 }
 

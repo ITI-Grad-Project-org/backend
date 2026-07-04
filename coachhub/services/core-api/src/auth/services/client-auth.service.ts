@@ -9,9 +9,8 @@ import {
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import * as crypto from 'crypto';
 import { TokenProvider } from '../providers/token.provider';
-import { MembershipStatus } from '../../common';
+import { ClientAuthPayload, MembershipStatus } from '../../common';
 import { ConfigService } from 'src/config';
-import { ClientAuthPayload } from '../../common';
 import { ClientService } from '../../clients/client.service';
 import { ClientMembershipService } from '../../clients/client-membership.service';
 import { Client } from '../../clients/entities/client.entity';

@@ -2,7 +2,8 @@
   "name": "iti-graduation-project-backend",
   "private": true,
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "format": "npm run format --prefix coachhub/services/core-api"
   },
   "devDependencies": {
     "husky": "^9.1.7",

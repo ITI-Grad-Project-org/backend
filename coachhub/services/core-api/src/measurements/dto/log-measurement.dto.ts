@@ -10,7 +10,6 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-/** One check-in row → `measurements`; at least weight is usually sent. */
 export class LogMeasurementDto {
 	@ApiProperty({ format: 'uuid' })
 	@IsUUID()

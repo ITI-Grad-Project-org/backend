@@ -13,6 +13,7 @@ export class NumericTransformer implements ValueTransformer {
 		if (value === null || value === undefined) {
 			return null;
 		}
+
 		return parseFloat(value);
 	}
 }

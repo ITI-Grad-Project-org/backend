@@ -1,7 +1,7 @@
 import {
-	ExceptionFilter,
-	Catch,
 	ArgumentsHost,
+	Catch,
+	ExceptionFilter,
 	HttpException,
 	HttpStatus,
 	Logger,
@@ -15,9 +15,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
 	catch(exception: any, host: ArgumentsHost) {
 		// This global filter also runs for WebSocket gateways. The HTTP path below
-		// calls response.status().json() — methods a socket.io client does NOT have —
-		// so running it in a WS context throws *inside* the filter, which Nest then
-		// tries to handle again, producing an endless error loop. Branch first.
+		// calls response.status().json() — methods a socket.io client does NOT
+		// have — so running it in a WS context throws *inside* the filter, which
+		// Nest then tries to handle again, producing an endless error loop. Branch
+		// first.
 		if (host.getType() !== 'http') {
 			return this.catchWs(exception, host);
 		}

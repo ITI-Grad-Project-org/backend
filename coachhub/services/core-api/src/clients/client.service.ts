@@ -95,7 +95,13 @@ export class ClientService {
 		return this.clientRepository.update(id, { lastLoginAt: new Date() });
 	}
 
-	updateGoogleInfo(id: string, data: { googleId: string; avatarUrl?: string }) {
+	updateGoogleInfo(
+		id: string,
+		data: {
+			googleId: string;
+			avatarUrl?: string;
+		},
+	) {
 		return this.clientRepository.update(id, data);
 	}
 
