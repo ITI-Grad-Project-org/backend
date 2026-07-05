@@ -1,14 +1,14 @@
 import { IsIn, IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty }                from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class UploadImageDto {
-	@ApiProperty( {
+	@ApiProperty({
 		description: 'Image type category',
-		enum: [ 'coach', 'client' ],
+		enum: ['coach', 'client'],
 		example: 'client',
-	} )
+	})
 	@IsString()
 	@IsNotEmpty()
-	@IsIn( [ 'coach', 'client' ] )
+	@IsIn(['coach', 'client'])
 	type: 'coach' | 'client';
 }

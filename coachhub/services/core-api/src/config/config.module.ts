@@ -5,14 +5,14 @@ import { ConfigSchema } from './config.validation';
 import configuration from './configuration';
 
 @Module({
-  imports: [
-    NestConfigModule.forRoot({
-      isGlobal: true,
-      load: [() => ConfigSchema.parse(configuration())],
-      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
-    }),
-  ],
-  providers: [ConfigService],
-  exports: [ConfigService],
+	imports: [
+		NestConfigModule.forRoot({
+			isGlobal: true,
+			load: [() => ConfigSchema.parse(configuration())],
+			envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+		}),
+	],
+	providers: [ConfigService],
+	exports: [ConfigService],
 })
 export class ConfigModule {}
