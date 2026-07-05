@@ -10,18 +10,18 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { ProgramDay } from './program-day.entity';
-import { WorkoutExerciseSet } from './workout-exercise-set.entity';
+import { PlannedSet } from './planned-set.entity';
 import { Exercise } from '../../../exercises/entities/exercise.entity';
 
 /**
  * One dragged exercise on a day (design §4.4). Holds what is common to the
  * whole exercise — position, superset, rest, tempo, note. The set-by-set
- * prescription lives in `workout_exercise_sets`.
+ * prescription lives in `planned_sets`.
  */
-@Entity('workout_exercises')
+@Entity('planned_exercises')
 @Unique(['programDay', 'position'])
-@Index('ix_we_day', ['programDayId'])
-export class WorkoutExercise {
+@Index('ix_planned_ex_day', ['programDayId'])
+export class PlannedExercise {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -67,8 +67,8 @@ export class WorkoutExercise {
 	@Column({ name: 'coach_notes', type: 'text', nullable: true })
 	coachNotes: string | null;
 
-	@OneToMany(() => WorkoutExerciseSet, (set) => set.workoutExercise, {
+	@OneToMany(() => PlannedSet, (set) => set.plannedExercise, {
 		cascade: ['insert'],
 	})
-	sets: WorkoutExerciseSet[];
+	sets: PlannedSet[];
 }

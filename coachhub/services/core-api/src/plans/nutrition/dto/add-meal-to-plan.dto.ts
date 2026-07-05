@@ -29,9 +29,9 @@ export class ItemOverrideDto {
 /**
  * Design §7.6 — THE DROP POPUP for meals. The drop target day is in the
  * route (POST /meal-plans/:planId/days/:mealPlanDayId/meals). The service
- * loads the library meal's items, applies overrides, and inserts
- * plan_meals (name copied, source_meal_id set) + plan_meal_items in one
- * transaction: copy-on-drop.
+ * loads the meal's ingredients, applies overrides, and inserts
+ * planned_meals (name copied, source_meal_id set) + planned_meal_foods in
+ * one transaction: copy-on-drop.
  */
 export class AddMealToPlanDto {
 	@ApiProperty({ format: 'uuid' })

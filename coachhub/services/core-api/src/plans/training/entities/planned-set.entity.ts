@@ -8,30 +8,30 @@ import {
 	PrimaryGeneratedColumn,
 	Unique,
 } from 'typeorm';
-import { WorkoutExercise } from './workout-exercise.entity';
+import { PlannedExercise } from './planned-exercise.entity';
 import { IntensityType, numericTransformer, SetType } from '../../../common';
 
-@Entity('workout_exercise_sets')
-@Unique(['workoutExercise', 'setNumber'])
+@Entity('planned_sets')
+@Unique(['plannedExercise', 'setNumber'])
 @Check(`"set_number" >= 1`)
 @Check(
 	`"reps_min" IS NOT NULL OR "duration_seconds" IS NOT NULL OR "set_type" IN ('amrap', 'to_failure', 'drop_set')`,
 )
 @Check(`("intensity_type" IS NULL) = ("intensity_value" IS NULL)`)
-@Index('ix_wes_exercise', ['workoutExerciseId'])
-export class WorkoutExerciseSet {
+@Index('ix_planned_sets_ex', ['plannedExerciseId'])
+export class PlannedSet {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column({ name: 'workout_exercise_id', type: 'uuid' })
-	workoutExerciseId: string;
+	@Column({ name: 'planned_exercise_id', type: 'uuid' })
+	plannedExerciseId: string;
 
-	@ManyToOne(() => WorkoutExercise, (exercise) => exercise.sets, {
+	@ManyToOne(() => PlannedExercise, (exercise) => exercise.sets, {
 		nullable: false,
 		onDelete: 'CASCADE',
 	})
-	@JoinColumn({ name: 'workout_exercise_id' })
-	workoutExercise: WorkoutExercise;
+	@JoinColumn({ name: 'planned_exercise_id' })
+	plannedExercise: PlannedExercise;
 
 	@Column({ name: 'set_number', type: 'smallint' })
 	setNumber: number;

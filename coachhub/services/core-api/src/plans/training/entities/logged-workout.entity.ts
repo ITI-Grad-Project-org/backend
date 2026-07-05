@@ -12,12 +12,12 @@ import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import { ProgramAssignment } from './program-assignment.entity';
 import { ProgramDay } from './program-day.entity';
-import { SessionExercise } from './session-exercise.entity';
+import { LoggedExercise } from './logged-exercise.entity';
 import { SessionStatus } from '../../../common';
 
-@Entity('workout_sessions')
+@Entity('logged_workouts')
 @Index('ix_sessions_membership_date', ['membershipId', 'performedAt'])
-export class WorkoutSession {
+export class LoggedWorkout {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -39,6 +39,7 @@ export class WorkoutSession {
 	@JoinColumn({ name: 'assignment_id' })
 	assignment: ProgramAssignment | null;
 
+	/** NULL = ad-hoc session not tied to a planned day. */
 	@ManyToOne(() => ProgramDay, { nullable: true })
 	@JoinColumn({ name: 'program_day_id' })
 	programDay: ProgramDay | null;
@@ -60,10 +61,10 @@ export class WorkoutSession {
 	@Column({ name: 'client_notes', type: 'text', nullable: true })
 	clientNotes: string | null;
 
-	@OneToMany(() => SessionExercise, (exercise) => exercise.session, {
+	@OneToMany(() => LoggedExercise, (exercise) => exercise.loggedWorkout, {
 		cascade: ['insert'],
 	})
-	exercises: SessionExercise[];
+	exercises: LoggedExercise[];
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
 	createdAt: Date;

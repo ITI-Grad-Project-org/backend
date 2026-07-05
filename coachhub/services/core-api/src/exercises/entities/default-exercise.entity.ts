@@ -13,8 +13,8 @@ import { EquipmentType, ExerciseCategory, MuscleGroup } from '../../common';
  * exposed to coach-facing endpoints. Its only job is to be COPIED into a new
  * tenant's `exercises` library at tenant creation.
  */
-@Entity('exercise_seeds')
-export class ExerciseSeed {
+@Entity('default_exercises')
+export class DefaultExercise {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -73,7 +73,7 @@ export class ExerciseSeed {
 	})
 	instructionSteps: string[];
 
-	/** FALSE = stop seeding into NEW tenants (existing copies are untouched). */
+	/** FALSE = stop copying into NEW tenants (existing copies are untouched). */
 	@Column({ name: 'is_active', default: true })
 	isActive: boolean;
 

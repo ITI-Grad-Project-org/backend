@@ -151,7 +151,7 @@ export class CoachesService {
 			        s.demo_gif_url,
 			        s.thumbnail_url,
 			        s.instruction_steps
-			 FROM exercise_seeds s
+			 FROM default_exercises s
 			 WHERE s.is_active`,
 			[tenantId],
 		);

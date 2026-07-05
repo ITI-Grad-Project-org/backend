@@ -10,14 +10,14 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Coach } from '../../coaches/entities/coach.entity';
-import { ExerciseSeed } from './exercise-seed.entity';
+import { DefaultExercise } from './default-exercise.entity';
 import { EquipmentType, ExerciseCategory, MuscleGroup } from '../../common';
 
 /**
  * Per-coach exercise library (design §4.2) — definition only, NO sets/reps/
- * weight; the prescription lives on `workout_exercises`. Every exercise
- * belongs to exactly one tenant; seeds are copied in at tenant creation and
- * the coach owns his copies outright.
+ * weight; the prescription lives on `planned_exercises`. Every exercise
+ * belongs to exactly one tenant; default exercises are copied in at tenant
+ * creation and the coach owns his copies outright.
  */
 @Entity('exercises')
 @Index('ux_exercises_tenant_name', ['tenantId', 'name'], { unique: true })
@@ -39,9 +39,9 @@ export class Exercise {
 	createdBy: Coach | null;
 
 	/** Lineage back to the system starter set. */
-	@ManyToOne(() => ExerciseSeed, { nullable: true, onDelete: 'SET NULL' })
+	@ManyToOne(() => DefaultExercise, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'source_seed_id' })
-	sourceSeed: ExerciseSeed | null;
+	sourceSeed: DefaultExercise | null;
 
 	@Column({ length: 150 })
 	name: string;

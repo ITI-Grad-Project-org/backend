@@ -6,21 +6,21 @@ import {
 	PrimaryGeneratedColumn,
 	Unique,
 } from 'typeorm';
-import { SessionExercise } from './session-exercise.entity';
+import { LoggedExercise } from './logged-exercise.entity';
 import { numericTransformer } from '../../../common';
 
-@Entity('set_logs')
-@Unique(['sessionExercise', 'setNumber'])
-export class SetLog {
+@Entity('logged_sets')
+@Unique(['loggedExercise', 'setNumber'])
+export class LoggedSet {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@ManyToOne(() => SessionExercise, (exercise) => exercise.setLogs, {
+	@ManyToOne(() => LoggedExercise, (exercise) => exercise.sets, {
 		nullable: false,
 		onDelete: 'CASCADE',
 	})
-	@JoinColumn({ name: 'session_exercise_id' })
-	sessionExercise: SessionExercise;
+	@JoinColumn({ name: 'logged_exercise_id' })
+	loggedExercise: LoggedExercise;
 
 	@Column({ name: 'set_number', type: 'smallint' })
 	setNumber: number;

@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { ProgramWeek } from './program-week.entity';
-import { WorkoutExercise } from './workout-exercise.entity';
+import { PlannedExercise } from './planned-exercise.entity';
 
 @Entity('program_days')
 @Unique(['programWeek', 'dayNumber'])
@@ -50,6 +50,6 @@ export class ProgramDay {
 	@Column({ type: 'text', nullable: true })
 	notes: string | null;
 
-	@OneToMany(() => WorkoutExercise, (exercise) => exercise.programDay)
-	exercises: WorkoutExercise[];
+	@OneToMany(() => PlannedExercise, (exercise) => exercise.programDay)
+	exercises: PlannedExercise[];
 }

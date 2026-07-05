@@ -14,10 +14,10 @@ import { Meal } from './meal.entity';
 import { Food } from './food.entity';
 import { MealSlot, numericTransformer } from '../../../common';
 
-@Entity('plan_meals')
+@Entity('planned_meals')
 @Unique(['mealPlanDay', 'slot', 'position'])
-@Index('ix_plan_meals_day', ['mealPlanDayId', 'slot'])
-export class PlanMeal {
+@Index('ix_planned_meals_day', ['mealPlanDayId', 'slot'])
+export class PlannedMeal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -67,26 +67,26 @@ export class PlanMeal {
 	@Column({ name: 'coach_notes', type: 'text', nullable: true })
 	coachNotes: string | null;
 
-	@OneToMany(() => PlanMealItem, (item) => item.planMeal, {
+	@OneToMany(() => PlannedMealFood, (item) => item.plannedMeal, {
 		cascade: ['insert'],
 	})
-	items: PlanMealItem[];
+	items: PlannedMealFood[];
 }
 
-@Entity('plan_meal_items')
-export class PlanMealItem {
+@Entity('planned_meal_foods')
+export class PlannedMealFood {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column({ name: 'plan_meal_id', type: 'uuid' })
-	planMealId: string;
+	@Column({ name: 'planned_meal_id', type: 'uuid' })
+	plannedMealId: string;
 
-	@ManyToOne(() => PlanMeal, (planMeal) => planMeal.items, {
+	@ManyToOne(() => PlannedMeal, (plannedMeal) => plannedMeal.items, {
 		nullable: false,
 		onDelete: 'CASCADE',
 	})
-	@JoinColumn({ name: 'plan_meal_id' })
-	planMeal: PlanMeal;
+	@JoinColumn({ name: 'planned_meal_id' })
+	plannedMeal: PlannedMeal;
 
 	@Column({ name: 'food_id', type: 'uuid' })
 	foodId: string;

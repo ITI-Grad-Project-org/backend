@@ -6,7 +6,6 @@ import { ClientModule } from './clients/client.module';
 import { PlansModule } from './plans/plans.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { AiModule } from './ai/ai.module';
-import { EventsModule } from './events/events.module';
 import { HealthModule } from './health/health.module';
 import { CoachesModule } from './coaches/coaches.module';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -31,7 +30,6 @@ import { JwtAuthGuard } from './auth';
 		PlansModule,
 		MessagingModule,
 		AiModule,
-		EventsModule,
 		HealthModule,
 		CoachesModule,
 		TenantModule,

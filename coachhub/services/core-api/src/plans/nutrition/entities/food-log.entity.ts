@@ -11,9 +11,10 @@ import { ClientMembership } from '../../../clients/entities/client-membership.en
 import { Food } from './food.entity';
 import { MealSlot, numericTransformer } from '../../../common';
 
-@Entity('nutrition_logs')
-@Index('ix_nutrition_logs_day', ['membershipId', 'loggedAt'])
-export class NutritionLog {
+/** The client's food diary. */
+@Entity('food_logs')
+@Index('ix_food_logs_day', ['membershipId', 'loggedAt'])
+export class FoodLog {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 

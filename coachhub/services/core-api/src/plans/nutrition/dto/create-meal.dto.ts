@@ -29,7 +29,7 @@ export class MealItemDto {
 	quantity: number;
 }
 
-/** Design §7.5 → meal_library + meal_library_items. */
+/** Design §7.5 → meals + meal_ingredients. */
 export class CreateMealDto {
 	@ApiProperty({ example: 'Chicken & Rice Bowl' })
 	@IsString()

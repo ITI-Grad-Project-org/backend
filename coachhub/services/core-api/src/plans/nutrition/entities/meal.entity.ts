@@ -14,7 +14,7 @@ import { Coach } from '../../../coaches/entities/coach.entity';
 import { Food } from './food.entity';
 import { numericTransformer } from '../../../common';
 
-@Entity('meal_library')
+@Entity('meals')
 @Unique(['tenant', 'name'])
 export class Meal {
 	@PrimaryGeneratedColumn('uuid')
@@ -46,10 +46,10 @@ export class Meal {
 	@Column({ name: 'is_active', default: true })
 	isActive: boolean;
 
-	@OneToMany(() => MealLibraryItem, (item) => item.meal, {
+	@OneToMany(() => MealIngredient, (ingredient) => ingredient.meal, {
 		cascade: ['insert'],
 	})
-	items: MealLibraryItem[];
+	ingredients: MealIngredient[];
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
 	createdAt: Date;
@@ -58,15 +58,15 @@ export class Meal {
 	updatedAt: Date;
 }
 
-@Entity('meal_library_items')
-export class MealLibraryItem {
+@Entity('meal_ingredients')
+export class MealIngredient {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
 	@Column({ name: 'meal_id', type: 'uuid' })
 	mealId: string;
 
-	@ManyToOne(() => Meal, (meal) => meal.items, {
+	@ManyToOne(() => Meal, (meal) => meal.ingredients, {
 		nullable: false,
 		onDelete: 'CASCADE',
 	})

@@ -16,7 +16,7 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SessionStatus } from 'src/common';
 
-export class SetLogDto {
+export class LoggedSetDto {
 	@ApiProperty({ example: 1 })
 	@IsInt()
 	@Min(1)
@@ -53,7 +53,7 @@ export class SetLogDto {
 	isCompleted?: boolean;
 }
 
-export class SessionExerciseDto {
+export class LoggedExerciseDto {
 	@ApiProperty({
 		format: 'uuid',
 		description: 'The library exercise performed',
@@ -63,25 +63,25 @@ export class SessionExerciseDto {
 
 	@ApiPropertyOptional({
 		format: 'uuid',
-		description: 'Prescription (workout_exercises row) this was following',
+		description: 'Prescription (planned_exercises row) this was following',
 	})
 	@IsOptional()
 	@IsUUID()
-	workoutExerciseId?: string;
+	plannedExerciseId?: string;
 
 	@ApiProperty({ example: 1 })
 	@IsInt()
 	@Min(1)
 	position: number;
 
-	@ApiProperty({ type: [SetLogDto] })
+	@ApiProperty({ type: [LoggedSetDto] })
 	@ValidateNested({ each: true })
-	@Type(() => SetLogDto)
+	@Type(() => LoggedSetDto)
 	@ArrayMinSize(1)
-	setLogs: SetLogDto[];
+	sets: LoggedSetDto[];
 }
 
-export class LogSessionDto {
+export class LogWorkoutDto {
 	@ApiPropertyOptional({
 		format: 'uuid',
 		description: 'Active program assignment (omit for ad-hoc sessions)',
@@ -92,7 +92,7 @@ export class LogSessionDto {
 
 	@ApiPropertyOptional({
 		format: 'uuid',
-		description: 'Planned board day this session fulfils (omit = ad-hoc)',
+		description: 'Planned board day this workout fulfils (omit = ad-hoc)',
 	})
 	@IsOptional()
 	@IsUUID()
@@ -122,9 +122,9 @@ export class LogSessionDto {
 	@IsString()
 	clientNotes?: string;
 
-	@ApiProperty({ type: [SessionExerciseDto] })
+	@ApiProperty({ type: [LoggedExerciseDto] })
 	@ValidateNested({ each: true })
-	@Type(() => SessionExerciseDto)
+	@Type(() => LoggedExerciseDto)
 	@ArrayMinSize(1)
-	exercises: SessionExerciseDto[];
+	exercises: LoggedExerciseDto[];
 }

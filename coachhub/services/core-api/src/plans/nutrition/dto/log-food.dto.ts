@@ -12,7 +12,8 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MealSlot } from 'src/common';
 
-export class LogNutritionDto {
+/** One food-diary entry → `food_logs`. */
+export class LogFoodDto {
 	@ApiProperty({ enum: MealSlot, example: MealSlot.BREAKFAST })
 	@IsEnum(MealSlot)
 	mealType: MealSlot;
