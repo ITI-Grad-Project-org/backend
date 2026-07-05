@@ -1,8 +1,8 @@
 import { JwtPayload } from 'jsonwebtoken';
 
 export interface AuthPayload extends JwtPayload {
-	userId: number;
+	userId: string;
 	email: string;
-	tenantId: number;
+	tenantId: string;
 	type: 'tenant-user';
 }

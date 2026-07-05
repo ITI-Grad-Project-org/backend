@@ -1,9 +1,9 @@
 import { Controller } from '@nestjs/common';
-import { AiService }  from './ai.service';
+import { AiService } from './ai.service';
 
-@Controller( 'ai' )
+@Controller('ai')
 export class AiController {
-	constructor ( private readonly aiService: AiService ) {}
+	constructor(private readonly aiService: AiService) {}
 
 	// @Post()
 	// async request ( @Body() body: { kind: string; prompt: string } ) {
@@ -16,5 +16,4 @@ export class AiController {
 	// 		prompt: body.prompt,
 	// 	} );
 	// }
-
 }
