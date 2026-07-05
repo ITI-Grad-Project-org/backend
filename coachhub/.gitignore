@@ -6,6 +6,7 @@ dist/
 .env.production
 .env.*
 *.local
+docs
 
 # Java / Maven
 application-local.yml
@@ -27,6 +28,7 @@ target/
 *.ntvs*
 *.njsproj
 *.sln
+.editorconfig
 
 # OS
 .DS_Store
@@ -42,3 +44,4 @@ logs/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+

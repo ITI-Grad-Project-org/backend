@@ -1,36 +1,45 @@
 import {
 	Column,
 	CreateDateColumn,
-	DeleteDateColumn,
 	Entity,
-	OneToOne,
+	JoinColumn,
+	ManyToOne,
 	PrimaryGeneratedColumn,
-	UpdateDateColumn
-}               from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+	UpdateDateColumn,
+} from 'typeorm';
+import { Coach } from '../../coaches/entities/coach.entity';
 
-@Entity()
+@Entity('tenants')
 export class Tenant {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
 
-	@Column( { nullable: false } )
+	@ManyToOne(() => Coach, (coach) => coach.tenants, { nullable: false })
+	@JoinColumn({ name: 'owner_coach_id' })
+	ownerCoach: Coach;
+
+	/** Business/brand name shown to clients. */
+	@Column({ length: 150 })
 	name: string;
 
-	@Column( { nullable: false, unique: true } )
+	@Column({ unique: true })
 	slug: string;
 
-	@CreateDateColumn()
-	created_at: Date;
+	@Column({ name: 'logo_url', type: 'text', nullable: true })
+	logoUrl: string | null;
 
-	@UpdateDateColumn()
-	updated_at: Date;
+	@Column({ length: 64, default: 'Africa/Cairo' })
+	timezone: string;
 
-	@DeleteDateColumn()
-	deleted_at: Date;
+	@Column({ type: 'char', length: 3, default: 'EGP' })
+	currency: string;
 
-	@OneToOne( () => User, ( user ) => user.tenant )
-	user: User;
+	@Column({ type: 'jsonb', default: () => `'{}'` })
+	settings: Record<string, unknown>;
+
+	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+	createdAt: Date;
+
+	@UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+	updatedAt: Date;
 }
-
-
