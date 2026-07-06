@@ -1,23 +1,23 @@
-import { Module }               from '@nestjs/common';
-import { TypeOrmModule }         from '@nestjs/typeorm';
-import { InvitationService }     from './invitation.service';
-import { InvitationController }  from './invitation.controller';
-import { Invitation }           from './entities/invitation.entity';
-import { MessagingModule }       from '../messaging/messaging.module';
-import { ConfigModule }          from '../config';
-import { UsersModule }           from '../users/users.module';
-import { ClientModule }          from '../clients/client.module';
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { InvitationService } from './invitation.service';
+import { InvitationController } from './invitation.controller';
+import { Invitation } from './entities/invitation.entity';
+import { MessagingModule } from '../messaging/messaging.module';
+import { ConfigModule } from '../config';
+import { CoachesModule } from '../coaches/coaches.module';
+import { ClientModule } from '../clients/client.module';
 
-@Module( {
-	controllers: [ InvitationController ],
-	providers: [ InvitationService ],
+@Module({
+	controllers: [InvitationController],
+	providers: [InvitationService],
 	imports: [
-		TypeOrmModule.forFeature( [ Invitation ] ),
+		TypeOrmModule.forFeature([Invitation]),
 		MessagingModule,
 		ConfigModule,
-		UsersModule,
+		CoachesModule,
 		ClientModule,
 	],
-	exports: [ InvitationService ],
-} )
+	exports: [InvitationService],
+})
 export class InvitationModule {}

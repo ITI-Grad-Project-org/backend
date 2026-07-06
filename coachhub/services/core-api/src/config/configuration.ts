@@ -1,7 +1,7 @@
-export default () => ( {
+export default () => ({
 	app: {
 		nodeEnv: process.env.NODE_ENV || 'development',
-		port: parseInt( process.env.PORT as string, 10 ) || 3000,
+		port: parseInt(process.env.PORT as string, 10) || 3000,
 		apiPrefix: process.env.API_PREFIX || 'api',
 		frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 	},
@@ -24,6 +24,12 @@ export default () => ( {
 		},
 	},
 
+	ai: {
+		geminiApiKey: process.env.GEMINI_API_KEY,
+		aiRequestTimeoutMs:
+			parseInt(process.env.AI_REQUEST_TIMEOUT_MS as string, 10) || 30000,
+	},
+
 	aws: {
 		region: process.env.AWS_REGION || 'us-east-1',
 		accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -40,21 +46,21 @@ export default () => ( {
 	googleOauth: {
 		clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
 	},
-	
+
 	imageTypes: {
 		coach: {
 			width: 400,
 			height: 400,
 			maxSizeKB: 512,
 			path: 'coaches',
-			allowedMimeTypes: [ 'image/jpeg', 'image/png', 'image/webp' ],
+			allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
 		},
 		client: {
 			width: 800,
 			height: 600,
 			maxSizeKB: 1024,
 			path: 'clients',
-			allowedMimeTypes: [ 'image/jpeg', 'image/png', 'image/webp' ],
+			allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
 		},
 	},
-} );
+});

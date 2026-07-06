@@ -1,4 +1,5 @@
 {
+  "_path": "contracts/events.json",
   "_comment": "CoachHub event contract. messageType doubles as the RabbitMQ routing key on the 'coachhub.events' topic exchange. Every message is the envelope below with a typed 'payload'.",
   "exchange": {
     "name": "coachhub.events",
@@ -119,6 +120,7 @@
         "requestId": "string (UUID)",
         "clientId": "string (UUID)",
         "coachId": "string (UUID)",
+        "coachEmail": "string (email)",
         "kind": "string (e.g. plan_suggestion | form_review)",
         "prompt": "string"
       }

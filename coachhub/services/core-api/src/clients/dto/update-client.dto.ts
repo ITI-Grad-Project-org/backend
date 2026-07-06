@@ -1,52 +1,75 @@
-import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsDateString,
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsPhoneNumber,
-  IsString,
-  IsUrl,
-  Min,
+	IsDateString,
+	IsEmail,
+	IsEnum,
+	IsNumber,
+	IsOptional,
+	IsPhoneNumber,
+	IsString,
+	IsUrl,
+	Max,
+	MaxLength,
+	Min,
+	MinLength,
+	Validate,
 } from 'class-validator';
-import { CreateClientDto } from './create-client.dto';
-import { Gender } from '../enums/gender.enum';
+import { Gender, MatchConstraint } from 'src/common';
 
-export class UpdateClientDto extends PartialType(CreateClientDto) {
-  @ApiPropertyOptional({ example: 'alice_smith' })
-  @IsOptional()
-  @IsString()
-  username?: string;
+export class UpdateClientDto {
+	@ApiPropertyOptional({ example: 'Alice' })
+	@IsOptional()
+	@IsString()
+	@MaxLength(100)
+	firstName?: string;
 
-  @ApiPropertyOptional({ example: '+966500000000' })
-  @IsOptional()
-  @IsPhoneNumber()
-  phoneNumber?: string;
+	@ApiPropertyOptional({ example: 'Smith' })
+	@IsOptional()
+	@IsString()
+	@MaxLength(100)
+	lastName?: string;
 
-  @ApiPropertyOptional({ enum: Gender, example: Gender.FEMALE })
-  @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
+	@ApiPropertyOptional({ example: 'alice@example.com' })
+	@IsOptional()
+	@IsEmail()
+	email?: string;
 
-  @ApiPropertyOptional({ example: '1995-05-20' })
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string;
+	@ApiPropertyOptional({ example: '+201000000000' })
+	@IsOptional()
+	@IsPhoneNumber()
+	phone?: string;
 
-  @ApiPropertyOptional({ example: 170 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  height?: number;
+	@ApiPropertyOptional({ example: 'newPassword123', minLength: 6 })
+	@IsOptional()
+	@IsString()
+	@MinLength(6)
+	password?: string;
 
-  @ApiPropertyOptional({ example: 70 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  weight?: number;
+	@ApiPropertyOptional({ example: 'newPassword123' })
+	@IsOptional()
+	@IsString()
+	@Validate(MatchConstraint, ['password'])
+	confirmPassword?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsUrl()
-  profilePicture?: string;
+	@ApiPropertyOptional({ example: 'https://cdn.coachhub.app/clients/a.png' })
+	@IsOptional()
+	@IsUrl()
+	avatarUrl?: string;
+
+	@ApiPropertyOptional({ example: '1998-04-12' })
+	@IsOptional()
+	@IsDateString()
+	dateOfBirth?: string;
+
+	@ApiPropertyOptional({ enum: Gender, example: Gender.FEMALE })
+	@IsOptional()
+	@IsEnum(Gender)
+	gender?: Gender;
+
+	@ApiPropertyOptional({ example: 168.5 })
+	@IsOptional()
+	@IsNumber()
+	@Min(50)
+	@Max(300)
+	heightCm?: number;
 }

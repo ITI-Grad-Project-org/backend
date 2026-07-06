@@ -1,5 +1,36 @@
 import { Injectable } from '@nestjs/common';
+import { EventPublisherService } from '../messaging/event-publisher.service';
+import { randomUUID } from 'node:crypto';
+import { AiRequestedPayload, EventType } from '../messaging/events';
 
-// TODO: implement async job-ticket dispatch to ai-service via RabbitMQ (ai.requested event)
+interface RequestAiInput {
+	tenantId: string;
+	clientId: string;
+	coachId: string;
+	coachEmail: string;
+	kind: string;
+	prompt: string;
+}
+
 @Injectable()
-export class AiService {}
+export class AiService {
+	constructor(private readonly event: EventPublisherService) {}
+
+	async dispatch(input: RequestAiInput) {
+		const requestId = randomUUID();
+		const payload: AiRequestedPayload = {
+			requestId,
+			clientId: input.clientId,
+			coachId: input.coachId,
+			coachEmail: input.coachEmail,
+			kind: input.kind,
+			prompt: input.prompt,
+		};
+
+		await this.event.publish(EventType.AI_REQUESTED, payload, {
+			tenantId: input.tenantId,
+		});
+
+		return requestId;
+	}
+}

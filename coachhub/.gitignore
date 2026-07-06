@@ -6,8 +6,11 @@ dist/
 .env.production
 .env.*
 *.local
+docs
 
 # Java / Maven
+application-local.yml
+application-local.yaml
 target/
 *.class
 *.jar
@@ -25,6 +28,7 @@ target/
 *.ntvs*
 *.njsproj
 *.sln
+.editorconfig
 
 # OS
 .DS_Store

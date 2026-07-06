@@ -51,6 +51,11 @@ export interface GoogleOAuthConfig {
 	clientId: string;
 }
 
+export interface AiConfig {
+	geminiApiKey: string;
+	aiRequestTimeoutMs: number;
+}
+
 export interface Config {
 	app: AppConfig;
 	database: DatabaseConfig;
@@ -59,4 +64,5 @@ export interface Config {
 	aws: AwsConfig;
 	imageTypes: ImageTypes;
 	googleOauth: GoogleOAuthConfig;
+	ai: AiConfig;
 }

@@ -1,130 +1,176 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserStatus } from '../auth';
+import { MembershipStatus } from '../common';
+import { LogMeasurementDto } from '../measurements/dto/log-measurement.dto';
+import { Measurement } from '../measurements/entities/measurement.entity';
 import { UpdateClientMembershipProfileDto } from './dto/update-client-membership-profile.dto';
+import { ClientIntake } from './entities/client-intake.entity';
 import { ClientMembership } from './entities/client-membership.entity';
 
 @Injectable()
 export class ClientMembershipService {
-  constructor(
-    @InjectRepository(ClientMembership)
-    private readonly membershipRepository: Repository<ClientMembership>,
-  ) {}
+	constructor(
+		@InjectRepository(ClientMembership)
+		private readonly membershipRepository: Repository<ClientMembership>,
+		@InjectRepository(ClientIntake)
+		private readonly intakeRepository: Repository<ClientIntake>,
+		@InjectRepository(Measurement)
+		private readonly measurementRepository: Repository<Measurement>,
+	) {}
 
-  /**
-   * Every tenant the client is linked to, regardless of status, ordered by
-   * most recently active. Used to render the "switch tenant" picker.
-   */
-  findMemberships(clientId: number): Promise<ClientMembership[]> {
-    return this.membershipRepository.find({
-      where: { client: { id: clientId } },
-      relations: { tenant: true },
-      order: { lastActiveAt: 'DESC', invitedAt: 'DESC' },
-    });
-  }
+	findMemberships(clientId: string): Promise<ClientMembership[]> {
+		return this.membershipRepository.find({
+			where: { client: { id: clientId } },
+			relations: { tenant: true },
+			order: { lastActiveAt: 'DESC', createdAt: 'DESC' },
+		});
+	}
 
-  findMembership(
-    clientId: number,
-    tenantId: number,
-  ): Promise<ClientMembership | null> {
-    return this.membershipRepository.findOne({
-      where: { client: { id: clientId }, tenant: { id: tenantId } },
-      relations: { tenant: true },
-    });
-  }
+	findMembership(
+		clientId: string,
+		tenantId: string,
+	): Promise<ClientMembership | null> {
+		return this.membershipRepository.findOne({
+			where: { client: { id: clientId }, tenant: { id: tenantId } },
+			relations: { tenant: true, client: true },
+		});
+	}
 
-  /**
-   * Every client linked to a tenant, with the client identity loaded. This is
-   * the tenant-scoped "my clients" list a coach sees — it can only ever return
-   * clients that belong to the caller's own tenant.
-   */
-  findTenantMembers(tenantId: number): Promise<ClientMembership[]> {
-    return this.membershipRepository.find({
-      where: { tenant: { id: tenantId } },
-      relations: { client: true },
-      order: { invitedAt: 'DESC' },
-    });
-  }
+	findById(membershipId: string): Promise<ClientMembership | null> {
+		return this.membershipRepository.findOne({
+			where: { id: membershipId },
+			relations: { tenant: true, client: true },
+		});
+	}
 
-  /**
-   * A single client's membership within a tenant, with the client identity
-   * loaded. Returns `null` when the client is not a member of that tenant,
-   * which callers translate into a 404 so tenants cannot probe each other.
-   */
-  findTenantMember(
-    tenantId: number,
-    clientId: number,
-  ): Promise<ClientMembership | null> {
-    return this.membershipRepository.findOne({
-      where: { tenant: { id: tenantId }, client: { id: clientId } },
-      relations: { client: true },
-    });
-  }
+	findTenantMembers(tenantId: string): Promise<ClientMembership[]> {
+		return this.membershipRepository.find({
+			where: { tenant: { id: tenantId } },
+			relations: { client: true },
+			order: { createdAt: 'DESC' },
+		});
+	}
 
-  /** Removes a client from a single tenant without touching other tenants. */
-  removeFromTenant(membershipId: number) {
-    return this.membershipRepository.softDelete(membershipId);
-  }
+	findTenantMember(
+		tenantId: string,
+		clientId: string,
+	): Promise<ClientMembership | null> {
+		return this.membershipRepository.findOne({
+			where: { tenant: { id: tenantId }, client: { id: clientId } },
+			relations: { client: true, tenant: true },
+		});
+	}
 
-  async updateClientOwnTenantProfile(
-    clientId: number,
-    tenantId: number,
-    dto: UpdateClientMembershipProfileDto,
-  ): Promise<ClientMembership | null> {
-    const membership = await this.findMembership(clientId, tenantId);
-    if (!membership) {
-      return null;
-    }
+	removeFromTenant(membershipId: string) {
+		return this.membershipRepository.softDelete(membershipId);
+	}
 
-    Object.assign(membership, dto);
-    return this.membershipRepository.save(membership);
-  }
+	async updateClientOwnTenantProfile(
+		clientId: string,
+		tenantId: string,
+		dto: UpdateClientMembershipProfileDto,
+	) {
+		const membership = await this.findMembership(clientId, tenantId);
+		if (!membership) {
+			return null;
+		}
 
-  /**
-   * The tenant a freshly-authenticated client should land in: the most
-   * recently active membership that is currently active. Returns `null` when
-   * the client has no usable membership yet (e.g. only pending invitations).
-   */
-  async resolveDefaultTenantId(clientId: number): Promise<number | null> {
-    const membership = await this.membershipRepository.findOne({
-      where: { client: { id: clientId }, status: UserStatus.ACTIVE },
-      relations: { tenant: true },
-      order: { lastActiveAt: 'DESC', invitedAt: 'DESC' },
-    });
+		const { measurement, ...intakeDto } = dto;
+		const intake = await this.upsertIntake(membership, intakeDto);
+		const savedMeasurement = measurement
+			? await this.upsertMeasurement(membership, measurement)
+			: null;
 
-    return membership?.tenant?.id ?? null;
-  }
+		return {
+			membership,
+			intake,
+			measurement: savedMeasurement,
+		};
+	}
 
-  /**
-   * Links a client to a tenant. Used when seeding and, later, when an
-   * invitation is accepted. Defaults to PENDING so an invite must be accepted
-   * before the client can switch into the tenant.
-   */
-  async createMembership(
-    clientId: number,
-    tenantId: number,
-    status: UserStatus = UserStatus.PENDING,
-  ): Promise<ClientMembership> {
-    const existing = await this.findMembership(clientId, tenantId);
-    if (existing) {
-      throw new BadRequestException(
-        'Client is already a member of this tenant',
-      );
-    }
+	async resolveDefaultTenantId(clientId: string): Promise<string | null> {
+		const membership = await this.membershipRepository.findOne({
+			where: { client: { id: clientId }, status: MembershipStatus.ACTIVE },
+			relations: { tenant: true },
+			order: { lastActiveAt: 'DESC', createdAt: 'DESC' },
+		});
 
-    const membership = this.membershipRepository.create({
-      client: { id: clientId },
-      tenant: { id: tenantId },
-      status,
-      joinedAt: status === UserStatus.ACTIVE ? new Date() : null,
-    });
-    return this.membershipRepository.save(membership);
-  }
+		return membership?.tenant?.id ?? null;
+	}
 
-  markActiveNow(membershipId: number) {
-    return this.membershipRepository.update(membershipId, {
-      lastActiveAt: new Date(),
-    });
-  }
+	async createMembership(
+		clientId: string,
+		tenantId: string,
+		status: MembershipStatus = MembershipStatus.INVITED,
+	): Promise<ClientMembership> {
+		const existing = await this.findMembership(clientId, tenantId);
+		if (existing) {
+			throw new BadRequestException(
+				'Client is already a member of this tenant',
+			);
+		}
+
+		const membership = this.membershipRepository.create({
+			client: { id: clientId },
+			tenant: { id: tenantId },
+			status,
+			joinedAt: status === MembershipStatus.ACTIVE ? new Date() : null,
+		});
+		return this.membershipRepository.save(membership);
+	}
+
+	markActiveNow(membershipId: string) {
+		return this.membershipRepository.update(membershipId, {
+			lastActiveAt: new Date(),
+		});
+	}
+
+	private async upsertIntake(
+		membership: ClientMembership,
+		dto: Omit<UpdateClientMembershipProfileDto, 'measurement'>,
+	) {
+		if (!Object.keys(dto).length) {
+			return this.intakeRepository.findOne({
+				where: { membership: { id: membership.id } },
+			});
+		}
+
+		const existing = await this.intakeRepository.findOne({
+			where: { membership: { id: membership.id } },
+		});
+		const intake = existing ?? this.intakeRepository.create({
+			membership: { id: membership.id },
+			tenant: { id: membership.tenant.id },
+		});
+
+		Object.assign(intake, dto);
+		return this.intakeRepository.save(intake);
+	}
+
+	private async upsertMeasurement(
+		membership: ClientMembership,
+		dto: Omit<LogMeasurementDto, 'membershipId'>,
+	) {
+		const measuredAt = dto.measuredAt ?? new Date().toISOString().slice(0, 10);
+		const existing = await this.measurementRepository.findOne({
+			where: {
+				membership: { id: membership.id },
+				measuredAt,
+			},
+		});
+		const measurement = existing ?? this.measurementRepository.create({
+			membership: { id: membership.id },
+			membershipId: membership.id,
+			tenant: { id: membership.tenant.id },
+			tenantId: membership.tenant.id,
+			measuredAt,
+		});
+
+		Object.assign(measurement, {
+			...dto,
+			measuredAt,
+		});
+		return this.measurementRepository.save(measurement);
+	}
 }

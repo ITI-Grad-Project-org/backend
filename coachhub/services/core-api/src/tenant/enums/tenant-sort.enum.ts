@@ -1,5 +1,5 @@
 export enum TenantSort {
-  NEWEST = 'newest',
-  OLDEST = 'oldest',
-  NAME = 'name',
+	NEWEST = 'newest',
+	OLDEST = 'oldest',
+	NAME = 'name',
 }

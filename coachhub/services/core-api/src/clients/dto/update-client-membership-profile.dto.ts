@@ -1,151 +1,141 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsArray,
-  IsBoolean,
-  IsDateString,
-  IsNumber,
-  IsObject,
-  IsOptional,
-  IsString,
-  IsUrl,
-  Max,
-  Min,
-  ValidateNested,
+	IsArray,
+	IsDateString,
+	IsEnum,
+	IsNumber,
+	IsOptional,
+	IsString,
+	IsUrl,
+	Max,
+	Min,
+	ValidateNested,
 } from 'class-validator';
+import {
+	ActivityLevel,
+	DietaryPreference,
+	EquipmentType,
+	FitnessGoal,
+	TrainingExperience,
+} from '../../common';
 
-class ClientHealthRecordDto {
-  @ApiPropertyOptional()
-  @IsString()
-  name: string;
+class ClientMeasurementDto {
+	@ApiPropertyOptional({ example: '2026-07-03' })
+	@IsOptional()
+	@IsDateString()
+	measuredAt?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  notes?: string;
+	@ApiPropertyOptional({ example: 82.5 })
+	@IsOptional()
+	@IsNumber()
+	@Min(20)
+	@Max(500)
+	weightKg?: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  severity?: string;
+	@ApiPropertyOptional({ example: 18.5 })
+	@IsOptional()
+	@IsNumber()
+	@Min(1)
+	@Max(80)
+	bodyFatPct?: number;
 
-  @ApiPropertyOptional({ example: '2026-06-28' })
-  @IsOptional()
-  @IsDateString()
-  diagnosedAt?: string;
+	@ApiPropertyOptional({ example: 102 })
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	chestCm?: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
+	@ApiPropertyOptional({ example: 84 })
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	waistCm?: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  bodyPart?: string;
-}
+	@ApiPropertyOptional({ example: 98 })
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	hipsCm?: number;
 
-class ClientImageLibraryItemDto {
-  @ApiPropertyOptional()
-  @IsUrl()
-  url: string;
+	@ApiPropertyOptional({ example: 36 })
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	armCm?: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  description?: string;
-}
+	@ApiPropertyOptional({ example: 58 })
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	thighCm?: number;
 
-class ClientBodyMeasurementDto {
-  @ApiPropertyOptional({ example: '2026-06-28' })
-  @IsString()
-  measuredAt: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  weight?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  bodyFatPercentage?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  muscleMass?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  muscleRatio?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  notes?: string;
+	@ApiPropertyOptional({ type: [String] })
+	@IsOptional()
+	@IsArray()
+	@IsUrl({}, { each: true })
+	photos?: string[];
 }
 
 export class UpdateClientMembershipProfileDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  fitnessGoal?: string;
+	@ApiPropertyOptional({ enum: FitnessGoal })
+	@IsOptional()
+	@IsEnum(FitnessGoal)
+	goal?: FitnessGoal;
 
-  @ApiPropertyOptional({ type: [ClientHealthRecordDto] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ClientHealthRecordDto)
-  injuryRecords?: ClientHealthRecordDto[];
+	@ApiPropertyOptional({ enum: ActivityLevel })
+	@IsOptional()
+	@IsEnum(ActivityLevel)
+	activityLevel?: ActivityLevel;
 
-  @ApiPropertyOptional({ type: [ClientHealthRecordDto] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ClientHealthRecordDto)
-  chronicDiseases?: ClientHealthRecordDto[];
+	@ApiPropertyOptional({ enum: TrainingExperience })
+	@IsOptional()
+	@IsEnum(TrainingExperience)
+	trainingExperience?: TrainingExperience;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  fitnessLevel?: string;
+	@ApiPropertyOptional({ example: 4 })
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	@Max(7)
+	trainingDaysPerWeek?: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(7)
-  trainingDaysPerWeek?: number;
+	@ApiPropertyOptional({ enum: EquipmentType, isArray: true })
+	@IsOptional()
+	@IsArray()
+	@IsEnum(EquipmentType, { each: true })
+	availableEquipment?: EquipmentType[];
 
-  @ApiPropertyOptional({ type: [ClientImageLibraryItemDto] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ClientImageLibraryItemDto)
-  imageLibrary?: ClientImageLibraryItemDto[];
+	@ApiPropertyOptional({ enum: DietaryPreference, isArray: true })
+	@IsOptional()
+	@IsArray()
+	@IsEnum(DietaryPreference, { each: true })
+	dietaryPreferences?: DietaryPreference[];
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsObject()
-  trainingPreferences?: Record<string, unknown>;
+	@ApiPropertyOptional({ type: [String] })
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	allergies?: string[];
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsObject()
-  foodPreferences?: Record<string, unknown>;
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsString()
+	medicalConditions?: string;
 
-  @ApiPropertyOptional({ type: [ClientBodyMeasurementDto] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ClientBodyMeasurementDto)
-  bodyMeasurements?: ClientBodyMeasurementDto[];
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsString()
+	injuries?: string;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsString()
+	notes?: string;
+
+	@ApiPropertyOptional({ type: ClientMeasurementDto })
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => ClientMeasurementDto)
+	measurement?: ClientMeasurementDto;
 }

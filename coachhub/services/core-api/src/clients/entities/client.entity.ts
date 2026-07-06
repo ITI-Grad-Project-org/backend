@@ -1,82 +1,94 @@
 import {
-  Column,
-  CreateDateColumn,
-  DeleteDateColumn,
-  Entity,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+	Column,
+	CreateDateColumn,
+	DeleteDateColumn,
+	Entity,
+	OneToMany,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
 } from 'typeorm';
+import { Gender, numericTransformer } from '../../common';
 import { ClientMembership } from './client-membership.entity';
-import { Gender } from '../enums/gender.enum';
 
-/**
- * Global identity of a client (the person being coached).
- *
- * A client exists independently of any tenant; their relationship to a tenant
- * is expressed through {@link ClientMembership} rows. This lets the same client
- * be invited into multiple tenants and switch between them, while per-tenant
- * concerns (status, block reason) live on the membership.
- */
-@Entity()
+@Entity('clients')
 export class Client {
-  @PrimaryGeneratedColumn()
-  id: number;
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
 
-  @Column()
-  name: string;
+	@Column({ unique: true })
+	email: string;
 
-  @Column({ unique: true })
-  email: string;
+	@Column({ length: 20, unique: true, nullable: true })
+	phone: string | null;
 
-  @Column({ nullable: true, unique: true })
-  username: string;
+	@Column({
+		name: 'password_hash',
+		type: 'text',
+		nullable: true,
+		select: false,
+	})
+	password: string | null;
 
-  @Column({ nullable: true, select: false })
-  password: string;
+	@Column({ name: 'first_name', length: 100 })
+	firstName: string;
 
-  @Column({ nullable: true, unique: true })
-  googleId: string;
+	@Column({ name: 'last_name', length: 100, default: '' })
+	lastName: string;
 
-  @Column({ nullable: true })
-  profilePicture: string;
+	@Column({ name: 'avatar_url', type: 'text', nullable: true })
+	avatarUrl: string | null;
 
-  @Column({ nullable: true })
-  phoneNumber: string;
+	@Column({ name: 'date_of_birth', type: 'date', nullable: true })
+	dateOfBirth: string | null;
 
-  @Column({ type: 'enum', enum: Gender, nullable: true })
-  gender: Gender;
+	@Column({
+		type: 'enum',
+		enum: Gender,
+		enumName: 'gender_type',
+		nullable: true,
+	})
+	gender: Gender | null;
 
-  @Column({ type: 'date', nullable: true })
-  birthDate: string;
+	@Column({
+		name: 'height_cm',
+		type: 'numeric',
+		precision: 5,
+		scale: 1,
+		nullable: true,
+		transformer: numericTransformer,
+	})
+	heightCm: number | null;
 
-  @Column({ type: 'float', nullable: true })
-  height: number;
+	@Column({ nullable: true, unique: true })
+	googleId: string | null;
 
-  @Column({ type: 'float', nullable: true })
-  weight: number;
+	@Column({ name: 'is_email_verified', default: false })
+	isEmailVerified: boolean;
 
-  @Column({ nullable: true, select: false })
-  hashedRefreshToken: string;
+	@Column({ name: 'is_phone_verified', default: false })
+	isPhoneVerified: boolean;
 
-  @Column({ nullable: true, select: false })
-  resetPasswordToken: string;
+	@Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
+	lastLoginAt: Date | null;
 
-  @Column({ nullable: true, select: false })
-  resetPasswordExpires: Date;
+	@Column({ type: 'text', nullable: true, select: false })
+	hashedRefreshToken: string | null;
 
-  @Column({ nullable: true })
-  lastLoginAt: Date;
+	@Column({ type: 'text', nullable: true, select: false })
+	resetPasswordToken: string | null;
 
-  @OneToMany(() => ClientMembership, (membership) => membership.client)
-  memberships: ClientMembership[];
+	@Column({ type: 'timestamptz', nullable: true, select: false })
+	resetPasswordExpires: Date | null;
 
-  @CreateDateColumn()
-  created_at: Date;
+	@OneToMany(() => ClientMembership, (membership) => membership.client)
+	memberships: ClientMembership[];
 
-  @UpdateDateColumn()
-  updated_at: Date;
+	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+	createdAt: Date;
 
-  @DeleteDateColumn()
-  deleted_at: Date;
+	@UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+	updatedAt: Date;
+
+	@DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz' })
+	deletedAt: Date | null;
 }
