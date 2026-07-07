@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateClientDto } from './dto/create-client.dto';
-import { UpdateClientDto } from './dto/update-client.dto';
 import { Client } from './entities/client.entity';
 
 @Injectable()
@@ -126,24 +125,7 @@ export class ClientService {
 		return this.clientRepository.update(id, { hashedRefreshToken: null });
 	}
 
-	update(id: string, updateClientDto: UpdateClientDto) {
-		const { confirmPassword, password, ...profile } = updateClientDto;
-		return this.clientRepository.update(id, profile);
-	}
-
 	remove(id: string) {
 		return this.clientRepository.softDelete(id);
-	}
-
-	async updateClientProfile(
-		id: string,
-		updateClientDto: UpdateClientDto,
-	): Promise<Client | null> {
-		const { confirmPassword, password, ...profile } = updateClientDto;
-		const client = await this.clientRepository.preload({ id, ...profile });
-		if (!client) {
-			return null;
-		}
-		return this.clientRepository.save(client);
 	}
 }

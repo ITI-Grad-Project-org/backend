@@ -11,6 +11,7 @@ import { ConfigModule } from './config';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { InvitationModule } from './invitation/invitation.module';
+import { MeasurementsModule } from './measurements/measurements.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { PlansModule } from './plans/plans.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -29,6 +30,7 @@ import { TenantModule } from './tenant/tenant.module';
 		AuthModule,
 		ClientModule,
 		PlansModule,
+		MeasurementsModule,
 		MessagingModule,
 		AiModule,
 		HealthModule,
