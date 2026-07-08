@@ -16,14 +16,14 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
-import { RegisterCoachDto } from '../coaches/dto/register-coach.dto';
-import { CurrentUser, Public } from './decorators';
-import { ForgetPasswordDto } from './dto/forget-password.dto';
-import { LoginDto } from './dto/login.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { JwtAuthGuard, JwtRefreshGuard } from './guards';
 import { AuthService } from './services/auth.service';
+import { LoginDto } from './dto/login.dto';
+import { ForgetPasswordDto } from './dto/forget-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
+import { JwtAuthGuard, JwtRefreshGuard } from './guards';
+import { CurrentUser, Public } from './decorators';
+import { RegisterCoachDto } from '../coaches/dto/register-coach.dto';
 
 @ApiTags('Auth')
 @Controller('auth')

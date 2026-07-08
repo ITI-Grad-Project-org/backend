@@ -19,7 +19,6 @@ import {
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { CurrentTenant } from '../auth/decorators/current-tenant.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Tenants')
 @Controller('tenant')
@@ -32,11 +31,8 @@ export class TenantController {
 	@ApiResponse({ status: 201, description: 'Tenant created successfully' })
 	@ApiResponse({ status: 400, description: 'Validation error or slug taken' })
 	@HttpCode(HttpStatus.CREATED)
-	create(
-		@Body() createTenantDto: CreateTenantDto,
-		@CurrentUser('userId') coachId: string,
-	) {
-		return this.tenantService.create(createTenantDto, coachId);
+	create(@Body() createTenantDto: CreateTenantDto) {
+		return this.tenantService.create(createTenantDto);
 	}
 
 	@Get('me')

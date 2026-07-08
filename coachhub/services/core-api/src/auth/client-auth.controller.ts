@@ -16,16 +16,16 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { ClientAuthService } from './services/client-auth.service';
 import { CreateClientDto } from '../clients/dto/create-client.dto';
-import { CurrentClient, Public } from './decorators';
 import { ClientLoginDto } from './dto/client-login.dto';
 import { ForgetPasswordDto } from './dto/forget-password.dto';
-import { GoogleAuthDto } from './dto/google-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { SwitchTenantDto } from './dto/switch-tenant.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import { ClientJwtAuthGuard } from './guards/client-jwt-auth.guard';
 import { ClientJwtRefreshGuard } from './guards/client-jwt-refresh.guard';
-import { ClientAuthService } from './services/client-auth.service';
+import { CurrentClient, Public } from './decorators';
+import { SwitchTenantDto } from './dto/switch-tenant.dto';
 
 @Public()
 @ApiTags('Customer Auth')

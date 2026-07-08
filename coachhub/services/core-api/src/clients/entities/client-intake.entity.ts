@@ -8,6 +8,8 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
+import { Tenant } from '../../tenant/entities/tenant.entity';
+import { ClientMembership } from './client-membership.entity';
 import {
 	ActivityLevel,
 	DietaryPreference,
@@ -15,8 +17,6 @@ import {
 	FitnessGoal,
 	TrainingExperience,
 } from '../../common';
-import { Tenant } from '../../tenant/entities/tenant.entity';
-import { ClientMembership } from './client-membership.entity';
 
 @Entity('client_intakes')
 export class ClientIntake {
