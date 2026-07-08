@@ -18,7 +18,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
-import { CurrentClient, Public } from '../auth';
+import { CurrentClient, CurrentTenant, Public } from '../auth';
 import { ClientJwtAuthGuard } from '../auth/guards/client-jwt-auth.guard';
 import { CreateMeasurementDto } from './dto/create-measurement.dto';
 import { QueryMeasurementsDto } from './dto/query-measurements.dto';
@@ -51,7 +51,7 @@ export class MeasurementsController {
 	create(
 		@Body() body: CreateMeasurementDto,
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.measurementsService.createClientMeasurement(
 			clientId,
@@ -75,7 +75,7 @@ export class MeasurementsController {
 	findAll(
 		@Query() query: QueryMeasurementsDto,
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.measurementsService.findClientMeasurements(
 			clientId,
@@ -96,7 +96,7 @@ export class MeasurementsController {
 	findOne(
 		@Param('id', ParseUUIDPipe) measurementId: string,
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.measurementsService.findSingleMeasurement(
 			clientId,
@@ -122,7 +122,7 @@ export class MeasurementsController {
 		@Param('id', ParseUUIDPipe) measurementId: string,
 		@Body() body: UpdateMeasurementDto,
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.measurementsService.updateClientMeasurement(
 			clientId,
@@ -144,7 +144,7 @@ export class MeasurementsController {
 	remove(
 		@Param('id', ParseUUIDPipe) measurementId: string,
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.measurementsService.deleteClientMeasurement(
 			clientId,
