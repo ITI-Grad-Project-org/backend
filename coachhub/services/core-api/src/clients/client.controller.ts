@@ -15,8 +15,8 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
-import { ClientMembershipService } from './client-membership.service';
 import { CurrentTenant, JwtAuthGuard } from '../auth';
+import { ClientMembershipService } from './client-membership.service';
 
 @ApiTags('Clients')
 @ApiBearerAuth()
