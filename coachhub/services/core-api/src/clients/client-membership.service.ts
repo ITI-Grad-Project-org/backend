@@ -25,7 +25,7 @@ export class ClientMembershipService {
 	): Promise<ClientMembership | null> {
 		return this.membershipRepository.findOne({
 			where: { client: { id: clientId }, tenant: { id: tenantId } },
-			relations: { tenant: true },
+			relations: { tenant: true, client: true },
 		});
 	}
 
@@ -50,7 +50,7 @@ export class ClientMembershipService {
 	): Promise<ClientMembership | null> {
 		return this.membershipRepository.findOne({
 			where: { tenant: { id: tenantId }, client: { id: clientId } },
-			relations: { client: true },
+			relations: { client: true, tenant: true },
 		});
 	}
 
