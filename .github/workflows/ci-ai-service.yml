@@ -1,0 +1,57 @@
+name: ai-service CI
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'coachhub/services/ai-service/**'
+      - '.github/workflows/ci-ai-service.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'coachhub/services/ai-service/**'
+      - '.github/workflows/ci-ai-service.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: coachhub/services/ai-service
+    # The Spring context connects to MongoDB eagerly at startup (vector store),
+    # so tests need a live instance with the credentials from application.yml.
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: coachhub
+          MONGO_INITDB_ROOT_PASSWORD: secret
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Atlas vector-index creation and RAG seeding need a real Atlas cluster
+      # and Gemini key — keep both off in CI (application.yml supports this).
+      RAG_SEED_ON_STARTUP: 'false'
+      SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA: 'false'
+      GEMINI_API_KEY: ci-dummy-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: coachhub/services/ai-service/pom.xml
+
+      - name: Build and test
+        run: mvn -B -ntp verify
