@@ -15,7 +15,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
-import { CurrentClient, Public } from '../auth';
+import { CurrentClient, CurrentTenant, Public } from '../auth';
 import { ClientJwtAuthGuard } from '../auth/guards/client-jwt-auth.guard';
 import { ClientIntakeService } from './client-intake.service';
 import { CreateClientIntakeDto } from './dto/create-client-intake.dto';
@@ -44,7 +44,7 @@ export class ClientIntakeController {
 	create(
 		@Body() body: CreateClientIntakeDto,
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.clientIntakeService.createClientIntake(
 			clientId,
@@ -64,7 +64,7 @@ export class ClientIntakeController {
 	@HttpCode(HttpStatus.OK)
 	findOne(
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.clientIntakeService.getClientIntake(clientId, tenantId);
 	}
@@ -81,7 +81,7 @@ export class ClientIntakeController {
 	update(
 		@Body() body: UpdateClientIntakeDto,
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.clientIntakeService.updateClientIntake(
 			clientId,
@@ -101,7 +101,7 @@ export class ClientIntakeController {
 	@HttpCode(HttpStatus.OK)
 	remove(
 		@CurrentClient('clientId') clientId: string,
-		@CurrentClient('tenantId') tenantId: string | null,
+		@CurrentTenant() tenantId: string | null,
 	) {
 		return this.clientIntakeService.deleteClientIntake(clientId, tenantId);
 	}
