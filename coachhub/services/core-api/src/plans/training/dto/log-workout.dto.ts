@@ -1,3 +1,5 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
 	ArrayMinSize,
 	IsBoolean,
@@ -12,8 +14,6 @@ import {
 	Min,
 	ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SessionStatus } from 'src/common';
 
 export class LoggedSetDto {

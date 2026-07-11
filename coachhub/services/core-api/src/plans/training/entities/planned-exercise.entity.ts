@@ -12,6 +12,7 @@ import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { ProgramDay } from './program-day.entity';
 import { PlannedSet } from './planned-set.entity';
 import { Exercise } from '../../../exercises/entities/exercise.entity';
+import { EquipmentType, ExerciseCategory, MuscleGroup } from '../../../common';
 
 /**
  * One dragged exercise on a day (design §4.4). Holds what is common to the
@@ -42,12 +43,66 @@ export class PlannedExercise {
 	@JoinColumn({ name: 'program_day_id' })
 	programDay: ProgramDay;
 
-	@Column({ name: 'exercise_id', type: 'uuid' })
-	exerciseId: string;
+	@Column({ name: 'exercise_id', type: 'uuid', nullable: true })
+	exerciseId: string | null;
 
-	@ManyToOne(() => Exercise, { nullable: false })
+	@ManyToOne(() => Exercise, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'exercise_id' })
-	exercise: Exercise;
+	exercise: Exercise | null;
+
+	@Column({ name: 'exercise_name', length: 150 })
+	exerciseName: string;
+
+	@Column({
+		type: 'enum',
+		enum: ExerciseCategory,
+		enumName: 'exercise_category',
+	})
+	category: ExerciseCategory;
+
+	@Column({
+		name: 'primary_muscle',
+		type: 'enum',
+		enum: MuscleGroup,
+		enumName: 'muscle_group',
+	})
+	primaryMuscle: MuscleGroup;
+
+	@Column({
+		name: 'secondary_muscles',
+		type: 'enum',
+		enum: MuscleGroup,
+		enumName: 'muscle_group',
+		array: true,
+		default: '{}',
+	})
+	secondaryMuscles: MuscleGroup[];
+
+	@Column({
+		type: 'enum',
+		enum: EquipmentType,
+		enumName: 'equipment_type',
+		array: true,
+		default: '{}',
+	})
+	equipment: EquipmentType[];
+
+	@Column({ name: 'demo_video_url', type: 'text', nullable: true })
+	demoVideoUrl: string | null;
+
+	@Column({ name: 'demo_gif_url', type: 'text', nullable: true })
+	demoGifUrl: string | null;
+
+	@Column({ name: 'thumbnail_url', type: 'text', nullable: true })
+	thumbnailUrl: string | null;
+
+	@Column({
+		name: 'instruction_steps',
+		type: 'text',
+		array: true,
+		default: '{}',
+	})
+	instructionSteps: string[];
 
 	@Column({ type: 'smallint' })
 	position: number;
