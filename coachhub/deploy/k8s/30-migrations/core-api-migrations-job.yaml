@@ -1,0 +1,49 @@
+# TypeORM migrations run BEFORE core-api rolls out (locked: synchronize=false
+# in production; schema changes only via migrations).
+#
+# Jobs are immutable — each release the pipeline must:
+#   kubectl -n coachhub delete job core-api-migrations --ignore-not-found
+#   <set image tag to the release SHA>   (same tag as the core-api Deployment!)
+#   kubectl apply -f deploy/k8s/30-migrations/
+#   kubectl -n coachhub wait --for=condition=complete job/core-api-migrations --timeout=300s
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: core-api-migrations
+  namespace: coachhub
+  labels:
+    app: core-api-migrations
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: core-api-migrations
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000              # 'node' user in the core-api image
+      containers:
+        - name: migrate
+          image: coachhubacr.azurecr.io/core-api:v1   # CI: replace with the release git SHA
+          command:
+            - node
+            - node_modules/typeorm/cli.js
+            - migration:run
+            - -d
+            - dist/data-source.js
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: CORE_DB_USER
+              valueFrom: { secretKeyRef: { name: app-secrets, key: CORE_DB_USER } }
+            - name: CORE_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: CORE_DB_PASSWORD } }
+            - name: DATABASE_URL
+              value: postgresql://$(CORE_DB_USER):$(CORE_DB_PASSWORD)@postgres:5432/core_db
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { cpu: 500m, memory: 512Mi }

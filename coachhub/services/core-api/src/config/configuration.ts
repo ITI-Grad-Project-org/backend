@@ -7,6 +7,10 @@ export default () => ({
 	},
 	database: {
 		uri: process.env.DATABASE_URL,
+		// Schema sync is a dev-only convenience; production must run migrations.
+		synchronize: process.env.DB_SYNCHRONIZE
+			? process.env.DB_SYNCHRONIZE === 'true'
+			: (process.env.NODE_ENV || 'development') === 'development',
 	},
 
 	rabbitmq: {

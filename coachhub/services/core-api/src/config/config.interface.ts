@@ -7,6 +7,7 @@ export interface AppConfig {
 
 export interface DatabaseConfig {
 	uri: string;
+	synchronize: boolean;
 }
 
 export interface RabbitmqConfig {

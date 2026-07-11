@@ -1,0 +1,29 @@
+# Non-secret configuration shared by the apps.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: coachhub
+data:
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
+  REDIS_URL: "redis://redis:6379"
+  # ⚠️ DEV ONLY. "true" = TypeORM auto-creates/alters tables from entities on boot,
+  # so you don't need migration files while the schema is still changing. Auto-sync
+  # can DROP columns/tables and lose data — set to "false" BEFORE any real production
+  # deploy and switch to the migration Job (see docs/deployment & coachhub_migrations_gap).
+  DB_SYNCHRONIZE: "true"
+  # Public URLs — adjust to your real frontend domain.
+  FRONTEND_URL: "https://app.coachhub.example.com"
+  ALLOWED_ORIGINS: "https://app.coachhub.example.com"
+  # AWS S3 (media uploads)
+  AWS_REGION: "us-east-1"
+  AWS_S3_ACL: "public-read"
+  # notification-service mail (production = Resend SMTP; password comes from app-secrets)
+  MAIL_HOST: "smtp.resend.com"
+  MAIL_PORT: "587"
+  MAIL_USERNAME: "resend"
+  MAIL_SMTP_AUTH: "true"
+  MAIL_SMTP_STARTTLS: "true"

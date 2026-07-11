@@ -9,6 +9,7 @@ export const ConfigSchema = z.object({
 	}),
 	database: z.object({
 		uri: z.string(),
+		synchronize: z.boolean().default(false),
 	}),
 	rabbitmq: z.object({
 		url: z.string(),

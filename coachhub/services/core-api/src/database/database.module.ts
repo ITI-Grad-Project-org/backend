@@ -10,8 +10,11 @@ import { ConfigService } from '@nestjs/config';
 				type: 'postgres',
 				url: config.getOrThrow<string>('database.uri'),
 				entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-				synchronize: true,
+				synchronize: config.getOrThrow<boolean>('database.synchronize'),
 				logging: config.get<string>('app.nodeEnv') === 'development',
+				// K8s has no depends_on: survive Postgres arriving after the pod.
+				retryAttempts: 10,
+				retryDelay: 3000,
 			}),
 		}),
 	],
