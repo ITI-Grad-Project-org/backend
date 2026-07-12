@@ -22,9 +22,7 @@ async function bootstrap() {
 	app.use(helmet());
 
 	app.enableCors({
-		origin: process.env.ALLOWED_ORIGINS
-			? process.env.ALLOWED_ORIGINS.split(',')
-			: '*',
+		origin: '*',
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
 		credentials: true,
 	});
