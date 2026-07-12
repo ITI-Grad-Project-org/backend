@@ -11,11 +11,13 @@ import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { AiService } from './ai.service';
 import { ConfigService } from '../config';
+import { allowedOrigins } from '../config/configuration';
 import { AiCompletedPayload, EventType } from '../messaging/events';
 
 @WebSocketGateway({
 	cors: {
-		origin: '*',
+		origin: allowedOrigins(),
+		credentials: true,
 	},
 })
 export class AiGateway implements OnGatewayConnection, OnGatewayDisconnect {

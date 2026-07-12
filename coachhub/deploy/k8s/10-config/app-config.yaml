@@ -17,7 +17,9 @@ data:
   DB_SYNCHRONIZE: "true"
   # Public URLs — adjust to your real frontend domain.
   FRONTEND_URL: "https://app.coachhub.example.com"
-  ALLOWED_ORIGINS: "https://app.coachhub.example.com"
+  # Comma-separated CORS allowlist. Every browser origin that calls the API must be
+  # listed exactly (scheme + host + port); wildcards are illegal on credentialed requests.
+  ALLOWED_ORIGINS: "https://app.coachhub.example.com,http://localhost:5173"
   # AWS S3 (media uploads)
   AWS_REGION: "us-east-1"
   AWS_S3_ACL: "public-read"

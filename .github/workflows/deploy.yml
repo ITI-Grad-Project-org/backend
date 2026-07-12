@@ -43,6 +43,9 @@ jobs:
 
       - name: Deploy
         run: |
+          # ConfigMaps first: the rollout below is what makes pods pick up new env.
+          # (Secrets are not in the repo and stay under manual control.)
+          kubectl apply -f deploy/k8s/10-config/
           kubectl apply -f deploy/k8s/40-apps/
           for svc in core-api ai-service analytics-service notification-service; do
             kubectl set image deployment/$svc \

@@ -3,6 +3,7 @@ export interface AppConfig {
 	port: number;
 	apiPrefix: string;
 	frontendUrl: string;
+	allowedOrigins: string[];
 }
 
 export interface DatabaseConfig {
