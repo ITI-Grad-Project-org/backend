@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ConflictException,
 	ForbiddenException,
 	Injectable,
 	Logger,
@@ -37,7 +38,16 @@ export class ClientAuthService {
 			createClientDto.email,
 		);
 		if (existing) {
-			throw new BadRequestException('Email already in use');
+			throw new ConflictException('Email already in use');
+		}
+
+		if (createClientDto.phone) {
+			const existingPhone = await this.clientService.findOneByPhone(
+				createClientDto.phone,
+			);
+			if (existingPhone) {
+				throw new ConflictException('Phone number is already in use');
+			}
 		}
 
 		const hashedPassword = await this.tokenProvider.hashPassword(

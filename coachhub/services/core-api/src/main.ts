@@ -4,6 +4,7 @@ import { GlobalExceptionFilter } from './common';
 import helmet from 'helmet';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
 import { allowedOrigins } from './config/configuration';
 
 async function bootstrap() {

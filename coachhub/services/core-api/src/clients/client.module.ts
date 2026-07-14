@@ -4,6 +4,7 @@ import { ClientIntakeController } from './client-intake.controller';
 import { ClientIntakeService } from './client-intake.service';
 import { ClientMembershipService } from './client-membership.service';
 import { ClientController } from './client.controller';
+import { ClientProfileController } from './client-profile.controller';
 import { ClientService } from './client.service';
 import { ClientIntake } from './entities/client-intake.entity';
 import { ClientMembership } from './entities/client-membership.entity';
@@ -13,6 +14,7 @@ import { Client } from './entities/client.entity';
 	imports: [TypeOrmModule.forFeature([Client, ClientMembership, ClientIntake])],
 	controllers: [
 		ClientController,
+		ClientProfileController,
 		ClientIntakeController,
 	],
 	providers: [ClientService, ClientMembershipService, ClientIntakeService],

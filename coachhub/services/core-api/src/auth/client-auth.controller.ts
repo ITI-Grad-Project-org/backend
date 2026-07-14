@@ -36,8 +36,28 @@ export class ClientAuthController {
 	@Throttle({ default: { ttl: 60_000, limit: 10 } })
 	@Post('register')
 	@ApiOperation({ summary: 'Register a new customer (buyer) account' })
+	@ApiBody({
+		type: CreateClientDto,
+		examples: {
+			required: {
+				summary: 'Required fields only',
+				description: 'Optional extra (phone) is listed in the schema.',
+				value: {
+					firstName: 'Alice',
+					lastName: 'Smith',
+					email: 'alice@example.com',
+					password: 'password123',
+					confirmPassword: 'password123',
+				},
+			},
+		},
+	})
 	@ApiResponse({ status: 201, description: 'Customer registered successfully' })
-	@ApiResponse({ status: 400, description: 'Validation error or email taken' })
+	@ApiResponse({ status: 400, description: 'Validation error' })
+	@ApiResponse({
+		status: 409,
+		description: 'Email or phone number already in use',
+	})
 	@HttpCode(HttpStatus.CREATED)
 	register(@Body() createClientDto: CreateClientDto) {
 		return this.customerAuthService.register(createClientDto);
