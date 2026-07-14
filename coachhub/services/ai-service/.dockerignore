@@ -1,0 +1,8 @@
+target
+.git
+.mvn/wrapper/*.jar
+*.md
+Dockerfile*
+docker-compose*
+.idea
+*.iml

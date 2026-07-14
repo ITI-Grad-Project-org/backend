@@ -1,0 +1,41 @@
+# Dev-only overrides — auto-merged by `docker compose up`.
+# For a prod-style run: docker compose -f docker-compose.yml up -d
+services:
+  # Hot reload: run the build stage (dev deps present) with source bind-mounted.
+  core-api:
+    build:
+      context: ./services/core-api
+      target: build
+    command: ["npm", "run", "start:dev"]
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./services/core-api/src:/app/src:cached
+      - ./services/core-api/tsconfig.json:/app/tsconfig.json:ro
+      - ./services/core-api/nest-cli.json:/app/nest-cli.json:ro
+
+  # Java hot reload inside Docker isn't worth the complexity — attach your IDE
+  # to these JDWP ports instead (or run the service locally against compose infra).
+  ai-service:
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75.0
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    ports:
+      - "5005:5005"
+
+  analytics-service:
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75.0
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006
+    ports:
+      - "5006:5006"
+
+  notification-service:
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75.0
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007
+    ports:
+      - "5007:5007"

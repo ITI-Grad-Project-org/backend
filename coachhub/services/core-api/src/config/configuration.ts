@@ -1,12 +1,29 @@
+// Browsers reject `Access-Control-Allow-Origin: *` on credentialed requests, so
+// the origins have to be listed explicitly and reflected back one at a time.
+export const allowedOrigins = (): string[] =>
+	(
+		process.env.ALLOWED_ORIGINS ||
+		process.env.FRONTEND_URL ||
+		'http://localhost:5173'
+	)
+		.split(',')
+		.map((origin) => origin.trim())
+		.filter(Boolean);
+
 export default () => ({
 	app: {
 		nodeEnv: process.env.NODE_ENV || 'development',
 		port: parseInt(process.env.PORT as string, 10) || 3000,
 		apiPrefix: process.env.API_PREFIX || 'api',
 		frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+		allowedOrigins: allowedOrigins(),
 	},
 	database: {
 		uri: process.env.DATABASE_URL,
+		// Schema sync is a dev-only convenience; production must run migrations.
+		synchronize: process.env.DB_SYNCHRONIZE
+			? process.env.DB_SYNCHRONIZE === 'true'
+			: (process.env.NODE_ENV || 'development') === 'development',
 	},
 
 	rabbitmq: {

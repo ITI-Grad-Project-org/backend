@@ -32,3 +32,4 @@ export class UpdateClientDto extends PartialType(
 	@Max(300)
 	heightCm?: number;
 }
+

@@ -1,5 +1,7 @@
 server:
-  port: 8083
+  port: ${SERVER_PORT:8083}
+  # Finish in-flight MQ messages / HTTP requests on SIGTERM (K8s rolling updates).
+  shutdown: graceful
 
 spring:
   application:
@@ -23,6 +25,9 @@ spring:
           max-interval: 10000ms
 
   mail:
+    # Dev: MailHog (no auth). Prod: Resend SMTP —
+    #   MAIL_HOST=smtp.resend.com MAIL_PORT=587 MAIL_USERNAME=resend
+    #   MAIL_PASSWORD=<RESEND_API_KEY> MAIL_SMTP_AUTH=true MAIL_SMTP_STARTTLS=true
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
     username: ${MAIL_USERNAME:}
@@ -30,9 +35,9 @@ spring:
     properties:
       mail:
         smtp:
-          auth: false
+          auth: ${MAIL_SMTP_AUTH:false}
           starttls:
-            enable: false
+            enable: ${MAIL_SMTP_STARTTLS:false}
 
 management:
   endpoints:
@@ -42,3 +47,15 @@ management:
   endpoint:
     health:
       show-details: always
+      # /actuator/health/{liveness,readiness} — used by Docker healthchecks and K8s probes.
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    # SMTP ping would mark the whole service DOWN when MailHog/Resend hiccups —
+    # mail delivery already has MQ retry + DLQ, so keep it out of readiness.
+    mail:
+      enabled: false

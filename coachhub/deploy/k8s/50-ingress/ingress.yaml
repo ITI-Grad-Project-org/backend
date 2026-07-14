@@ -1,0 +1,35 @@
+# Locked decision: core-api is the ONLY service exposed. The Spring services
+# have no Ingress and are reachable only inside the cluster.
+#
+# Prereqs on AKS: ingress-nginx + cert-manager installed, and the ClusterIssuers
+# in cluster-issuer.yaml applied (apply that file before this one).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: core-api
+  namespace: coachhub
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+    # core-api serves a socket.io gateway — keep websocket connections alive.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  tls:
+    # nip.io resolves the embedded IP — 74.162.148.3 is the ingress-nginx LB.
+    - hosts:
+        - api.74.162.148.3.nip.io
+      secretName: coachhub-api-tls        # created/renewed by cert-manager
+  rules:
+    - host: api.74.162.148.3.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: core-api
+                port:
+                  name: http

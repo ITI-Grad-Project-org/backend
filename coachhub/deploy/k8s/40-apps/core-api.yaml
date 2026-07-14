@@ -1,0 +1,109 @@
+# The ONLY client-facing service (exposed via Ingress).
+# /health = @nestjs/terminus checking Postgres + RabbitMQ.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-api
+  namespace: coachhub
+  labels:
+    app: core-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: core-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: core-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000              # 'node' user in node:22-alpine
+      containers:
+        - name: core-api
+          image: coachhubacr.azurecr.io/core-api:v1   # CI: replace with the release git SHA
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            # Toggle in app-config (DB_SYNCHRONIZE). DEV: "true" auto-syncs schema.
+            # PRODUCTION: "false" — the migration Job owns the schema.
+            - name: DB_SYNCHRONIZE
+              valueFrom: { configMapKeyRef: { name: app-config, key: DB_SYNCHRONIZE } }
+            - name: CORE_DB_USER
+              valueFrom: { secretKeyRef: { name: app-secrets, key: CORE_DB_USER } }
+            - name: CORE_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: CORE_DB_PASSWORD } }
+            - name: DATABASE_URL
+              value: postgresql://$(CORE_DB_USER):$(CORE_DB_PASSWORD)@postgres:5432/core_db
+            - name: REDIS_URL                         # provisioned; app code not wired to it yet
+              valueFrom: { configMapKeyRef: { name: app-config, key: REDIS_URL } }
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_USER } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_PASSWORD } }
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672
+            - name: JWT_ACCESS_SECRET
+              valueFrom: { secretKeyRef: { name: app-secrets, key: JWT_ACCESS_SECRET } }
+            - name: JWT_REFRESH_SECRET
+              valueFrom: { secretKeyRef: { name: app-secrets, key: JWT_REFRESH_SECRET } }
+            - name: GEMINI_API_KEY
+              valueFrom: { secretKeyRef: { name: app-secrets, key: GEMINI_API_KEY } }
+            - name: GOOGLE_OAUTH_CLIENT_ID
+              valueFrom: { secretKeyRef: { name: app-secrets, key: GOOGLE_OAUTH_CLIENT_ID } }
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: { secretKeyRef: { name: app-secrets, key: AWS_ACCESS_KEY_ID } }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: app-secrets, key: AWS_SECRET_ACCESS_KEY } }
+            - name: AWS_S3_BUCKET
+              valueFrom: { secretKeyRef: { name: app-secrets, key: AWS_S3_BUCKET } }
+            - name: AWS_REGION
+              valueFrom: { configMapKeyRef: { name: app-config, key: AWS_REGION } }
+            - name: AWS_S3_ACL
+              valueFrom: { configMapKeyRef: { name: app-config, key: AWS_S3_ACL } }
+            - name: FRONTEND_URL
+              valueFrom: { configMapKeyRef: { name: app-config, key: FRONTEND_URL } }
+            - name: ALLOWED_ORIGINS
+              valueFrom: { configMapKeyRef: { name: app-config, key: ALLOWED_ORIGINS } }
+          # No depends_on in K8s: the generous startup window covers Postgres/RabbitMQ
+          # arriving late (TypeORM retries 10×3s; AMQP reconnects in the background).
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 24           # up to 2 min
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { cpu: "1",  memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-api
+  namespace: coachhub
+spec:
+  type: ClusterIP
+  selector:
+    app: core-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

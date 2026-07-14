@@ -1,0 +1,36 @@
+name: analytics-service CI
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'coachhub/services/analytics-service/**'
+      - '.github/workflows/ci-analytics-service.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'coachhub/services/analytics-service/**'
+      - '.github/workflows/ci-analytics-service.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: coachhub/services/analytics-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: coachhub/services/analytics-service/pom.xml
+
+      - name: Build and test
+        run: mvn -B -ntp verify

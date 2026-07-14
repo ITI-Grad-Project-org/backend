@@ -1,0 +1,56 @@
+name: Deploy to AKS
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: coachhub   # services/ and deploy/ both live under it
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ACR Tasks (`az acr build`) is blocked on this subscription, so images are
+      # built on the runner and pushed.
+      - name: ACR login
+        run: az acr login --name coachhubacr
+
+      # Two tags per image: the immutable git SHA the rollout pins to, and the
+      # floating v1 that 40-apps/*.yaml reference, so `kubectl apply` on its own
+      # can still bring up a fresh cluster.
+      - name: Build & push images
+        run: |
+          for svc in core-api ai-service analytics-service notification-service; do
+            img="coachhubacr.azurecr.io/$svc"
+            docker build \
+              -t "$img:${{ github.sha }}" \
+              -t "$img:v1" \
+              ./services/$svc
+            docker push "$img:${{ github.sha }}"
+            docker push "$img:v1"
+          done
+
+      - uses: azure/aks-set-context@v4
+        with:
+          resource-group: coachhub-rg
+          cluster-name: coachhub-aks
+
+      - name: Deploy
+        run: |
+          # ConfigMaps first: the rollout below is what makes pods pick up new env.
+          # (Secrets are not in the repo and stay under manual control.)
+          kubectl apply -f deploy/k8s/10-config/
+          kubectl apply -f deploy/k8s/40-apps/
+          for svc in core-api ai-service analytics-service notification-service; do
+            kubectl set image deployment/$svc \
+              $svc=coachhubacr.azurecr.io/$svc:${{ github.sha }} -n coachhub
+          done
+          for svc in core-api ai-service analytics-service notification-service; do
+            kubectl rollout status deployment/$svc -n coachhub --timeout=5m
+          done

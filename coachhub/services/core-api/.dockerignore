@@ -1,6 +1,10 @@
 node_modules
 dist
-.env
-*.local
 coverage
 .git
+.env*
+*.local
+*.md
+Dockerfile*
+docker-compose*
+test
