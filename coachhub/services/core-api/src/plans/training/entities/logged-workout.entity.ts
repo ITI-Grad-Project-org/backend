@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
-import { ProgramAssignment } from './program-assignment.entity';
+import { Program } from './program.entity';
 import { ProgramDay } from './program-day.entity';
 import { LoggedExercise } from './logged-exercise.entity';
 import { SessionStatus } from '../../../common';
@@ -35,9 +35,12 @@ export class LoggedWorkout {
 	@JoinColumn({ name: 'membership_id' })
 	membership: ClientMembership;
 
-	@ManyToOne(() => ProgramAssignment, { nullable: true })
-	@JoinColumn({ name: 'assignment_id' })
-	assignment: ProgramAssignment | null;
+	@Column({ name: 'program_id', type: 'uuid' })
+	programId: string;
+
+	@ManyToOne(() => Program, { nullable: false, onDelete: 'RESTRICT' })
+	@JoinColumn({ name: 'program_id' })
+	program: Program;
 
 	/** NULL = ad-hoc session not tied to a planned day. */
 	@ManyToOne(() => ProgramDay, { nullable: true })

@@ -8,11 +8,11 @@ import {
 	PrimaryGeneratedColumn,
 	Unique,
 } from 'typeorm';
-import { Tenant } from '../../../tenant/entities/tenant.entity';
-import { ProgramDay } from './program-day.entity';
-import { PlannedSet } from './planned-set.entity';
-import { Exercise } from '../../../exercises/entities/exercise.entity';
 import { EquipmentType, ExerciseCategory, MuscleGroup } from '../../../common';
+import { Exercise } from '../../../exercises/entities/exercise.entity';
+import { Tenant } from '../../../tenant/entities/tenant.entity';
+import { PlannedSet } from './planned-set.entity';
+import { ProgramDay } from './program-day.entity';
 
 /**
  * One dragged exercise on a day (design §4.4). Holds what is common to the
@@ -43,12 +43,12 @@ export class PlannedExercise {
 	@JoinColumn({ name: 'program_day_id' })
 	programDay: ProgramDay;
 
-	@Column({ name: 'exercise_id', type: 'uuid', nullable: true })
-	exerciseId: string | null;
+	@Column({ name: 'exercise_id', type: 'uuid' })
+	exerciseId: string;
 
-	@ManyToOne(() => Exercise, { nullable: true, onDelete: 'SET NULL' })
+	@ManyToOne(() => Exercise, { nullable: false, onDelete: 'RESTRICT' })
 	@JoinColumn({ name: 'exercise_id' })
-	exercise: Exercise | null;
+	exercise: Exercise;
 
 	@Column({ name: 'exercise_name', length: 150 })
 	exerciseName: string;

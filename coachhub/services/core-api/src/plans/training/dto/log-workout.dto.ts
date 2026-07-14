@@ -82,13 +82,12 @@ export class LoggedExerciseDto {
 }
 
 export class LogWorkoutDto {
-	@ApiPropertyOptional({
+	@ApiProperty({
 		format: 'uuid',
-		description: 'Active program assignment (omit for ad-hoc sessions)',
+		description: 'Published client program this workout belongs to',
 	})
-	@IsOptional()
 	@IsUUID()
-	assignmentId?: string;
+	programId: string;
 
 	@ApiPropertyOptional({
 		format: 'uuid',

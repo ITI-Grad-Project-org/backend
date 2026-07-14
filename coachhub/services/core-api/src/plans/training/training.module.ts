@@ -6,7 +6,6 @@ import { TrainingController } from './training.controller';
 import { TrainingService } from './training.service';
 import { PlannedExercise } from './entities/planned-exercise.entity';
 import { PlannedSet } from './entities/planned-set.entity';
-import { ProgramAssignment } from './entities/program-assignment.entity';
 import { ProgramDay } from './entities/program-day.entity';
 import { ProgramWeek } from './entities/program-week.entity';
 import { Program } from './entities/program.entity';
@@ -19,7 +18,6 @@ import { Program } from './entities/program.entity';
 			ProgramDay,
 			PlannedExercise,
 			PlannedSet,
-			ProgramAssignment,
 			Exercise,
 			ClientMembership,
 		]),
