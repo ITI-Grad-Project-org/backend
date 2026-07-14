@@ -28,6 +28,13 @@ export class ClientService {
 		});
 	}
 
+	findOneByPhone(phone: string) {
+		return this.clientRepository.findOne({
+			where: { phone },
+			select: { id: true },
+		});
+	}
+
 	findOneByEmail(email: string) {
 		return this.clientRepository.findOne({
 			where: { email },
@@ -126,8 +133,7 @@ export class ClientService {
 	}
 
 	update(id: string, updateClientDto: UpdateClientDto) {
-		const { confirmPassword, password, ...profile } = updateClientDto;
-		return this.clientRepository.update(id, profile);
+		return this.clientRepository.update(id, updateClientDto);
 	}
 
 	remove(id: string) {

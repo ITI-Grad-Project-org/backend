@@ -4,9 +4,6 @@ import { GlobalExceptionFilter } from './common';
 import helmet from 'helmet';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
-import { AppModule } from './app.module';
-import { GlobalExceptionFilter } from './common';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);

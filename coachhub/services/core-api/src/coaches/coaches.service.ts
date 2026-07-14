@@ -62,6 +62,13 @@ export class CoachesService {
 		});
 	}
 
+	findOneByPhone(phone: string) {
+		return this.coachRepository.findOne({
+			where: { phone },
+			select: { id: true },
+		});
+	}
+
 	findOneByEmail(email: string) {
 		return this.coachRepository.findOne({
 			where: { email },
