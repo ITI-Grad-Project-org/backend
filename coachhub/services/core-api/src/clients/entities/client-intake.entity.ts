@@ -80,11 +80,18 @@ export class ClientIntake {
 	@Column({ type: 'text', array: true, nullable: true })
 	allergies: string[] | null;
 
-	@Column({ name: 'medical_conditions', type: 'text', nullable: true })
-	medicalConditions: string | null;
+	// added a fix here because medical conditions should be an array
+	@Column({
+		name: 'medical_conditions',
+		array: true,
+		type: 'text',
+		nullable: true,
+	})
+	medicalConditions: string[] | null;
 
-	@Column({ type: 'text', nullable: true })
-	injuries: string | null;
+	// added a fix here because injuries should be an array
+	@Column({ type: 'text', array: true, nullable: true })
+	injuries: string[] | null;
 
 	@Column({ type: 'text', nullable: true })
 	notes: string | null;

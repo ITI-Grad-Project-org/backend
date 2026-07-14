@@ -45,3 +45,5 @@ logs/
 prisma/*.db
 prisma/*.db-journal
 
+mydocs
+AGENTS.md

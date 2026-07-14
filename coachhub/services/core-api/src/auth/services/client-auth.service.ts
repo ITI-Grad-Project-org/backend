@@ -7,15 +7,15 @@ import {
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
-import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import * as crypto from 'crypto';
-import { TokenProvider } from '../providers/token.provider';
-import { ClientAuthPayload, MembershipStatus } from '../../common';
+import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { ConfigService } from 'src/config';
-import { ClientService } from '../../clients/client.service';
 import { ClientMembershipService } from '../../clients/client-membership.service';
-import { Client } from '../../clients/entities/client.entity';
+import { ClientService } from '../../clients/client.service';
 import { CreateClientDto } from '../../clients/dto/create-client.dto';
+import { Client } from '../../clients/entities/client.entity';
+import { ClientAuthPayload, MembershipStatus } from '../../common';
+import { TokenProvider } from '../providers/token.provider';
 
 @Injectable()
 export class ClientAuthService {
@@ -293,7 +293,16 @@ export class ClientAuthService {
 		);
 
 		await this.clientService.updateRefreshToken(client.id, hashedRefreshToken);
-		return { client, ...tokens };
+		//added a fix here ya DOD becuase the password was being returned in the client login reposne
+		const {
+			password,
+			hashedRefreshToken: _hrt,
+			resetPasswordToken,
+			resetPasswordExpires,
+			...safeClient
+		} = client;
+
+		return { client: safeClient, ...tokens };
 	}
 
 	private buildPayload(
