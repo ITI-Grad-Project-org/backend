@@ -37,14 +37,35 @@ export class AuthController {
 		summary:
 			'Register a new coach (auto-creates their tenant and seeds the exercise library)',
 	})
-	@ApiBody({ type: RegisterCoachDto })
+	@ApiBody({
+		type: RegisterCoachDto,
+		examples: {
+			required: {
+				summary: 'Required fields only',
+				description:
+					'Optional extras (phone, bio, specialties, yearsExperience, certifications, timezone, currency) are listed in the schema.',
+				value: {
+					firstName: 'Jane',
+					lastName: 'Smith',
+					email: 'jane@acme.com',
+					password: 'password123',
+					confirmPassword: 'password123',
+					businessName: 'Iron Temple Coaching',
+				},
+			},
+		},
+	})
 	@ApiResponse({
 		status: 201,
 		description: 'Coach and tenant registered successfully',
 	})
 	@ApiResponse({
 		status: 400,
-		description: 'Validation error or email already in use',
+		description: 'Validation error',
+	})
+	@ApiResponse({
+		status: 409,
+		description: 'Email or phone number already in use',
 	})
 	@HttpCode(HttpStatus.CREATED)
 	register(@Body() registerDto: RegisterCoachDto) {
