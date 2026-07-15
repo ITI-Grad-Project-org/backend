@@ -12,12 +12,17 @@ import * as crypto from 'crypto';
 import { Coach } from '../../coaches/entities/coach.entity';
 import { RegisterCoachDto } from '../../coaches/dto/register-coach.dto';
 import { CoachesService } from '../../coaches/coaches.service';
+import { EventPublisherService } from '../../messaging/event-publisher.service';
+import { EventType } from '../../messaging/events';
+import { ConfigService } from '../../config';
 
 @Injectable()
 export class AuthService {
 	constructor(
 		private readonly coachesService: CoachesService,
 		private readonly tokenProvider: TokenProvider,
+		private readonly eventPublisherService: EventPublisherService,
+		private readonly configService: ConfigService,
 	) {}
 
 	async register(registerDto: RegisterCoachDto) {
@@ -116,7 +121,26 @@ export class AuthService {
 			new Date(Date.now() + 15 * 60 * 1000),
 		);
 
+		await this.eventPublisherService.publish(
+			EventType.PASSWORD_RESET,
+			{
+				email: coach.email,
+				name: `${coach.firstName} ${coach.lastName}`,
+				rawToken,
+				resetUrl: this.buildResetUrl(rawToken),
+			},
+			{ tenantId: coach.tenants?.[0]?.id ?? 'system' },
+		);
+
 		return genericResponse;
+	}
+
+	private buildResetUrl(rawToken: string): string {
+		const baseUrl = this.configService.appConfig.frontendUrl.replace(
+			/\/+$/,
+			'',
+		);
+		return `${baseUrl}/reset-password?token=${rawToken}`;
 	}
 
 	async resetPassword(token: string, newPassword: string) {

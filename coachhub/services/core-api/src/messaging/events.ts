@@ -12,6 +12,7 @@ export const EventType = {
 	AI_COMPLETED: 'ai.completed',
 	AI_ACCEPTED: 'ai.accepted',
 	AI_TIMED_OUT: 'ai.timed_out',
+	PASSWORD_RESET: 'password.reset',
 } as const;
 
 export type EventType = (typeof EventType)[keyof typeof EventType];
@@ -63,4 +64,11 @@ export interface AiCompletedPayload {
 	coachEmail: string;
 	status: 'succeeded' | 'failed';
 	summary: string;
+}
+
+export interface PasswordResetPayload {
+	email: string;
+	name: string;
+	rawToken: string;
+	resetUrl: string;
 }

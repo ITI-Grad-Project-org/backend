@@ -47,6 +47,11 @@ public class RabbitMqConfig {
 		return BindingBuilder.bind(notificationQueue()).to(eventsExchange()).with("message.sent");
 	}
 
+	@Bean
+	Binding bindPasswordReset() {
+		return BindingBuilder.bind(notificationQueue()).to(eventsExchange()).with("password.reset");
+	}
+
 	// ── Dead-letter setup: messages that exhaust retries land here ───────────
 	@Bean
 	DirectExchange deadLetterExchange() {
