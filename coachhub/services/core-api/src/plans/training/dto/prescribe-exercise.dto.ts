@@ -14,7 +14,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IntensityType, SetType } from 'src/common';
+import { IntensityType, SetType } from '../../../common';
 
 export class PrescribedSetDto {
 	@ApiPropertyOptional({ enum: SetType, default: SetType.WORKING })
@@ -89,6 +89,8 @@ export class PrescribeExerciseDto {
 	})
 	@IsOptional()
 	@IsInt()
+	// TODO(workout-validation): Add @Min(1) to match UpdatePlannedExerciseDto;
+	// the create prescription currently accepts supersetGroup = 0.
 	supersetGroup?: number;
 
 	@ApiPropertyOptional({ example: 90, default: 90 })

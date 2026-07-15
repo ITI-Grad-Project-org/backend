@@ -169,6 +169,8 @@ export class AuthService {
 
 		await this.coachesService.updateRefreshToken(coach.id, hashedRefreshToken);
 
+		// TODO(auth-security): Return a sanitized coach response instead of the
+		// login entity, because findOneByEmail selects the password hash.
 		return { user: coach, ...tokens };
 	}
 }

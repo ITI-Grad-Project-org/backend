@@ -1,31 +1,32 @@
 import {
-	BadRequestException,
 	ConflictException,
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { ClientMembership } from '../../clients/entities/client-membership.entity';
-import { MembershipStatus, ProgramStatus, ProgramType } from '../../common';
-import { Tenant } from '../../tenant/entities/tenant.entity';
+import { ClientMembership } from '../../../clients/entities/client-membership.entity';
+import { MembershipStatus, ProgramStatus, ProgramType } from '../../../common';
+import { Tenant } from '../../../tenant/entities/tenant.entity';
 import {
 	CreateClientProgramDto,
 	UpdateClientProgramDto,
-} from './dto/create-client-program.dto';
-import { QueryClientProgramsDto } from './dto/query-client-programs.dto';
-import { ProgramDay } from './entities/program-day.entity';
-import { ProgramWeek } from './entities/program-week.entity';
-import { Program } from './entities/program.entity';
+} from '../dto/create-client-program.dto';
+import { QueryClientProgramsDto } from '../dto/query-client-programs.dto';
+import { ProgramDay } from '../entities/program-day.entity';
+import { ProgramWeek } from '../entities/program-week.entity';
+import { Program } from '../entities/program.entity';
+import { deriveInclusiveEndDate } from '../utils/program-date.utils';
 import {
-	deriveInclusiveEndDate,
-	getDateOnlyInTimeZone,
-	getScheduledDate,
-	isValidDateOnly,
-} from './utils/program-date.utils';
+	assertActiveTenant,
+	assertStartDate,
+	mapBuilderProgram,
+	mapClientProgramSummary,
+	normalizeOptionalText,
+} from '../utils/training-service.utils';
 
 @Injectable()
-export class TrainingService {
+export class ClientProgramsService {
 	constructor(
 		@InjectRepository(Program)
 		private readonly programRepository: Repository<Program>,
@@ -37,7 +38,7 @@ export class TrainingService {
 		coachId: string,
 		body: CreateClientProgramDto,
 	) {
-		const activeTenantId = this.assertActiveTenant(tenantId);
+		const activeTenantId = assertActiveTenant(tenantId);
 
 		return this.dataSource.transaction(async (manager) => {
 			const tenant = await manager.getRepository(Tenant).findOneBy({
@@ -59,7 +60,7 @@ export class TrainingService {
 				throw new NotFoundException('Active client membership not found');
 			}
 
-			this.assertStartDate(body.startDate, tenant.timezone);
+			assertStartDate(body.startDate, tenant.timezone);
 
 			const programRepository = manager.getRepository(Program);
 			const weekRepository = manager.getRepository(ProgramWeek);
@@ -89,7 +90,7 @@ export class TrainingService {
 				sourceTemplateId: null,
 				sourceTemplate: null,
 				name: body.name.trim(),
-				description: this.normalizeOptionalText(body.description),
+				description: normalizeOptionalText(body.description),
 				goal: body.goal ?? null,
 				difficulty: body.difficulty ?? null,
 				durationWeeks: body.durationWeeks,
@@ -101,12 +102,15 @@ export class TrainingService {
 			});
 
 			const savedProgram = await programRepository.save(program);
-			return this.mapBuilderProgram(savedProgram);
+			return mapBuilderProgram(savedProgram, tenant.timezone);
 		});
 	}
 
-	findClientPrograms(tenantId: string | null, query: QueryClientProgramsDto) {
-		const activeTenantId = this.assertActiveTenant(tenantId);
+	async findClientPrograms(
+		tenantId: string | null,
+		query: QueryClientProgramsDto,
+	) {
+		const activeTenantId = assertActiveTenant(tenantId);
 		const programsQuery = this.programRepository
 			.createQueryBuilder('program')
 			.where('program.tenant_id = :tenantId', { tenantId: activeTenantId })
@@ -142,11 +146,20 @@ export class TrainingService {
 			});
 		}
 
-		return programsQuery.getMany();
+		const [programs, tenant] = await Promise.all([
+			programsQuery.getMany(),
+			this.dataSource.getRepository(Tenant).findOneBy({ id: activeTenantId }),
+		]);
+		if (!tenant) {
+			throw new NotFoundException('Tenant not found');
+		}
+		return programs.map((program) =>
+			mapClientProgramSummary(program, tenant.timezone),
+		);
 	}
 
 	async getClientProgram(tenantId: string | null, programId: string) {
-		const activeTenantId = this.assertActiveTenant(tenantId);
+		const activeTenantId = assertActiveTenant(tenantId);
 		const program = await this.programRepository.findOne({
 			where: {
 				id: programId,
@@ -178,7 +191,14 @@ export class TrainingService {
 			throw new NotFoundException('Client program not found');
 		}
 
-		return this.mapBuilderProgram(program);
+		const tenant = await this.dataSource
+			.getRepository(Tenant)
+			.findOneBy({ id: activeTenantId });
+		if (!tenant) {
+			throw new NotFoundException('Tenant not found');
+		}
+
+		return mapBuilderProgram(program, tenant.timezone);
 	}
 
 	async updateClientProgram(
@@ -186,7 +206,7 @@ export class TrainingService {
 		programId: string,
 		body: UpdateClientProgramDto,
 	) {
-		const activeTenantId = this.assertActiveTenant(tenantId);
+		const activeTenantId = assertActiveTenant(tenantId);
 		const program = await this.programRepository.findOne({
 			where: {
 				id: programId,
@@ -207,7 +227,7 @@ export class TrainingService {
 			program.name = body.name.trim();
 		}
 		if (body.description !== undefined) {
-			program.description = this.normalizeOptionalText(body.description);
+			program.description = normalizeOptionalText(body.description);
 		}
 		if (body.goal !== undefined) {
 			program.goal = body.goal;
@@ -216,7 +236,7 @@ export class TrainingService {
 			program.difficulty = body.difficulty;
 		}
 		if (body.startDate !== undefined) {
-			this.assertStartDate(body.startDate, program.tenant.timezone);
+			assertStartDate(body.startDate, program.tenant.timezone);
 			program.startDate = body.startDate;
 			program.endDate = deriveInclusiveEndDate(
 				body.startDate,
@@ -226,48 +246,5 @@ export class TrainingService {
 
 		await this.programRepository.save(program);
 		return this.getClientProgram(activeTenantId, program.id);
-	}
-
-	private mapBuilderProgram(program: Program) {
-		return {
-			...program,
-			weeks: (program.weeks ?? []).map((week) => ({
-				...week,
-				days: (week.days ?? []).map((day) => ({
-					...day,
-					scheduledDate: getScheduledDate(
-						program.startDate as string,
-						week.weekNumber,
-						day.dayNumber,
-					),
-				})),
-			})),
-		};
-	}
-
-	private assertStartDate(startDate: string, timezone: string) {
-		if (!isValidDateOnly(startDate)) {
-			throw new BadRequestException('startDate must be a valid date');
-		}
-
-		const today = getDateOnlyInTimeZone(new Date(), timezone);
-		if (startDate < today) {
-			throw new BadRequestException(
-				'startDate cannot be before today in the tenant timezone',
-			);
-		}
-	}
-
-	private normalizeOptionalText(value?: string | null) {
-		if (value == null) return null;
-		const trimmed = value.trim();
-		return trimmed.length > 0 ? trimmed : null;
-	}
-
-	private assertActiveTenant(tenantId: string | null) {
-		if (!tenantId) {
-			throw new BadRequestException('No active tenant selected');
-		}
-		return tenantId;
 	}
 }
