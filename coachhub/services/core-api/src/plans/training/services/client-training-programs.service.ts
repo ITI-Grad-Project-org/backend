@@ -25,11 +25,16 @@ import {
 type ExistingLogState = {
 	id: string;
 	status: string;
-	performedAt: Date;
+	startedAt: Date;
 };
 
 type ClientLogState =
-	'not_applicable' | 'not_started' | 'completed' | 'partial' | 'skipped';
+	| 'not_applicable'
+	| 'not_started'
+	| 'in_progress'
+	| 'completed'
+	| 'partial'
+	| 'skipped';
 
 @Injectable()
 export class ClientTrainingProgramsService {
@@ -302,14 +307,14 @@ export class ClientTrainingProgramsService {
 				programId: In(programIds),
 			},
 			relations: { programDay: true },
-			order: { performedAt: 'DESC' },
+			order: { startedAt: 'DESC' },
 		});
 		for (const log of logs) {
 			if (log.programDay && !byDayId.has(log.programDay.id)) {
 				byDayId.set(log.programDay.id, {
 					id: log.id,
 					status: log.status,
-					performedAt: log.performedAt,
+					startedAt: log.startedAt,
 				});
 			}
 		}

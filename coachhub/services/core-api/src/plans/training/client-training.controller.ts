@@ -5,6 +5,7 @@ import {
 	HttpStatus,
 	Param,
 	ParseUUIDPipe,
+	Post,
 	Query,
 	UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { CurrentClient, CurrentTenant, Public } from '../../auth';
 import { ClientJwtAuthGuard } from '../../auth/guards/client-jwt-auth.guard';
 import { ClientTrainingCalendarQueryDto } from './dto/client-calendar-query.dto';
 import { ClientTrainingProgramsService } from './services/client-training-programs.service';
+import { ClientWorkoutLogsService } from './services/client-workout-logs.service';
 
 @ApiTags('client/me/training')
 @ApiBearerAuth()
@@ -27,6 +29,7 @@ import { ClientTrainingProgramsService } from './services/client-training-progra
 export class ClientTrainingController {
 	constructor(
 		private readonly clientTrainingProgramsService: ClientTrainingProgramsService,
+		private readonly clientWorkoutLogsService: ClientWorkoutLogsService,
 	) {}
 
 	@Get('programs')
@@ -103,6 +106,24 @@ export class ClientTrainingController {
 		@Param('programDayId', ParseUUIDPipe) programDayId: string,
 	) {
 		return this.clientTrainingProgramsService.getPublishedDay(
+			clientId,
+			tenantId,
+			programDayId,
+		);
+	}
+
+	@Post('days/:programDayId/log')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Start or resume one prescribed workout log' })
+	@ApiResponse({ status: 200, description: 'Workout log started or resumed' })
+	@ApiResponse({ status: 404, description: 'Owned program day not found' })
+	@ApiResponse({ status: 409, description: 'Program day cannot be logged' })
+	startOrResumeWorkout(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('programDayId', ParseUUIDPipe) programDayId: string,
+	) {
+		return this.clientWorkoutLogsService.startOrResumeWorkout(
 			clientId,
 			tenantId,
 			programDayId,
