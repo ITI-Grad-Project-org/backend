@@ -1,6 +1,7 @@
 package com.coachhub.notification.service.email;
 
 import com.coachhub.notification.rabbitmq.payload.ClientInvitedPayload;
+import com.coachhub.notification.rabbitmq.payload.PasswordResetPayload;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -28,6 +29,15 @@ public class EmailService {
 
 		String html = templateEngine.process("client-invited", ctx);
 		send(payload.clientEmail(), payload.coachName() + " invited you to CoachHub", html);
+	}
+
+	public void sendPasswordReset(PasswordResetPayload payload) {
+		Context ctx = new Context();
+		ctx.setVariable("name", payload.name() != null && !payload.name().isBlank() ? payload.name() : "there");
+		ctx.setVariable("resetUrl", payload.resetUrl());
+
+		String html = templateEngine.process("password-reset", ctx);
+		send(payload.email(), "Reset your CoachHub password", html);
 	}
 
 	private void send(String to, String subject, String html) {
