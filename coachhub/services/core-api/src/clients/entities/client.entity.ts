@@ -7,8 +7,8 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { Gender, numericTransformer } from '../../common';
 import { ClientMembership } from './client-membership.entity';
+import { Gender, numericTransformer } from '../../common';
 
 @Entity('clients')
 export class Client {

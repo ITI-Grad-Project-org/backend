@@ -19,6 +19,7 @@ import { S3UploadModule } from '../s3-upload/s3-upload.module';
 
 import { CoachesModule } from '../coaches/coaches.module';
 import { ClientModule } from '../clients/client.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
 	imports: [
@@ -26,6 +27,7 @@ import { ClientModule } from '../clients/client.module';
 		ClientModule,
 		TenantModule,
 		ConfigModule,
+		MessagingModule,
 		PassportModule,
 		JwtModule.register({}),
 		S3UploadModule,

@@ -35,25 +35,19 @@ export class CoachesController {
 		return this.coachesService.findOne(id);
 	}
 
-	@Patch(':id')
+	@Patch('me')
 	@ApiOperation({ summary: 'Update my profile' })
 	update(
 		@CurrentUser('userId') coachId: string,
-		@Param('id', ParseUUIDPipe) id: string,
 		@Body() updateCoachDto: UpdateCoachDto,
 	) {
-		this.assertSelf(coachId, id);
-		return this.coachesService.update(id, updateCoachDto);
+		return this.coachesService.update(coachId, updateCoachDto);
 	}
 
-	@Delete(':id')
+	@Delete('me')
 	@ApiOperation({ summary: 'Delete my account' })
-	remove(
-		@CurrentUser('userId') coachId: string,
-		@Param('id', ParseUUIDPipe) id: string,
-	) {
-		this.assertSelf(coachId, id);
-		return this.coachesService.remove(id);
+	remove(@CurrentUser('userId') coachId: string) {
+		return this.coachesService.remove(coachId);
 	}
 
 	private assertSelf(coachId: string, targetId: string) {

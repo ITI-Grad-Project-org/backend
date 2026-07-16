@@ -9,9 +9,9 @@ import {
 	Unique,
 	UpdateDateColumn,
 } from 'typeorm';
-import { MembershipStatus } from '../../common';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Client } from './client.entity';
+import { MembershipStatus } from '../../common';
 
 @Entity('memberships')
 @Unique(['tenant', 'client'])

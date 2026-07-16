@@ -6,9 +6,11 @@ export const ConfigSchema = z.object({
 		port: z.coerce.number().default(3000),
 		apiPrefix: z.string().default('api'),
 		frontendUrl: z.string().default('http://localhost:5173'),
+		allowedOrigins: z.array(z.string()).nonempty(),
 	}),
 	database: z.object({
 		uri: z.string(),
+		synchronize: z.boolean().default(false),
 	}),
 	rabbitmq: z.object({
 		url: z.string(),

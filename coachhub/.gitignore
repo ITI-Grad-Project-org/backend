@@ -5,8 +5,13 @@ dist/
 .env.developement
 .env.production
 .env.*
+!.env.example
 *.local
-docs
+# K8s secret files with real values (the committed one is only a template)
+*.local.yaml
+# personal notes stay ignored, but the deployment docs are part of the repo
+docs/*
+!docs/deployment/
 
 # Java / Maven
 application-local.yml

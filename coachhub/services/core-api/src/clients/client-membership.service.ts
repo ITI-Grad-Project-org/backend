@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MembershipStatus } from '../common';
 import { ClientMembership } from './entities/client-membership.entity';
+import { MembershipStatus } from '../common';
 
 @Injectable()
 export class ClientMembershipService {

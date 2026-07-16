@@ -17,21 +17,14 @@ export class TenantService {
 		private readonly tenantRepository: Repository<Tenant>,
 	) {}
 
-	async create(
-		createTenantDto: CreateTenantDto,
-		ownerCoachId: string,
-	): Promise<Tenant> {
+	async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
 		const existing = await this.tenantRepository.findOneBy({
 			slug: createTenantDto.slug,
 		});
 		if (existing) {
 			throw new BadRequestException('Tenant with this slug already exists');
 		}
-		const tenant = this.tenantRepository.create({
-			...createTenantDto,
-			ownerCoach: { id: ownerCoachId },
-		});
-		return this.tenantRepository.save(tenant);
+		return this.tenantRepository.create(createTenantDto);
 	}
 
 	async findOne(id: string): Promise<Tenant> {

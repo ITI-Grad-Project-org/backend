@@ -16,14 +16,14 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
-import { RegisterCoachDto } from '../coaches/dto/register-coach.dto';
-import { CurrentUser, Public } from './decorators';
-import { ForgetPasswordDto } from './dto/forget-password.dto';
-import { LoginDto } from './dto/login.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { JwtAuthGuard, JwtRefreshGuard } from './guards';
 import { AuthService } from './services/auth.service';
+import { LoginDto } from './dto/login.dto';
+import { ForgetPasswordDto } from './dto/forget-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
+import { JwtAuthGuard, JwtRefreshGuard } from './guards';
+import { CurrentUser, Public } from './decorators';
+import { RegisterCoachDto } from '../coaches/dto/register-coach.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -37,14 +37,35 @@ export class AuthController {
 		summary:
 			'Register a new coach (auto-creates their tenant and seeds the exercise library)',
 	})
-	@ApiBody({ type: RegisterCoachDto })
+	@ApiBody({
+		type: RegisterCoachDto,
+		examples: {
+			required: {
+				summary: 'Required fields only',
+				description:
+					'Optional extras (phone, bio, specialties, yearsExperience, certifications, timezone, currency) are listed in the schema.',
+				value: {
+					firstName: 'Jane',
+					lastName: 'Smith',
+					email: 'jane@acme.com',
+					password: 'password123',
+					confirmPassword: 'password123',
+					businessName: 'Iron Temple Coaching',
+				},
+			},
+		},
+	})
 	@ApiResponse({
 		status: 201,
 		description: 'Coach and tenant registered successfully',
 	})
 	@ApiResponse({
 		status: 400,
-		description: 'Validation error or email already in use',
+		description: 'Validation error',
+	})
+	@ApiResponse({
+		status: 409,
+		description: 'Email or phone number already in use',
 	})
 	@HttpCode(HttpStatus.CREATED)
 	register(@Body() registerDto: RegisterCoachDto) {

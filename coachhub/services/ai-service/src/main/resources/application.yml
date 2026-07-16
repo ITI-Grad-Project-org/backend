@@ -1,5 +1,7 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
+  # Finish in-flight MQ messages / HTTP requests on SIGTERM (K8s rolling updates).
+  shutdown: graceful
 
 spring:
   application:
@@ -7,7 +9,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://coachhub:secret@localhost:27017/coachhub?authSource=admin}
+      uri: ${MONGODB_ATLAS_URI:mongodb://coachhub:secret@localhost:27017/coachhub?authSource=admin}
       # Required for @Indexed(unique=true) on AiDocument.requestId to take effect
       # (Spring Boot disables index auto-creation by default).
       auto-index-creation: true
@@ -41,12 +43,12 @@ spring:
   ai:
     google:
       genai:
-        api-key: ${GEMINI_API_KEY:AIzaSyBVw_8D8ztTd-wXN3i0TaxuWAfwfPRbsyc}
+        api-key: ${GEMINI_API_KEY:}
         embedding:
           # The embedding connection uses its OWN prefix (spring.ai.google.genai.embedding)
           # and does NOT inherit the api-key above. Without this, the embedding connection
           # falls back to Vertex-AI mode and fails with "Google GenAI project-id must be set!".
-          api-key: ${GEMINI_API_KEY:AIzaSyBVw_8D8ztTd-wXN3i0TaxuWAfwfPRbsyc}
+          api-key: ${GEMINI_API_KEY:}
           text:
             model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
 
@@ -73,7 +75,7 @@ coachhub:
 # ── Gemini ────────────────────────────────────────────────────────────────────
 gemini:
   base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-  api-key: ${GEMINI_API_KEY:AIzaSyBVw_8D8ztTd-wXN3i0TaxuWAfwfPRbsyc}
+  api-key: ${GEMINI_API_KEY:}
   # gemini-2.0-flash was shut down 2026-06-01. 2.5-flash is a safe default;
   # bump to gemini-3.5-flash if your key has access.
   model: ${GEMINI_MODEL:gemini-2.5-flash}
@@ -86,3 +88,11 @@ management:
   endpoint:
     health:
       show-details: always
+      # /actuator/health/{liveness,readiness} — used by Docker healthchecks and K8s probes.
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true

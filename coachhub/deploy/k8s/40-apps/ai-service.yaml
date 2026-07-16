@@ -1,0 +1,72 @@
+# ClusterIP-only (locked: never exposed via Ingress).
+# MongoDB Atlas is managed — only the URI secret is injected, never an in-cluster Mongo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: coachhub
+  labels:
+    app: ai-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001              # 'spring' user pinned in the Dockerfile
+      containers:
+        - name: ai-service
+          image: coachhubacr.azurecr.io/ai-service:v1   # CI: replace with the release git SHA
+          ports:
+            - containerPort: 8081
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "8081"
+            - name: SPRING_DATA_MONGODB_URI
+              valueFrom: { secretKeyRef: { name: app-secrets, key: MONGODB_ATLAS_URI } }
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom: { configMapKeyRef: { name: app-config, key: RABBITMQ_HOST } }
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_USER } }
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_PASSWORD } }
+            - name: GEMINI_API_KEY
+              valueFrom: { secretKeyRef: { name: app-secrets, key: GEMINI_API_KEY } }
+            - name: RAG_SEED_ON_STARTUP
+              value: "true"
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 5
+            failureThreshold: 36           # JVM boot + Atlas handshake + RAG seed: up to 3 min
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits:   { cpu: "1",  memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: coachhub
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-service
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http

@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ConflictException,
 	ForbiddenException,
 	Injectable,
 	Logger,
@@ -15,6 +16,8 @@ import { CreateClientDto } from '../../clients/dto/create-client.dto';
 import { Client } from '../../clients/entities/client.entity';
 import { ClientAuthPayload, MembershipStatus } from '../../common';
 import { TokenProvider } from '../providers/token.provider';
+import { EventPublisherService } from '../../messaging/event-publisher.service';
+import { EventType } from '../../messaging/events';
 
 @Injectable()
 export class ClientAuthService {
@@ -26,6 +29,7 @@ export class ClientAuthService {
 		private readonly membershipService: ClientMembershipService,
 		private readonly tokenProvider: TokenProvider,
 		private readonly configService: ConfigService,
+		private readonly eventPublisherService: EventPublisherService,
 	) {
 		this.googleClient = new OAuth2Client(
 			this.configService.googleOauthConfig.clientId,
@@ -37,7 +41,16 @@ export class ClientAuthService {
 			createClientDto.email,
 		);
 		if (existing) {
-			throw new BadRequestException('Email already in use');
+			throw new ConflictException('Email already in use');
+		}
+
+		if (createClientDto.phone) {
+			const existingPhone = await this.clientService.findOneByPhone(
+				createClientDto.phone,
+			);
+			if (existingPhone) {
+				throw new ConflictException('Phone number is already in use');
+			}
 		}
 
 		const hashedPassword = await this.tokenProvider.hashPassword(
@@ -209,7 +222,26 @@ export class ClientAuthService {
 			new Date(Date.now() + 15 * 60 * 1000),
 		);
 
+		await this.eventPublisherService.publish(
+			EventType.PASSWORD_RESET,
+			{
+				email: client.email,
+				name: `${client.firstName} ${client.lastName}`.trim(),
+				rawToken,
+				resetUrl: this.buildResetUrl(rawToken),
+			},
+			{ tenantId: 'system' },
+		);
+
 		return genericResponse;
+	}
+
+	private buildResetUrl(rawToken: string): string {
+		const baseUrl = this.configService.appConfig.frontendUrl.replace(
+			/\/+$/,
+			'',
+		);
+		return `${baseUrl}/reset-password?token=${rawToken}`;
 	}
 
 	async resetPassword(token: string, newPassword: string) {

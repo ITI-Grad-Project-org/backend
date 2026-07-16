@@ -1,9 +1,11 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common';
+import helmet from 'helmet';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
+import { allowedOrigins } from './config/configuration';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
@@ -22,10 +24,8 @@ async function bootstrap() {
 	app.use(helmet());
 
 	app.enableCors({
-		origin: process.env.ALLOWED_ORIGINS
-			? process.env.ALLOWED_ORIGINS.split(',')
-			: '*',
-		methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+		origin: allowedOrigins(),
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 		credentials: true,
 	});
 

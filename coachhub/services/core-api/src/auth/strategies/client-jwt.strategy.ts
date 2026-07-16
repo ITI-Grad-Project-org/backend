@@ -5,7 +5,10 @@ import { ConfigService } from 'src/config/config.service';
 import { ClientAuthPayload } from '../../common';
 
 @Injectable()
-export class ClientJwtStrategy extends PassportStrategy(Strategy, 'client-jwt') {
+export class ClientJwtStrategy extends PassportStrategy(
+	Strategy,
+	'client-jwt',
+) {
 	constructor(configService: ConfigService) {
 		super({
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

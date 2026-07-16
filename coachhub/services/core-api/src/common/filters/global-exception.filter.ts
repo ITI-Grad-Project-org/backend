@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Socket } from 'socket.io';
+import { QueryFailedError } from 'typeorm';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -49,6 +50,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 			} else {
 				message = responseObject || exception.message;
 			}
+		} else if (this.isUniqueViolation(exception)) {
+			// Safety net: service-level duplicate pre-checks can be raced, and not
+			// every unique column has one. Surface a 409 instead of a 500.
+			status = HttpStatus.CONFLICT;
+			message = this.uniqueViolationMessage(exception);
 		}
 
 		this.logger.error(`${request.method} ${request.url}`, exception.stack);
@@ -66,6 +72,25 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 		);
 
 		response.status(status).json(errorResponse);
+	}
+
+	private isUniqueViolation(exception: any): boolean {
+		return (
+			exception instanceof QueryFailedError &&
+			(exception.driverError as { code?: string })?.code === '23505'
+		);
+	}
+
+	private uniqueViolationMessage(exception: any): string {
+		// Postgres detail looks like: Key (phone)=(+201000000000) already exists.
+		// Name the offending field but never echo the value back.
+		const detail: string = exception.driverError?.detail ?? '';
+		const match = /Key \((.+?)\)=/.exec(detail);
+		if (!match) {
+			return 'A record with these unique values already exists';
+		}
+		const field = match[1].replace(/_/g, ' ');
+		return `A record with this ${field} already exists`;
 	}
 
 	private catchWs(exception: any, host: ArgumentsHost) {
