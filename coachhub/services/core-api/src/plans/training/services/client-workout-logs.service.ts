@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	ConflictException,
 	Injectable,
 	NotFoundException,
@@ -12,6 +13,10 @@ import {
 	SessionStatus,
 	SetOutcome,
 } from '../../../common';
+import {
+	CreateExtraLoggedSetDto,
+	UpdatePrescribedLoggedSetDto,
+} from '../dto/workout-logging.dto';
 import { LoggedExercise } from '../entities/logged-exercise.entity';
 import { LoggedSet } from '../entities/logged-set.entity';
 import { LoggedWorkout } from '../entities/logged-workout.entity';
@@ -110,7 +115,172 @@ export class ClientWorkoutLogsService {
 			return created;
 		});
 	}
+
+	async updatePrescribedSet(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+		loggedSetId: string,
+		body: UpdatePrescribedLoggedSetDto,
+	) {
+		const activeTenantId = assertActiveTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const membership = await getActiveMembership(
+				manager,
+				clientId,
+				activeTenantId,
+			);
+			const log = await lockOwnedInProgressLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				logId,
+			);
+			const repository = manager.getRepository(LoggedSet);
+			const loggedSet = await repository.findOne({
+				where: {
+					id: loggedSetId,
+					isExtra: false,
+					loggedExercise: { loggedWorkoutId: log.id },
+				},
+			});
+			if (!loggedSet) {
+				throw new NotFoundException('Prescribed logged set not found');
+			}
+
+			const actuals = resolveActualValues(
+				body,
+				loggedSet,
+				SUBMITTED_SET_OUTCOMES,
+			);
+			Object.assign(loggedSet, actuals, { outcome: body.outcome });
+			return repository.save(loggedSet);
+		});
+	}
+
+	/**
+	 * V1 intentionally accepts an existing loggedExerciseId, never a replacement
+	 * exerciseId. Exercise substitution needs a future explicit, audited workflow.
+	 */
+	async addExtraSet(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+		body: CreateExtraLoggedSetDto,
+	) {
+		const activeTenantId = assertActiveTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const membership = await getActiveMembership(
+				manager,
+				clientId,
+				activeTenantId,
+			);
+			const log = await lockOwnedInProgressLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				logId,
+			);
+			const loggedExercise = await manager
+				.getRepository(LoggedExercise)
+				.findOne({
+					where: {
+						id: body.loggedExerciseId,
+						loggedWorkoutId: log.id,
+					},
+				});
+			if (!loggedExercise) {
+				throw new NotFoundException('Logged prescribed exercise not found');
+			}
+
+			const actuals = resolveActualValues(body, undefined, EXTRA_SET_OUTCOMES);
+			const repository = manager.getRepository(LoggedSet);
+			const lastSet = await repository.findOne({
+				where: { loggedExerciseId: loggedExercise.id },
+				order: { setNumber: 'DESC' },
+			});
+
+			return repository.save(
+				repository.create({
+					loggedExerciseId: loggedExercise.id,
+					plannedSetId: null,
+					setNumber: (lastSet?.setNumber ?? 0) + 1,
+					isExtra: true,
+					prescribedSetType: null,
+					prescribedRepsMin: null,
+					prescribedRepsMax: null,
+					prescribedDurationSeconds: null,
+					prescribedWeightKg: null,
+					prescribedIntensityType: null,
+					prescribedIntensityValue: null,
+					...actuals,
+					outcome: body.outcome,
+				}),
+			);
+		});
+	}
+
+	async removeExtraSet(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+		loggedSetId: string,
+	) {
+		const activeTenantId = assertActiveTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const membership = await getActiveMembership(
+				manager,
+				clientId,
+				activeTenantId,
+			);
+			const log = await lockOwnedInProgressLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				logId,
+			);
+			const repository = manager.getRepository(LoggedSet);
+			const extraSet = await repository.findOne({
+				where: {
+					id: loggedSetId,
+					isExtra: true,
+					loggedExercise: { loggedWorkoutId: log.id },
+				},
+			});
+			if (!extraSet) {
+				throw new NotFoundException('Extra logged set not found');
+			}
+
+			await repository.remove(extraSet);
+			return { id: loggedSetId, message: 'Extra set removed' };
+		});
+	}
 }
+
+const SUBMITTED_SET_OUTCOMES = [
+	SetOutcome.COMPLETED,
+	SetOutcome.PARTIAL,
+	SetOutcome.SKIPPED,
+];
+const EXTRA_SET_OUTCOMES = [SetOutcome.COMPLETED, SetOutcome.PARTIAL];
+
+type ActualSetInput = {
+	outcome: SetOutcome;
+	reps?: number | null;
+	weightKg?: number | null;
+	durationSeconds?: number | null;
+	rpe?: number | null;
+};
+
+type ActualSetValues = {
+	reps: number | null;
+	weightKg: number | null;
+	durationSeconds: number | null;
+	rpe: number | null;
+};
 
 async function getActiveMembership(
 	manager: EntityManager,
@@ -129,6 +299,82 @@ async function getActiveMembership(
 		throw new NotFoundException('Active client membership not found');
 	}
 	return membership;
+}
+
+async function lockOwnedInProgressLog(
+	manager: EntityManager,
+	tenantId: string,
+	membershipId: string,
+	logId: string,
+) {
+	const log = await manager
+		.getRepository(LoggedWorkout)
+		.createQueryBuilder('log')
+		.where('log.id = :logId', { logId })
+		.andWhere('log.tenant_id = :tenantId', { tenantId })
+		.andWhere('log.membership_id = :membershipId', { membershipId })
+		.setLock('pessimistic_write')
+		.getOne();
+	if (!log) {
+		throw new NotFoundException('Workout log not found');
+	}
+	if (log.status !== SessionStatus.IN_PROGRESS) {
+		throw new ConflictException('Finalized workout logs are immutable');
+	}
+	return log;
+}
+
+function resolveActualValues(
+	input: ActualSetInput,
+	current: ActualSetValues | undefined,
+	allowedOutcomes: SetOutcome[],
+): ActualSetValues {
+	if (!allowedOutcomes.includes(input.outcome)) {
+		throw new BadRequestException('Invalid submitted set outcome');
+	}
+
+	if (input.outcome === SetOutcome.SKIPPED) {
+		if (hasAnySubmittedActual(input)) {
+			throw new BadRequestException(
+				'Skipped sets cannot contain actual performance values',
+			);
+		}
+		return emptyActualValues();
+	}
+
+	const actuals = {
+		reps: input.reps === undefined ? (current?.reps ?? null) : input.reps,
+		weightKg:
+			input.weightKg === undefined
+				? (current?.weightKg ?? null)
+				: input.weightKg,
+		durationSeconds:
+			input.durationSeconds === undefined
+				? (current?.durationSeconds ?? null)
+				: input.durationSeconds,
+		rpe: input.rpe === undefined ? (current?.rpe ?? null) : input.rpe,
+	};
+	if (!Object.values(actuals).some((value) => value !== null)) {
+		throw new BadRequestException(
+			'Completed and partial sets require actual performance data',
+		);
+	}
+	return actuals;
+}
+
+function hasAnySubmittedActual(input: ActualSetInput) {
+	return [input.reps, input.weightKg, input.durationSeconds, input.rpe].some(
+		(value) => value != null,
+	);
+}
+
+function emptyActualValues(): ActualSetValues {
+	return {
+		reps: null,
+		weightKg: null,
+		durationSeconds: null,
+		rpe: null,
+	};
 }
 
 async function lockOwnedProgramDay(

@@ -29,6 +29,14 @@ import { PlannedSet } from './planned-set.entity';
 	'ck_logged_sets_prescription_shape',
 	`"is_extra" OR "prescribed_set_type" IS NOT NULL`,
 )
+@Check(
+	'ck_logged_sets_actual_outcome_shape',
+	`("outcome" IN ('pending', 'skipped') AND "reps" IS NULL AND "weight_kg" IS NULL AND "duration_seconds" IS NULL AND "rpe" IS NULL) OR ("outcome" IN ('completed', 'partial') AND ("reps" IS NOT NULL OR "weight_kg" IS NOT NULL OR "duration_seconds" IS NOT NULL OR "rpe" IS NOT NULL))`,
+)
+@Check(
+	'ck_logged_sets_extra_outcome',
+	`NOT "is_extra" OR "outcome" IN ('completed', 'partial')`,
+)
 export class LoggedSet {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;

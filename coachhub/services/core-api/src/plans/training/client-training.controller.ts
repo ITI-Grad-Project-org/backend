@@ -1,10 +1,13 @@
 import {
+	Body,
 	Controller,
+	Delete,
 	Get,
 	HttpCode,
 	HttpStatus,
 	Param,
 	ParseUUIDPipe,
+	Patch,
 	Post,
 	Query,
 	UseGuards,
@@ -18,6 +21,10 @@ import {
 import { CurrentClient, CurrentTenant, Public } from '../../auth';
 import { ClientJwtAuthGuard } from '../../auth/guards/client-jwt-auth.guard';
 import { ClientTrainingCalendarQueryDto } from './dto/client-calendar-query.dto';
+import {
+	CreateExtraLoggedSetDto,
+	UpdatePrescribedLoggedSetDto,
+} from './dto/workout-logging.dto';
 import { ClientTrainingProgramsService } from './services/client-training-programs.service';
 import { ClientWorkoutLogsService } from './services/client-workout-logs.service';
 
@@ -127,6 +134,73 @@ export class ClientTrainingController {
 			clientId,
 			tenantId,
 			programDayId,
+		);
+	}
+
+	@Patch('logs/:logId/sets/:loggedSetId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Submit actual results for one prescribed set' })
+	@ApiResponse({ status: 200, description: 'Prescribed set result updated' })
+	@ApiResponse({
+		status: 404,
+		description: 'Owned workout log or set not found',
+	})
+	@ApiResponse({ status: 409, description: 'Workout log is finalized' })
+	updatePrescribedSet(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Param('loggedSetId', ParseUUIDPipe) loggedSetId: string,
+		@Body() body: UpdatePrescribedLoggedSetDto,
+	) {
+		return this.clientWorkoutLogsService.updatePrescribedSet(
+			clientId,
+			tenantId,
+			logId,
+			loggedSetId,
+			body,
+		);
+	}
+
+	@Post('logs/:logId/extra-sets')
+	@ApiOperation({ summary: 'Add an extra set to a prescribed logged exercise' })
+	@ApiResponse({ status: 201, description: 'Extra set created' })
+	@ApiResponse({ status: 404, description: 'Owned workout log not found' })
+	@ApiResponse({ status: 409, description: 'Workout log is finalized' })
+	addExtraSet(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Body() body: CreateExtraLoggedSetDto,
+	) {
+		return this.clientWorkoutLogsService.addExtraSet(
+			clientId,
+			tenantId,
+			logId,
+			body,
+		);
+	}
+
+	@Delete('logs/:logId/extra-sets/:loggedSetId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Remove an extra set from an in-progress log' })
+	@ApiResponse({ status: 200, description: 'Extra set removed' })
+	@ApiResponse({
+		status: 404,
+		description: 'Owned workout log or set not found',
+	})
+	@ApiResponse({ status: 409, description: 'Workout log is finalized' })
+	removeExtraSet(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Param('loggedSetId', ParseUUIDPipe) loggedSetId: string,
+	) {
+		return this.clientWorkoutLogsService.removeExtraSet(
+			clientId,
+			tenantId,
+			logId,
+			loggedSetId,
 		);
 	}
 }
