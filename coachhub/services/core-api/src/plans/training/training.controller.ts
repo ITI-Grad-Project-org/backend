@@ -204,6 +204,14 @@ export class TrainingController {
 	}
 
 	@Patch(':programId/days/:programDayId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Update a workout day title, notes, or rest status',
+	})
+	@ApiResponse({ status: 200, description: 'Program day updated' })
+	@ApiResponse({ status: 400, description: 'Invalid day update' })
+	@ApiResponse({ status: 404, description: 'Editable program day not found' })
+	@ApiResponse({ status: 409, description: 'Rest or published-day conflict' })
 	updateProgramDay(
 		@CurrentTenant() tenantId: string | null,
 		@Param('programId', ParseUUIDPipe) programId: string,
@@ -219,6 +227,14 @@ export class TrainingController {
 	}
 
 	@Post(':programId/days/:programDayId/exercises/from-library')
+	@ApiOperation({ summary: 'Add a tenant library exercise to a workout day' })
+	@ApiResponse({ status: 201, description: 'Exercise prescription added' })
+	@ApiResponse({ status: 400, description: 'Invalid prescription or position' })
+	@ApiResponse({
+		status: 404,
+		description: 'Program day or exercise not found',
+	})
+	@ApiResponse({ status: 409, description: 'Rest or published-day conflict' })
 	addExerciseFromLibrary(
 		@CurrentTenant() tenantId: string | null,
 		@Param('programId', ParseUUIDPipe) programId: string,
@@ -234,6 +250,16 @@ export class TrainingController {
 	}
 
 	@Post(':programId/days/:programDayId/exercises/create-in-library')
+	@ApiOperation({
+		summary: 'Create a reusable library exercise and add its prescription',
+	})
+	@ApiResponse({ status: 201, description: 'Exercise created and prescribed' })
+	@ApiResponse({ status: 400, description: 'Invalid exercise or prescription' })
+	@ApiResponse({ status: 404, description: 'Editable program day not found' })
+	@ApiResponse({
+		status: 409,
+		description: 'Rest-day or duplicate-name conflict',
+	})
 	createLibraryExerciseAndAdd(
 		@CurrentTenant() tenantId: string | null,
 		@CurrentUser('userId') coachId: string,
@@ -251,6 +277,12 @@ export class TrainingController {
 	}
 
 	@Patch(':programId/exercises/:plannedExerciseId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Update or reorder a planned exercise' })
+	@ApiResponse({ status: 200, description: 'Planned exercise updated' })
+	@ApiResponse({ status: 400, description: 'Invalid position or prescription' })
+	@ApiResponse({ status: 404, description: 'Planned exercise not found' })
+	@ApiResponse({ status: 409, description: 'Published-day edit conflict' })
 	updatePlannedExercise(
 		@CurrentTenant() tenantId: string | null,
 		@Param('programId', ParseUUIDPipe) programId: string,
@@ -266,6 +298,12 @@ export class TrainingController {
 	}
 
 	@Put(':programId/exercises/:plannedExerciseId/sets')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Replace every prescribed set for an exercise' })
+	@ApiResponse({ status: 200, description: 'Prescribed sets replaced' })
+	@ApiResponse({ status: 400, description: 'Invalid set prescriptions' })
+	@ApiResponse({ status: 404, description: 'Planned exercise not found' })
+	@ApiResponse({ status: 409, description: 'Published-day edit conflict' })
 	replacePlannedSets(
 		@CurrentTenant() tenantId: string | null,
 		@Param('programId', ParseUUIDPipe) programId: string,
@@ -282,6 +320,10 @@ export class TrainingController {
 
 	@Delete(':programId/exercises/:plannedExerciseId')
 	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Delete a planned exercise and compact positions' })
+	@ApiResponse({ status: 200, description: 'Planned exercise deleted' })
+	@ApiResponse({ status: 404, description: 'Planned exercise not found' })
+	@ApiResponse({ status: 409, description: 'Published-day edit conflict' })
 	deletePlannedExercise(
 		@CurrentTenant() tenantId: string | null,
 		@Param('programId', ParseUUIDPipe) programId: string,

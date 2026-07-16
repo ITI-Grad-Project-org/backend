@@ -177,6 +177,7 @@ export class ClientTrainingController {
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Complete and finalize an in-progress workout log' })
 	@ApiResponse({ status: 200, description: 'Workout log completed' })
+	@ApiResponse({ status: 400, description: 'Invalid completion metadata' })
 	@ApiResponse({ status: 404, description: 'Owned workout log not found' })
 	@ApiResponse({ status: 409, description: 'Pending sets or finalized log' })
 	completeWorkout(
@@ -197,6 +198,7 @@ export class ClientTrainingController {
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Submit actual results for one prescribed set' })
 	@ApiResponse({ status: 200, description: 'Prescribed set result updated' })
+	@ApiResponse({ status: 400, description: 'Invalid outcome or actual values' })
 	@ApiResponse({
 		status: 404,
 		description: 'Owned workout log or set not found',
@@ -221,6 +223,7 @@ export class ClientTrainingController {
 	@Post('logs/:logId/extra-sets')
 	@ApiOperation({ summary: 'Add an extra set to a prescribed logged exercise' })
 	@ApiResponse({ status: 201, description: 'Extra set created' })
+	@ApiResponse({ status: 400, description: 'Invalid outcome or actual values' })
 	@ApiResponse({ status: 404, description: 'Owned workout log not found' })
 	@ApiResponse({ status: 409, description: 'Workout log is finalized' })
 	addExtraSet(

@@ -89,8 +89,7 @@ export class PrescribeExerciseDto {
 	})
 	@IsOptional()
 	@IsInt()
-	// TODO(workout-validation): Add @Min(1) to match UpdatePlannedExerciseDto;
-	// the create prescription currently accepts supersetGroup = 0.
+	@Min(1)
 	supersetGroup?: number;
 
 	@ApiPropertyOptional({ example: 90, default: 90 })
