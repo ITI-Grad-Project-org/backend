@@ -17,6 +17,11 @@ import {
 } from '../utils/workout-log.utils';
 import { getActiveMembership } from './workout-log.persistence';
 
+/**
+ * Starts the canonical log for a program day or resumes the existing one. It
+ * locks the owned day, validates the logging window, snapshots the prescription
+ * once, and always returns the same fully loaded workout graph.
+ */
 export async function getOrCreateInProgressWorkout(
 	manager: EntityManager,
 	clientId: string,
@@ -87,6 +92,11 @@ export async function getOrCreateInProgressWorkout(
 	return created;
 }
 
+/**
+ * Confirms that the day belongs to the client's tenant membership and locks it
+ * for the transaction. This serializes competing start requests before either
+ * request checks for or creates the one canonical workout log.
+ */
 async function lockOwnedProgramDay(
 	manager: EntityManager,
 	tenantId: string,
@@ -113,6 +123,11 @@ async function lockOwnedProgramDay(
 	return day;
 }
 
+/**
+ * Creates the historical workout, exercise, and set snapshot from the current
+ * prescription. Planned identifiers are retained for lineage, while actual
+ * performance starts empty and each prescribed set starts pending.
+ */
 async function createWorkoutSnapshot(
 	manager: EntityManager,
 	tenantId: string,
@@ -180,6 +195,11 @@ async function createWorkoutSnapshot(
 	);
 }
 
+/**
+ * Loads the one log associated with a program day together with exercises and
+ * ordered sets. Both create and resume use this loader so their response shape
+ * and ordering stay identical.
+ */
 function loadCanonicalLog(
 	manager: EntityManager,
 	tenantId: string,

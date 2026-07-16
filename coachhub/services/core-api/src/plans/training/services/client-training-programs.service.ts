@@ -228,6 +228,10 @@ export class ClientTrainingProgramsService {
 		};
 	}
 
+	/**
+	 * Resolves the client's active membership for the selected tenant. Every
+	 * client-facing program read starts here so ids cannot cross memberships.
+	 */
 	private async getActiveMembership(clientId: string, tenantId: string | null) {
 		if (!tenantId) {
 			throw new BadRequestException('No active tenant selected');
@@ -247,6 +251,10 @@ export class ClientTrainingProgramsService {
 		return membership;
 	}
 
+	/**
+	 * Builds the ownership and lifecycle predicate shared by client program
+	 * queries, ensuring clients can see only their published tenant programs.
+	 */
 	private publishedProgramScope(tenantId: string, membershipId: string) {
 		return {
 			tenantId,
@@ -256,10 +264,15 @@ export class ClientTrainingProgramsService {
 		};
 	}
 
+	/** Returns the complete relation tree required by client builder responses. */
 	private builderRelations() {
 		return { weeks: { days: { exercises: { sets: true } } } } as const;
 	}
 
+	/**
+	 * Defines one canonical order for weeks, days, exercises, and sets so every
+	 * client endpoint presents the prescription in the coach's intended sequence.
+	 */
 	private builderOrder() {
 		return {
 			weeks: {
@@ -275,6 +288,10 @@ export class ClientTrainingProgramsService {
 		};
 	}
 
+	/**
+	 * Maps a program tree, loads its workout-log states in one batch, and attaches
+	 * the matching state to each day. This avoids one log query per calendar day.
+	 */
 	private async mapProgramWithLogState(
 		program: Program,
 		membership: ClientMembership,
@@ -293,6 +310,11 @@ export class ClientTrainingProgramsService {
 		};
 	}
 
+	/**
+	 * Loads logs for several programs at once and indexes the newest log by day.
+	 * The map makes later day decoration a constant-time lookup rather than N+1
+	 * database queries.
+	 */
 	private async loadLogState(
 		membership: ClientMembership,
 		programIds: string[],
@@ -321,6 +343,11 @@ export class ClientTrainingProgramsService {
 		return byDayId;
 	}
 
+	/**
+	 * Converts a day's optional workout log into the client-facing log state.
+	 * Rest days are explicitly not applicable; workout days without a log are
+	 * reported as not started.
+	 */
 	private mapDayLogState(
 		day: Pick<ProgramDay, 'id' | 'isRestDay'>,
 		logsByDayId: Map<string, ExistingLogState>,
@@ -338,6 +365,10 @@ export class ClientTrainingProgramsService {
 		};
 	}
 
+	/**
+	 * Validates real date-only calendar bounds and their ordering before they are
+	 * used in range queries, preventing invalid or reversed calendar searches.
+	 */
 	private assertCalendarRange(query: ClientTrainingCalendarQueryDto) {
 		if (!isValidDateOnly(query.from) || !isValidDateOnly(query.to)) {
 			throw new BadRequestException('Calendar range dates must be valid');

@@ -1,5 +1,9 @@
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+/**
+ * Verifies both the YYYY-MM-DD shape and the real calendar date. Rebuilding the
+ * date in UTC catches values such as February 30 that JavaScript would normalize.
+ */
 export function isValidDateOnly(value: string) {
 	const match = DATE_ONLY_PATTERN.exec(value);
 	if (!match) return false;
@@ -16,6 +20,10 @@ export function isValidDateOnly(value: string) {
 	);
 }
 
+/**
+ * Adds calendar days to a date-only value using UTC arithmetic. UTC keeps the
+ * result independent of server timezone and daylight-saving transitions.
+ */
 export function addDaysToDateOnly(value: string, days: number) {
 	if (!isValidDateOnly(value)) {
 		throw new RangeError('Invalid date-only value');
@@ -26,6 +34,11 @@ export function addDaysToDateOnly(value: string, days: number) {
 	date.setUTCDate(date.getUTCDate() + days);
 	return date.toISOString().slice(0, 10);
 }
+
+/**
+ * Converts an instant into the calendar date seen in a tenant's timezone. This
+ * is used whenever "today" must follow the tenant rather than the API server.
+ */
 export function getDateOnlyInTimeZone(date: Date, timezone: string) {
 	const parts = new Intl.DateTimeFormat('en-US', {
 		timeZone: timezone,
@@ -40,6 +53,10 @@ export function getDateOnlyInTimeZone(date: Date, timezone: string) {
 	return `${values.year}-${values.month}-${values.day}`;
 }
 
+/**
+ * Calculates the inclusive last day of a program. Subtracting one keeps a
+ * one-week program at exactly seven dates: start date through start plus six.
+ */
 export function deriveInclusiveEndDate(
 	startDate: string,
 	durationWeeks: number,
@@ -47,6 +64,10 @@ export function deriveInclusiveEndDate(
 	return addDaysToDateOnly(startDate, durationWeeks * 7 - 1);
 }
 
+/**
+ * Converts relative week/day numbers into the actual calendar date. Storing the
+ * relative position keeps programs valid even when they start on any weekday.
+ */
 export function getScheduledDate(
 	startDate: string,
 	weekNumber: number,

@@ -5,6 +5,11 @@ import { MembershipStatus, SessionStatus } from '../../../common';
 import { LoggedSet } from '../entities/logged-set.entity';
 import { LoggedWorkout } from '../entities/logged-workout.entity';
 
+/**
+ * Resolves the client's active membership inside the selected tenant. Keeping
+ * this check in the transaction makes membership ownership the boundary for
+ * every subsequent workout-log query.
+ */
 export async function getActiveMembership(
 	manager: EntityManager,
 	clientId: string,
@@ -24,6 +29,11 @@ export async function getActiveMembership(
 	return membership;
 }
 
+/**
+ * Loads and row-locks an owned in-progress workout before any mutation. The
+ * status check under the same lock prevents concurrent writes and guarantees
+ * that completed or skipped logs remain immutable.
+ */
 export async function lockOwnedInProgressLog(
 	manager: EntityManager,
 	tenantId: string,
@@ -47,6 +57,11 @@ export async function lockOwnedInProgressLog(
 	return log;
 }
 
+/**
+ * Returns only prescribed logged sets, excluding client-added extras. Completion
+ * and whole-day skipping use this list because extra sets must not determine
+ * whether the original prescription was finished.
+ */
 export function loadPrescribedLoggedSets(
 	manager: EntityManager,
 	logId: string,
@@ -60,6 +75,11 @@ export function loadPrescribedLoggedSets(
 	});
 }
 
+/**
+ * Loads a workout only when it belongs to the active tenant membership, then
+ * hydrates its exercises and sets in display order. The ownership predicates
+ * prevent a valid log id from crossing tenant or client boundaries.
+ */
 export function loadOwnedWorkoutLog(
 	manager: EntityManager,
 	tenantId: string,

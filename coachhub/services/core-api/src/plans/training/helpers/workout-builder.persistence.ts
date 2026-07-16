@@ -7,10 +7,10 @@ import { EntityManager } from 'typeorm';
 import { ProgramStatus, ProgramType } from '../../../common';
 import { Exercise } from '../../../exercises/entities/exercise.entity';
 import { PrescribeExerciseDto } from '../dto/prescribe-exercise.dto';
+import { LoggedWorkout } from '../entities/logged-workout.entity';
 import { PlannedExercise } from '../entities/planned-exercise.entity';
 import { PlannedSet } from '../entities/planned-set.entity';
 import { ProgramDay } from '../entities/program-day.entity';
-import { LoggedWorkout } from '../entities/logged-workout.entity';
 import {
 	getDateOnlyInTimeZone,
 	getScheduledDate,
@@ -21,6 +21,11 @@ import {
 	validateSetPrescriptions,
 } from '../utils/training-service.utils';
 
+/**
+ * Validates that a day belongs to the tenant's editable client program, then
+ * locks that day so concurrent builder requests cannot corrupt its ordering.
+ * Published days remain editable only while they are not past and have no log.
+ */
 export async function lockEditableDay(
 	manager: EntityManager,
 	tenantId: string,
@@ -78,6 +83,11 @@ export async function lockEditableDay(
 	return day;
 }
 
+/**
+ * Peeks at an exercise to discover its parent day, locks that day, then reads
+ * the exercise again. The second read closes the gap where it could change
+ * between the initial lookup and acquiring the parent lock.
+ */
 export async function getEditablePlannedExercise(
 	manager: EntityManager,
 	tenantId: string,
@@ -107,6 +117,11 @@ export async function getEditablePlannedExercise(
 	return planned;
 }
 
+/**
+ * Copies a library exercise and its prescribed sets into a program day at the
+ * requested position. Existing positions are moved temporarily to negatives
+ * so the database's unique position constraint is never violated mid-update.
+ */
 export async function insertExerciseSnapshot(
 	manager: EntityManager,
 	day: ProgramDay,
@@ -168,6 +183,11 @@ export async function insertExerciseSnapshot(
 	return planned;
 }
 
+/**
+ * Rewrites a day's exercise positions into one contiguous order. The negative
+ * first pass frees every positive position before the final order is applied,
+ * which makes reordering safe under the unique day-position constraint.
+ */
 export async function rewriteExercisePositions(
 	manager: EntityManager,
 	currentlyStored: PlannedExercise[],

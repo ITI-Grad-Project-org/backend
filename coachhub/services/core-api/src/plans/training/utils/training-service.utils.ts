@@ -11,6 +11,10 @@ import {
 
 export type ProgramSchedulePhase = 'scheduled' | 'active' | 'ended';
 
+/**
+ * Narrows a nullable JWT tenant id to a usable tenant id. Failing here prevents
+ * downstream queries from running without the tenant security boundary.
+ */
 export function assertActiveTenant(tenantId: string | null) {
 	if (!tenantId) {
 		throw new BadRequestException('No active tenant selected');
@@ -18,6 +22,10 @@ export function assertActiveTenant(tenantId: string | null) {
 	return tenantId;
 }
 
+/**
+ * Validates a real date-only start value and rejects dates already past in the
+ * tenant's timezone, rather than comparing against the API server's local date.
+ */
 export function assertStartDate(startDate: string, timezone: string) {
 	if (!isValidDateOnly(startDate)) {
 		throw new BadRequestException('startDate must be a valid date');
@@ -31,12 +39,21 @@ export function assertStartDate(startDate: string, timezone: string) {
 	}
 }
 
+/**
+ * Trims optional user text and stores blank values as null. This gives names,
+ * notes, and descriptions one predictable empty representation in the database.
+ */
 export function normalizeOptionalText(value?: string | null) {
 	if (value == null) return null;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
 }
 
+/**
+ * Derives the client's scheduled/active/ended view from dates at read time.
+ * Draft and cancelled programs return null because those are stored lifecycle
+ * states, not date-driven schedule phases.
+ */
 export function deriveProgramSchedulePhase(
 	program: Pick<Program, 'status' | 'startDate' | 'endDate'>,
 	timezone: string,
@@ -56,6 +73,10 @@ export function deriveProgramSchedulePhase(
 	return 'active';
 }
 
+/**
+ * Adds the derived schedule phase to a program without changing the stored
+ * entity. Keeping this as response mapping avoids persisting stale phase data.
+ */
 export function mapClientProgramSummary(
 	program: Program,
 	timezone: string,
@@ -67,6 +88,11 @@ export function mapClientProgramSummary(
 	};
 }
 
+/**
+ * Maps the full builder tree and calculates a scheduled date for every day.
+ * Consumers receive calendar-ready data while the database keeps only relative
+ * week and day numbers.
+ */
 export function mapBuilderProgram(
 	program: Program,
 	timezone = 'UTC',
@@ -88,12 +114,20 @@ export function mapBuilderProgram(
 	};
 }
 
+/**
+ * Rejects exercise mutations on explicit rest days. This protects the invariant
+ * that a publishable day is either rest or contains exercises, never both.
+ */
 export function assertWorkoutDay(day: ProgramDay) {
 	if (day.isRestDay) {
 		throw new ConflictException('Exercises cannot be added to a rest day');
 	}
 }
 
+/**
+ * Applies cross-field validation that decorators cannot express: when both rep
+ * bounds are supplied, the maximum must not be lower than the minimum.
+ */
 export function validateSetPrescriptions(sets: PrescribedSetDto[]) {
 	for (const set of sets) {
 		if (
@@ -106,6 +140,10 @@ export function validateSetPrescriptions(sets: PrescribedSetDto[]) {
 	}
 }
 
+/**
+ * Converts an incoming set prescription into the entity fields and applies the
+ * default set type. Missing optional targets become null for consistent storage.
+ */
 export function mapPlannedSet(set: PrescribedSetDto, setNumber: number) {
 	return {
 		setNumber,

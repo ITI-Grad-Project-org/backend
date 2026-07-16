@@ -27,6 +27,10 @@ export type ActualSetValues = {
 	rpe: number | null;
 };
 
+/**
+ * Confirms that the selected day belongs to a published workout and is not a
+ * rest day. This blocks logging against drafts, cancelled plans, and rest days.
+ */
 export function assertLoggableLifecycle(program: Program, day: ProgramDay) {
 	if (program.status !== ProgramStatus.PUBLISHED) {
 		throw new ConflictException(
@@ -38,6 +42,10 @@ export function assertLoggableLifecycle(program: Program, day: ProgramDay) {
 	}
 }
 
+/**
+ * Enforces the allowed calendar window for starting a log: not in the future,
+ * not after program end, and no earlier than today minus six calendar days.
+ */
 export function assertLoggingWindow(
 	scheduledDate: string,
 	today: string,
@@ -58,6 +66,11 @@ export function assertLoggingWindow(
 	}
 }
 
+/**
+ * Ensures the day has an exercise snapshot source and every exercise has sets.
+ * Without a complete prescription, a meaningful canonical workout log cannot
+ * be created.
+ */
 export function assertCompletePrescription(
 	plannedExercises: PlannedExercise[],
 ) {
@@ -71,6 +84,11 @@ export function assertCompletePrescription(
 	}
 }
 
+/**
+ * Derives the final session status from prescribed-set outcomes. Pending sets
+ * block finalization; otherwise all completed/all skipped map directly and a
+ * mixed result becomes partial.
+ */
 export function deriveCompletedWorkoutStatus(outcomes: SetOutcome[]) {
 	if (outcomes.length === 0) {
 		throw new ConflictException('Workout log has no prescribed sets');
@@ -89,6 +107,11 @@ export function deriveCompletedWorkoutStatus(outcomes: SetOutcome[]) {
 	return SessionStatus.PARTIAL;
 }
 
+/**
+ * Validates an allowed outcome and merges a partial set update with stored
+ * actuals. Skipped sets are cleared, while completed/partial sets must retain
+ * at least one actual performance value.
+ */
 export function resolveActualValues(
 	input: ActualSetInput,
 	current: ActualSetValues | undefined,
@@ -127,6 +150,10 @@ export function resolveActualValues(
 	return actuals;
 }
 
+/**
+ * Produces the canonical empty actual-value shape. Reusing it ensures every
+ * skipped set clears reps, weight, duration, and RPE in the same way.
+ */
 export function emptyActualValues(): ActualSetValues {
 	return {
 		reps: null,
@@ -136,6 +163,7 @@ export function emptyActualValues(): ActualSetValues {
 	};
 }
 
+/** Checks whether the request supplied any actual performance measurement. */
 function hasAnySubmittedActual(input: ActualSetInput) {
 	return [input.reps, input.weightKg, input.durationSeconds, input.rpe].some(
 		(value) => value != null,

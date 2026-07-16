@@ -42,6 +42,10 @@ export class QueryClientProgramsDto {
 	isArchived?: boolean;
 }
 
+/**
+ * Converts only explicit query-string booleans. Other values are left unchanged
+ * so class-validator can reject them instead of silently treating them as true.
+ */
 function parseBooleanQueryValue(value: unknown) {
 	if (value === 'true') return true;
 	if (value === 'false') return false;

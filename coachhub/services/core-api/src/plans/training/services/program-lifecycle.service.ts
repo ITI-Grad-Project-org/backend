@@ -149,6 +149,11 @@ export class ProgramLifecycleService {
 	}
 }
 
+/**
+ * Loads the tenant-owned client program and locks it for the lifecycle change.
+ * The row lock prevents two publish, reschedule, cancel, or archive requests
+ * from making decisions from the same stale program state.
+ */
 async function lockClientProgram(
 	manager: EntityManager,
 	tenantId: string,
@@ -171,6 +176,11 @@ async function lockClientProgram(
 	return program;
 }
 
+/**
+ * Verifies and locks the active membership that owns the program. Locking this
+ * shared parent serializes publish/reschedule operations across different
+ * programs for the same client before the overlap check runs.
+ */
 async function lockActiveMembership(
 	manager: EntityManager,
 	tenantId: string,
@@ -194,6 +204,11 @@ async function lockActiveMembership(
 	return membership;
 }
 
+/**
+ * Confirms the generated program has exactly seven days per week and that every
+ * day is exclusively rest or contains exercises. Publication is blocked until
+ * the complete client-visible schedule is valid.
+ */
 async function assertProgramCompleteness(
 	manager: EntityManager,
 	program: Program,
@@ -232,6 +247,11 @@ async function assertProgramCompleteness(
 	}
 }
 
+/**
+ * Detects inclusive date-range intersection with another published program for
+ * the same tenant membership. This protects the rule that a client has at most
+ * one published workout program covering any calendar date.
+ */
 async function assertNoPublishedOverlap(
 	manager: EntityManager,
 	program: Program,

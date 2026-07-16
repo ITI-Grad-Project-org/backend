@@ -108,6 +108,11 @@ export class WorkoutLogReviewService {
 		};
 	}
 
+	/**
+	 * Loads only a tenant-owned client program before coach log review. Keeping
+	 * the tenant and program-type predicates together prevents cross-tenant ids
+	 * and future template programs from entering the review path.
+	 */
 	private async getClientProgram(tenantId: string, programId: string) {
 		const program = await this.programRepository.findOne({
 			where: {
@@ -123,6 +128,10 @@ export class WorkoutLogReviewService {
 	}
 }
 
+/**
+ * Reduces the program entity to the context needed beside its logs. Avoiding the
+ * full builder tree keeps review-list responses focused and significantly smaller.
+ */
 function mapProgramReviewSummary(program: Program) {
 	return {
 		id: program.id,
