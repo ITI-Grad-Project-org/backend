@@ -14,7 +14,10 @@ import { ProgramWeek } from './entities/program-week.entity';
 import { Program } from './entities/program.entity';
 import { ClientProgramsService } from './services/client-programs.service';
 import { ClientTrainingProgramsService } from './services/client-training-programs.service';
+import { ClientWorkoutFinalizationService } from './services/client-workout-finalization.service';
 import { ClientWorkoutLogsService } from './services/client-workout-logs.service';
+import { ClientWorkoutSessionService } from './services/client-workout-session.service';
+import { ClientWorkoutSetLoggingService } from './services/client-workout-set-logging.service';
 import { PlannedExercisesService } from './services/planned-exercises.service';
 import { ProgramDaysService } from './services/program-days.service';
 import { ProgramLifecycleService } from './services/program-lifecycle.service';
@@ -39,7 +42,10 @@ import { WorkoutLogReviewService } from './services/workout-log-review.service';
 	providers: [
 		ClientProgramsService,
 		ClientTrainingProgramsService,
+		ClientWorkoutFinalizationService,
 		ClientWorkoutLogsService,
+		ClientWorkoutSessionService,
+		ClientWorkoutSetLoggingService,
 		ProgramDaysService,
 		PlannedExercisesService,
 		ProgramLifecycleService,
