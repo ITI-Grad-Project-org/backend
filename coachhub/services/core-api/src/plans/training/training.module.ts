@@ -18,6 +18,7 @@ import { ClientWorkoutLogsService } from './services/client-workout-logs.service
 import { PlannedExercisesService } from './services/planned-exercises.service';
 import { ProgramDaysService } from './services/program-days.service';
 import { ProgramLifecycleService } from './services/program-lifecycle.service';
+import { WorkoutLogReviewService } from './services/workout-log-review.service';
 
 @Module({
 	imports: [
@@ -42,6 +43,7 @@ import { ProgramLifecycleService } from './services/program-lifecycle.service';
 		ProgramDaysService,
 		PlannedExercisesService,
 		ProgramLifecycleService,
+		WorkoutLogReviewService,
 	],
 })
 export class TrainingModule {}

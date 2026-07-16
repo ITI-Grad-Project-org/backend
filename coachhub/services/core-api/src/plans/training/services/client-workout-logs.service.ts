@@ -14,6 +14,7 @@ import {
 	SetOutcome,
 } from '../../../common';
 import {
+	CompleteWorkoutDto,
 	CreateExtraLoggedSetDto,
 	UpdatePrescribedLoggedSetDto,
 } from '../dto/workout-logging.dto';
@@ -28,7 +29,10 @@ import {
 	getDateOnlyInTimeZone,
 	getScheduledDate,
 } from '../utils/program-date.utils';
-import { assertActiveTenant } from '../utils/training-service.utils';
+import {
+	assertActiveTenant,
+	normalizeOptionalText,
+} from '../utils/training-service.utils';
 
 @Injectable()
 export class ClientWorkoutLogsService {
@@ -41,79 +45,14 @@ export class ClientWorkoutLogsService {
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
 
-		return this.dataSource.transaction(async (manager) => {
-			const membership = await getActiveMembership(
+		return this.dataSource.transaction((manager) =>
+			getOrCreateInProgressWorkout(
 				manager,
 				clientId,
 				activeTenantId,
-			);
-			const day = await lockOwnedProgramDay(
-				manager,
-				activeTenantId,
-				membership.id,
 				programDayId,
-			);
-			const program = day.programWeek.program;
-			assertLoggableLifecycle(program, day);
-
-			const scheduledDate = getScheduledDate(
-				program.startDate as string,
-				day.programWeek.weekNumber,
-				day.dayNumber,
-			);
-			const today = getDateOnlyInTimeZone(
-				new Date(),
-				membership.tenant.timezone,
-			);
-			assertLoggingWindow(scheduledDate, today, program.endDate);
-
-			const existing = await loadCanonicalLog(
-				manager,
-				activeTenantId,
-				membership.id,
-				program.id,
-				day.id,
-			);
-			if (existing) {
-				if (existing.status !== SessionStatus.IN_PROGRESS) {
-					throw new ConflictException(
-						'This program day already has a finalized workout log',
-					);
-				}
-				return existing;
-			}
-
-			const plannedExercises = await manager
-				.getRepository(PlannedExercise)
-				.find({
-					where: { tenantId: activeTenantId, programDayId: day.id },
-					relations: { sets: true },
-					order: { position: 'ASC', sets: { setNumber: 'ASC' } },
-				});
-			assertCompletePrescription(plannedExercises);
-
-			await createWorkoutSnapshot(
-				manager,
-				activeTenantId,
-				membership.id,
-				program.id,
-				day.id,
-				scheduledDate,
-				plannedExercises,
-			);
-
-			const created = await loadCanonicalLog(
-				manager,
-				activeTenantId,
-				membership.id,
-				program.id,
-				day.id,
-			);
-			if (!created) {
-				throw new NotFoundException('Created workout log could not be loaded');
-			}
-			return created;
-		});
+			),
+		);
 	}
 
 	async updatePrescribedSet(
@@ -258,6 +197,131 @@ export class ClientWorkoutLogsService {
 			return { id: loggedSetId, message: 'Extra set removed' };
 		});
 	}
+
+	async getWorkoutLog(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+	) {
+		const activeTenantId = assertActiveTenant(tenantId);
+		const manager = this.dataSource.manager;
+		const membership = await getActiveMembership(
+			manager,
+			clientId,
+			activeTenantId,
+		);
+		const log = await loadOwnedWorkoutLog(
+			manager,
+			activeTenantId,
+			membership.id,
+			logId,
+		);
+		if (!log) {
+			throw new NotFoundException('Workout log not found');
+		}
+		return log;
+	}
+
+	async completeWorkout(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+		body: CompleteWorkoutDto,
+	) {
+		const activeTenantId = assertActiveTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const membership = await getActiveMembership(
+				manager,
+				clientId,
+				activeTenantId,
+			);
+			const log = await lockOwnedInProgressLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				logId,
+			);
+			const prescribedSets = await loadPrescribedLoggedSets(manager, log.id);
+			const status = deriveCompletedWorkoutStatus(
+				prescribedSets.map((set) => set.outcome),
+			);
+
+			log.status = status;
+			log.completedAt = new Date();
+			log.durationMinutes = body.durationMinutes ?? log.durationMinutes;
+			log.clientNotes =
+				body.clientNotes === undefined
+					? log.clientNotes
+					: normalizeOptionalText(body.clientNotes);
+			log.overallRpe = body.overallRpe ?? log.overallRpe;
+			await manager.getRepository(LoggedWorkout).save(log);
+
+			const completed = await loadOwnedWorkoutLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				log.id,
+			);
+			if (!completed) {
+				throw new NotFoundException(
+					'Completed workout log could not be loaded',
+				);
+			}
+			return completed;
+		});
+	}
+
+	async skipWorkoutDay(
+		clientId: string,
+		tenantId: string | null,
+		programDayId: string,
+	) {
+		const activeTenantId = assertActiveTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const log = await getOrCreateInProgressWorkout(
+				manager,
+				clientId,
+				activeTenantId,
+				programDayId,
+			);
+			const lockedLog = await lockOwnedInProgressLog(
+				manager,
+				activeTenantId,
+				log.membershipId,
+				log.id,
+			);
+			const prescribedSets = await loadPrescribedLoggedSets(
+				manager,
+				lockedLog.id,
+			);
+			if (prescribedSets.length === 0) {
+				throw new ConflictException('Workout log has no prescribed sets');
+			}
+			for (const set of prescribedSets) {
+				Object.assign(set, emptyActualValues(), {
+					outcome: SetOutcome.SKIPPED,
+				});
+			}
+			await manager.getRepository(LoggedSet).save(prescribedSets);
+
+			lockedLog.status = SessionStatus.SKIPPED;
+			lockedLog.completedAt = new Date();
+			await manager.getRepository(LoggedWorkout).save(lockedLog);
+
+			const skipped = await loadOwnedWorkoutLog(
+				manager,
+				activeTenantId,
+				lockedLog.membershipId,
+				lockedLog.id,
+			);
+			if (!skipped) {
+				throw new NotFoundException('Skipped workout log could not be loaded');
+			}
+			return skipped;
+		});
+	}
 }
 
 const SUBMITTED_SET_OUTCOMES = [
@@ -281,6 +345,94 @@ type ActualSetValues = {
 	durationSeconds: number | null;
 	rpe: number | null;
 };
+
+async function getOrCreateInProgressWorkout(
+	manager: EntityManager,
+	clientId: string,
+	tenantId: string,
+	programDayId: string,
+) {
+	const membership = await getActiveMembership(manager, clientId, tenantId);
+	const day = await lockOwnedProgramDay(
+		manager,
+		tenantId,
+		membership.id,
+		programDayId,
+	);
+	const program = day.programWeek.program;
+	assertLoggableLifecycle(program, day);
+
+	const scheduledDate = getScheduledDate(
+		program.startDate as string,
+		day.programWeek.weekNumber,
+		day.dayNumber,
+	);
+	const today = getDateOnlyInTimeZone(new Date(), membership.tenant.timezone);
+	assertLoggingWindow(scheduledDate, today, program.endDate);
+
+	const existing = await loadCanonicalLog(
+		manager,
+		tenantId,
+		membership.id,
+		program.id,
+		day.id,
+	);
+	if (existing) {
+		if (existing.status !== SessionStatus.IN_PROGRESS) {
+			throw new ConflictException(
+				'This program day already has a finalized workout log',
+			);
+		}
+		return existing;
+	}
+
+	const plannedExercises = await manager.getRepository(PlannedExercise).find({
+		where: { tenantId, programDayId: day.id },
+		relations: { sets: true },
+		order: { position: 'ASC', sets: { setNumber: 'ASC' } },
+	});
+	assertCompletePrescription(plannedExercises);
+
+	await createWorkoutSnapshot(
+		manager,
+		tenantId,
+		membership.id,
+		program.id,
+		day.id,
+		scheduledDate,
+		plannedExercises,
+	);
+
+	const created = await loadCanonicalLog(
+		manager,
+		tenantId,
+		membership.id,
+		program.id,
+		day.id,
+	);
+	if (!created) {
+		throw new NotFoundException('Created workout log could not be loaded');
+	}
+	return created;
+}
+
+export function deriveCompletedWorkoutStatus(outcomes: SetOutcome[]) {
+	if (outcomes.length === 0) {
+		throw new ConflictException('Workout log has no prescribed sets');
+	}
+	if (outcomes.some((outcome) => outcome === SetOutcome.PENDING)) {
+		throw new ConflictException(
+			'Every prescribed set needs a final outcome before completion',
+		);
+	}
+	if (outcomes.every((outcome) => outcome === SetOutcome.COMPLETED)) {
+		return SessionStatus.COMPLETED;
+	}
+	if (outcomes.every((outcome) => outcome === SetOutcome.SKIPPED)) {
+		return SessionStatus.SKIPPED;
+	}
+	return SessionStatus.PARTIAL;
+}
 
 async function getActiveMembership(
 	manager: EntityManager,
@@ -322,6 +474,34 @@ async function lockOwnedInProgressLog(
 		throw new ConflictException('Finalized workout logs are immutable');
 	}
 	return log;
+}
+
+function loadPrescribedLoggedSets(manager: EntityManager, logId: string) {
+	return manager.getRepository(LoggedSet).find({
+		where: {
+			isExtra: false,
+			loggedExercise: { loggedWorkoutId: logId },
+		},
+		order: { loggedExerciseId: 'ASC', setNumber: 'ASC' },
+	});
+}
+
+function loadOwnedWorkoutLog(
+	manager: EntityManager,
+	tenantId: string,
+	membershipId: string,
+	logId: string,
+) {
+	return manager.getRepository(LoggedWorkout).findOne({
+		where: { id: logId, tenantId, membershipId },
+		relations: { exercises: { sets: true } },
+		order: {
+			exercises: {
+				position: 'ASC',
+				sets: { setNumber: 'ASC' },
+			},
+		},
+	});
 }
 
 function resolveActualValues(

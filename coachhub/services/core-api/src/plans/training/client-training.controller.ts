@@ -22,6 +22,7 @@ import { CurrentClient, CurrentTenant, Public } from '../../auth';
 import { ClientJwtAuthGuard } from '../../auth/guards/client-jwt-auth.guard';
 import { ClientTrainingCalendarQueryDto } from './dto/client-calendar-query.dto';
 import {
+	CompleteWorkoutDto,
 	CreateExtraLoggedSetDto,
 	UpdatePrescribedLoggedSetDto,
 } from './dto/workout-logging.dto';
@@ -134,6 +135,61 @@ export class ClientTrainingController {
 			clientId,
 			tenantId,
 			programDayId,
+		);
+	}
+
+	@Post('days/:programDayId/skip')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Skip one prescribed workout day' })
+	@ApiResponse({ status: 200, description: 'Workout day skipped' })
+	@ApiResponse({ status: 404, description: 'Owned program day not found' })
+	@ApiResponse({ status: 409, description: 'Program day cannot be skipped' })
+	skipWorkoutDay(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('programDayId', ParseUUIDPipe) programDayId: string,
+	) {
+		return this.clientWorkoutLogsService.skipWorkoutDay(
+			clientId,
+			tenantId,
+			programDayId,
+		);
+	}
+
+	@Get('logs/:logId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Get one of my workout logs' })
+	@ApiResponse({ status: 200, description: 'Workout log retrieved' })
+	@ApiResponse({ status: 404, description: 'Owned workout log not found' })
+	getWorkoutLog(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+	) {
+		return this.clientWorkoutLogsService.getWorkoutLog(
+			clientId,
+			tenantId,
+			logId,
+		);
+	}
+
+	@Post('logs/:logId/complete')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Complete and finalize an in-progress workout log' })
+	@ApiResponse({ status: 200, description: 'Workout log completed' })
+	@ApiResponse({ status: 404, description: 'Owned workout log not found' })
+	@ApiResponse({ status: 409, description: 'Pending sets or finalized log' })
+	completeWorkout(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Body() body: CompleteWorkoutDto,
+	) {
+		return this.clientWorkoutLogsService.completeWorkout(
+			clientId,
+			tenantId,
+			logId,
+			body,
 		);
 	}
 

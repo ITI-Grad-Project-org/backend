@@ -4,8 +4,10 @@ import {
 	IsInt,
 	IsNumber,
 	IsOptional,
+	IsString,
 	IsUUID,
 	Max,
+	MaxLength,
 	Min,
 } from 'class-validator';
 import { SetOutcome } from '../../../common';
@@ -67,4 +69,26 @@ export class CreateExtraLoggedSetDto extends ActualSetValuesDto {
 	@ApiProperty({ enum: EXTRA_SET_OUTCOMES })
 	@IsIn(EXTRA_SET_OUTCOMES)
 	outcome: SetOutcome;
+}
+
+export class CompleteWorkoutDto {
+	@ApiPropertyOptional({ example: 55, minimum: 1, maximum: 32767 })
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	@Max(32767)
+	durationMinutes?: number;
+
+	@ApiPropertyOptional({ example: 'Felt strong today', maxLength: 5000 })
+	@IsOptional()
+	@IsString()
+	@MaxLength(5000)
+	clientNotes?: string;
+
+	@ApiPropertyOptional({ example: 8.5, minimum: 1, maximum: 10 })
+	@IsOptional()
+	@IsNumber()
+	@Min(1)
+	@Max(10)
+	overallRpe?: number;
 }

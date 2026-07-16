@@ -36,6 +36,7 @@ import { ClientProgramsService } from './services/client-programs.service';
 import { PlannedExercisesService } from './services/planned-exercises.service';
 import { ProgramDaysService } from './services/program-days.service';
 import { ProgramLifecycleService } from './services/program-lifecycle.service';
+import { WorkoutLogReviewService } from './services/workout-log-review.service';
 
 @ApiTags('coach/client-training-programs')
 @ApiBearerAuth()
@@ -46,6 +47,7 @@ export class TrainingController {
 		private readonly programDaysService: ProgramDaysService,
 		private readonly plannedExercisesService: PlannedExercisesService,
 		private readonly programLifecycleService: ProgramLifecycleService,
+		private readonly workoutLogReviewService: WorkoutLogReviewService,
 	) {}
 
 	@Post()
@@ -86,6 +88,37 @@ export class TrainingController {
 		@Param('programId', ParseUUIDPipe) programId: string,
 	) {
 		return this.clientProgramsService.getClientProgram(tenantId, programId);
+	}
+
+	@Get(':programId/logs')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Review all workout logs for a client program' })
+	@ApiResponse({ status: 200, description: 'Program workout logs retrieved' })
+	@ApiResponse({ status: 404, description: 'Client program not found' })
+	listProgramLogs(
+		@CurrentTenant() tenantId: string | null,
+		@Param('programId', ParseUUIDPipe) programId: string,
+	) {
+		return this.workoutLogReviewService.listProgramLogs(tenantId, programId);
+	}
+
+	@Get(':programId/days/:programDayId/log')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Review one prescribed day beside its canonical workout log',
+	})
+	@ApiResponse({ status: 200, description: 'Program day review retrieved' })
+	@ApiResponse({ status: 404, description: 'Client program day not found' })
+	getProgramDayLog(
+		@CurrentTenant() tenantId: string | null,
+		@Param('programId', ParseUUIDPipe) programId: string,
+		@Param('programDayId', ParseUUIDPipe) programDayId: string,
+	) {
+		return this.workoutLogReviewService.getProgramDayLog(
+			tenantId,
+			programId,
+			programDayId,
+		);
 	}
 
 	@Patch(':programId')
