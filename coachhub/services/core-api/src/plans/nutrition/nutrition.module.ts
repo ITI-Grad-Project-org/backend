@@ -1,9 +1,32 @@
 import { Module } from '@nestjs/common';
-import { NutritionController } from './nutrition.controller';
-import { NutritionService } from './nutrition.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { FoodLog } from './entities/food-log.entity';
+import { Food } from './entities/food.entity';
+import { LoggedMeal } from './entities/logged-meal.entity';
+import { MealIngredient } from './entities/meal-ingredient.entity';
+import { Meal } from './entities/meal.entity';
+import { NutritionDayLog } from './entities/nutrition-day-log.entity';
+import { NutritionPlanDay } from './entities/nutrition-plan-day.entity';
+import { NutritionPlanWeek } from './entities/nutrition-plan-week.entity';
+import { NutritionPlan } from './entities/nutrition-plan.entity';
+import { PlannedMealFood } from './entities/planned-meal-food.entity';
+import { PlannedMeal } from './entities/planned-meal.entity';
 
 @Module({
-	controllers: [NutritionController],
-	providers: [NutritionService],
+	imports: [
+		TypeOrmModule.forFeature([
+			Food,
+			Meal,
+			MealIngredient,
+			NutritionPlan,
+			NutritionPlanWeek,
+			NutritionPlanDay,
+			PlannedMeal,
+			PlannedMealFood,
+			NutritionDayLog,
+			LoggedMeal,
+			FoodLog,
+		]),
+	],
 })
 export class NutritionModule {}
