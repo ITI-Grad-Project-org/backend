@@ -9,7 +9,7 @@ import {
 	MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EquipmentType, ExerciseCategory, MuscleGroup } from 'src/common';
+import { EquipmentType, ExerciseCategory, MuscleGroup } from '../../common';
 
 /** Design §7.3 — everything the coach fills when creating a library exercise. */
 export class CreateExerciseDto {

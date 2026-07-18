@@ -41,6 +41,17 @@ export enum IntensityType {
 	PERCENT_1RM = 'percent_1rm',
 }
 
+export enum ProgramType {
+	CLIENT = 'client',
+	TEMPLATE = 'template',
+}
+
+export enum ProgramStatus {
+	DRAFT = 'draft',
+	PUBLISHED = 'published',
+	CANCELLED = 'cancelled',
+}
+
 export enum AssignmentStatus {
 	SCHEDULED = 'scheduled',
 	ACTIVE = 'active',
@@ -49,6 +60,14 @@ export enum AssignmentStatus {
 }
 
 export enum SessionStatus {
+	IN_PROGRESS = 'in_progress',
+	COMPLETED = 'completed',
+	PARTIAL = 'partial',
+	SKIPPED = 'skipped',
+}
+
+export enum SetOutcome {
+	PENDING = 'pending',
 	COMPLETED = 'completed',
 	PARTIAL = 'partial',
 	SKIPPED = 'skipped',
