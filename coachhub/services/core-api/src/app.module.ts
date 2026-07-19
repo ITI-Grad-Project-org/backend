@@ -16,6 +16,7 @@ import { MessagingModule } from './messaging/messaging.module';
 import { PlansModule } from './plans/plans.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { TenantModule } from './tenant/tenant.module';
+import { ExercisesModule } from './exercises/exercises.module';
 
 @Module({
 	imports: [
@@ -38,6 +39,7 @@ import { TenantModule } from './tenant/tenant.module';
 		TenantModule,
 		InvitationModule,
 		ReviewsModule,
+		ExercisesModule,
 	],
 
 	providers: [
