@@ -1,11 +1,15 @@
 export enum CoachSpecialty {
 	STRENGTH = 'strength',
 	HYPERTROPHY = 'hypertrophy',
+	ENDURANCE = 'endurance',
 	WEIGHT_LOSS = 'weight_loss',
+	MOBILITY = 'mobility',
+	REHAB = 'rehab',
+	POSTPARTUM = 'postpartum',
+	YOGA = 'yoga',
+	NUTRITION = 'nutrition',
 	POWERLIFTING = 'powerlifting',
 	CROSSFIT = 'crossfit',
 	CALISTHENICS = 'calisthenics',
-	NUTRITION = 'nutrition',
-	REHAB = 'rehab',
 	GENERAL_FITNESS = 'general_fitness',
 }

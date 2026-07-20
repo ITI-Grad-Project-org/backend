@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Coach } from './entities/coach.entity';
@@ -26,12 +26,7 @@ export class CoachesService {
 				firstName: registerDto.firstName,
 				lastName: registerDto.lastName,
 				email: registerDto.email,
-				phone: registerDto.phone ?? null,
 				password: registerDto.password,
-				bio: registerDto.bio ?? null,
-				specialties: registerDto.specialties ?? [],
-				yearsExperience: registerDto.yearsExperience ?? null,
-				certifications: registerDto.certifications ?? [],
 			});
 			const savedCoach = await manager.save(coach);
 
@@ -172,7 +167,19 @@ export class CoachesService {
 		return this.coachRepository.update(id, { hashedRefreshToken: null });
 	}
 
-	update(id: string, updateCoachDto: UpdateCoachDto) {
+	/**
+	 * Phone is set during profile setup rather than sign-up, so the uniqueness
+	 * check lives here — the column is unique and would otherwise surface as a
+	 * raw driver error.
+	 */
+	async update(id: string, updateCoachDto: UpdateCoachDto) {
+		if (updateCoachDto.phone) {
+			const existingPhone = await this.findOneByPhone(updateCoachDto.phone);
+			if (existingPhone && existingPhone.id !== id) {
+				throw new ConflictException('Phone number is already in use');
+			}
+		}
+
 		return this.coachRepository.update(id, updateCoachDto);
 	}
 
