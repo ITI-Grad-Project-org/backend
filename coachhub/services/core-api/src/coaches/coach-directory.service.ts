@@ -45,6 +45,10 @@ export class CoachDirectoryService {
 				'coach.yearsExperience',
 				'coach.certifications',
 				'coach.socialLinks',
+				'coach.location',
+				'coach.offlineAvailability',
+				'coach.priceFrom',
+				'coach.priceTo',
 			])
 			.orderBy('coach.yearsExperience', 'DESC', 'NULLS LAST')
 			.addOrderBy('tenant.name', 'ASC')
@@ -99,6 +103,17 @@ export class CoachDirectoryService {
 				'coach.yearsExperience',
 				'coach.certifications',
 				'coach.socialLinks',
+				'coach.location',
+				'coach.offlineAvailability',
+				'coach.priceFrom',
+				'coach.priceTo',
+				'coach.age',
+				'coach.gender',
+				'coach.careerExperience',
+				'coach.portfolioUrl',
+				'coach.transformationPhotos',
+				'coach.featuredReviews',
+				'coach.availabilityHours',
 			])
 			.getOne();
 
@@ -107,9 +122,22 @@ export class CoachDirectoryService {
 		}
 
 		const statuses = await this.relationshipStatuses(clientId, [tenant.id]);
+		const card = this.toCard(tenant, statuses);
+		const coach = tenant.ownerCoach;
+
 		return {
-			...this.toCard(tenant, statuses),
+			...card,
 			timezone: tenant.timezone,
+			coach: {
+				...card.coach,
+				age: coach.age,
+				gender: coach.gender,
+				careerExperience: coach.careerExperience,
+				portfolioUrl: coach.portfolioUrl,
+				transformationPhotos: coach.transformationPhotos,
+				featuredReviews: coach.featuredReviews,
+				availabilityHours: coach.availabilityHours,
+			},
 		};
 	}
 
@@ -155,6 +183,10 @@ export class CoachDirectoryService {
 				yearsExperience: coach.yearsExperience,
 				certifications: coach.certifications,
 				socialLinks: coach.socialLinks,
+				location: coach.location,
+				offlineAvailability: coach.offlineAvailability,
+				priceFrom: coach.priceFrom,
+				priceTo: coach.priceTo,
 			},
 			membershipStatus: statuses.get(tenant.id) ?? null,
 		};
