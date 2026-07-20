@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { InvitationService } from './invitation.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { CurrentClient, CurrentTenant, CurrentUser, Public } from '../auth';
 import { ClientJwtAuthGuard } from '../auth/guards/client-jwt-auth.guard';
 
@@ -120,7 +121,8 @@ export class InvitationController {
 	accept(
 		@CurrentClient('clientId') clientId: string,
 		@Param('token') token: string,
+		@Body() acceptInvitationDto: AcceptInvitationDto,
 	) {
-		return this.invitationService.accept(clientId, token);
+		return this.invitationService.accept(clientId, token, acceptInvitationDto);
 	}
 }

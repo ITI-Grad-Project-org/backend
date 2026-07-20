@@ -14,7 +14,9 @@ import {
 	DietaryPreference,
 	EquipmentType,
 	FitnessGoal,
+	FocusArea,
 	TrainingExperience,
+	TrainingStyle,
 } from 'src/common';
 
 export class CreateClientIntakeDto {
@@ -23,13 +25,13 @@ export class CreateClientIntakeDto {
 	@IsNotEmpty()
 	goal: FitnessGoal;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		enum: ActivityLevel,
 		example: ActivityLevel.MODERATELY_ACTIVE,
 	})
+	@IsOptional()
 	@IsEnum(ActivityLevel)
-	@IsNotEmpty()
-	activityLevel: ActivityLevel;
+	activityLevel?: ActivityLevel;
 
 	@ApiProperty({
 		enum: TrainingExperience,
@@ -46,7 +48,27 @@ export class CreateClientIntakeDto {
 	@Max(7)
 	trainingDaysPerWeek?: number;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
+		enum: FocusArea,
+		isArray: true,
+		example: [FocusArea.STRENGTH, FocusArea.MOBILITY],
+	})
+	@IsOptional()
+	@IsEnum(FocusArea, { each: true })
+	@IsArray()
+	focusAreas?: FocusArea[];
+
+	@ApiPropertyOptional({
+		enum: TrainingStyle,
+		isArray: true,
+		example: [TrainingStyle.HYPERTROPHY],
+	})
+	@IsOptional()
+	@IsEnum(TrainingStyle, { each: true })
+	@IsArray()
+	trainingStyles?: TrainingStyle[];
+
+	@ApiPropertyOptional({
 		enum: EquipmentType,
 		isArray: true,
 		example: [EquipmentType.FULL_GYM],
@@ -56,10 +78,10 @@ export class CreateClientIntakeDto {
 	@IsArray()
 	availableEquipment?: EquipmentType[];
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		enum: DietaryPreference,
 		isArray: true,
-		example: [DietaryPreference.NONE],
+		example: [DietaryPreference.OMNIVORE],
 	})
 	@IsOptional()
 	@IsEnum(DietaryPreference, { each: true })

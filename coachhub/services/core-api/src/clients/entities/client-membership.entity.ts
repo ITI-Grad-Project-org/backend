@@ -41,6 +41,14 @@ export class ClientMembership {
 	@Column({ type: 'text', nullable: true })
 	blockReason: string | null;
 
+	/** The client's note to the coach, set only on client-initiated requests. */
+	@Column({ name: 'request_message', type: 'text', nullable: true })
+	requestMessage: string | null;
+
+	/** When the coach approved or rejected a request. */
+	@Column({ name: 'decided_at', type: 'timestamptz', nullable: true })
+	decidedAt: Date | null;
+
 	@Column({ name: 'joined_at', type: 'timestamptz', nullable: true })
 	joinedAt: Date | null;
 

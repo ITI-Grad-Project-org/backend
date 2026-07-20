@@ -6,6 +6,26 @@
   <component name="ChangeListManager">
     <list default="true" id="e9bd3ccf-a4df-413e-932d-9669a6bd57e2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/app.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/app.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/client-intake.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/client-intake.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/client-membership.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/client-membership.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/dto/create-client-intake.dto.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/dto/create-client-intake.dto.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/dto/register-client.dto.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/dto/update-client.dto.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/dto/update-client.dto.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client-intake.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client-intake.entity.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client-membership.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client-membership.entity.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client.entity.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/coaches/coaches.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/coaches/coaches.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/common/enums/intake.enums.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/common/enums/intake.enums.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/common/enums/membership-status.enum.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/common/enums/membership-status.enum.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.controller.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.controller.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/messaging/events.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/messaging/events.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/tenant/entities/tenant.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/tenant/entities/tenant.entity.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/tenant/tenant.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/tenant/tenant.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/config/RabbitMqConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/config/RabbitMqConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/rabbitmq/NotificationEventListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/rabbitmq/NotificationEventListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/service/email/EmailService.java" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/service/email/EmailService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -18,7 +38,7 @@
     </persistenceIdMap>
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="406" />
+    <option name="cachedIndexableFilesCount" value="457" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -150,29 +170,29 @@
     <option name="showMembers" value="true" />
     <option name="showScratchesAndConsoles" value="false" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "main",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/home/aldod/Documents/iti-graduation-project/backend",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "prettierjs.PrettierConfiguration.Package": "/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/prettier",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "ts.external.directory.path": "/home/aldod/.local/share/JetBrains/Toolbox/apps/intellij-idea-ultimate/plugins/javascript-plugin/jsLanguageServicesImpl/external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dod&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/aldod/Documents/iti-graduation-project/backend&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/prettier&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration default="true" type="JetRunConfigurationType">
       <method v="2">
@@ -205,6 +225,7 @@
       <workItem from="1784009679687" duration="10418000" />
       <workItem from="1784103696249" duration="14000" />
       <workItem from="1784109907930" duration="4357000" />
+      <workItem from="1784554090256" duration="4942000" />
     </task>
     <servers />
   </component>

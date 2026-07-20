@@ -59,6 +59,16 @@ export class Client {
 	})
 	heightCm: number | null;
 
+	@Column({
+		name: 'weight_kg',
+		type: 'numeric',
+		precision: 5,
+		scale: 1,
+		nullable: true,
+		transformer: numericTransformer,
+	})
+	weightKg: number | null;
+
 	@Column({ nullable: true, unique: true })
 	googleId: string | null;
 

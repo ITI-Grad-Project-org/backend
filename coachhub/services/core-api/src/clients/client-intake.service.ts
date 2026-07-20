@@ -27,7 +27,19 @@ export class ClientIntakeService {
 		dto: CreateClientIntakeDto,
 	) {
 		const membership = await this.resolveActiveMembership(clientId, tenantId);
-		const existingIntake = await this.findMembershipIntake(membership.id);
+		return this.createForMembership(membership.id, membership.tenant.id, dto);
+	}
+
+	/**
+	 * Used by the invitation-accept flow, which already holds the membership it
+	 * just created and so cannot resolve one from the request's active tenant.
+	 */
+	async createForMembership(
+		membershipId: string,
+		tenantId: string,
+		dto: CreateClientIntakeDto,
+	) {
+		const existingIntake = await this.findMembershipIntake(membershipId);
 
 		if (existingIntake) {
 			throw new ConflictException('Client intake already exists');
@@ -35,8 +47,8 @@ export class ClientIntakeService {
 
 		const intake = this.intakeRepository.create({
 			...dto,
-			tenant: { id: membership.tenant.id },
-			membership: { id: membership.id },
+			tenant: { id: tenantId },
+			membership: { id: membershipId },
 		});
 
 		try {
