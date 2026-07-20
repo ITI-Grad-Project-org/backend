@@ -7,7 +7,6 @@ import {
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
-import * as crypto from 'crypto';
 import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
 import { ConfigService } from 'src/config';
 import { ClientMembershipService } from '../../clients/client-membership.service';
@@ -18,6 +17,7 @@ import { ClientAuthPayload, MembershipStatus } from '../../common';
 import { TokenProvider } from '../providers/token.provider';
 import { EventPublisherService } from '../../messaging/event-publisher.service';
 import { EventType } from '../../messaging/events';
+import { PasswordResetOtpProvider } from '../providers/password-reset-otp.provider';
 
 @Injectable()
 export class ClientAuthService {
@@ -30,6 +30,7 @@ export class ClientAuthService {
 		private readonly tokenProvider: TokenProvider,
 		private readonly configService: ConfigService,
 		private readonly eventPublisherService: EventPublisherService,
+		private readonly otpProvider: PasswordResetOtpProvider,
 	) {
 		this.googleClient = new OAuth2Client(
 			this.configService.googleOauthConfig.clientId,
@@ -201,25 +202,24 @@ export class ClientAuthService {
 	}
 
 	async forgetPassword(email: string) {
+		// Always identical, so the endpoint can't be used to enumerate accounts.
 		const genericResponse = {
-			message: 'If an account exists, a password reset email has been sent',
+			message: 'If an account exists, a password reset code has been sent',
 		};
 
-		const client = await this.clientService.findOneByEmail(email);
+		// Needs the OTP columns anyway, and unlike findOneByEmail it selects the
+		// name fields used in the email body.
+		const client = await this.clientService.findOneByEmailWithResetOtp(email);
 		if (!client) {
 			return genericResponse;
 		}
 
-		const rawToken = crypto.randomBytes(32).toString('hex');
-		const hashedToken = crypto
-			.createHash('sha256')
-			.update(rawToken)
-			.digest('hex');
+		const otp = this.otpProvider.generateOtp();
 
-		await this.clientService.setResetPasswordToken(
+		await this.clientService.setResetOtp(
 			client.id,
-			hashedToken,
-			new Date(Date.now() + 15 * 60 * 1000),
+			this.otpProvider.hash(otp),
+			this.otpProvider.otpExpiry(),
 		);
 
 		await this.eventPublisherService.publish(
@@ -227,8 +227,8 @@ export class ClientAuthService {
 			{
 				email: client.email,
 				name: `${client.firstName} ${client.lastName}`.trim(),
-				rawToken,
-				resetUrl: this.buildResetUrl(rawToken),
+				otp,
+				expiresInMinutes: this.otpProvider.ttlMinutes,
 			},
 			{ tenantId: 'system' },
 		);
@@ -236,17 +236,52 @@ export class ClientAuthService {
 		return genericResponse;
 	}
 
-	private buildResetUrl(rawToken: string): string {
-		const baseUrl = this.configService.appConfig.frontendUrl.replace(
-			/\/+$/,
-			'',
+	/**
+	 * Stage 1 → 2. Exchanges a valid OTP for a single-use reset ticket so the
+	 * app can tell the user "wrong code" before showing the new-password screen.
+	 */
+	async verifyResetOtp(email: string, otp: string) {
+		const invalid = new ForbiddenException('Invalid or expired reset code');
+
+		const client = await this.clientService.findOneByEmailWithResetOtp(email);
+		if (!client?.resetOtpHash || !client.resetOtpExpires) {
+			throw invalid;
+		}
+
+		if (client.resetOtpExpires.getTime() <= Date.now()) {
+			await this.clientService.clearResetOtp(client.id);
+			throw invalid;
+		}
+
+		// Burn the code once it has been guessed at too many times.
+		if (client.resetOtpAttempts >= PasswordResetOtpProvider.MAX_ATTEMPTS) {
+			await this.clientService.clearResetOtp(client.id);
+			throw new ForbiddenException(
+				'Too many incorrect attempts. Please request a new code.',
+			);
+		}
+
+		if (!this.otpProvider.matches(otp, client.resetOtpHash)) {
+			await this.clientService.incrementResetOtpAttempts(client.id);
+			throw invalid;
+		}
+
+		// Correct code: consume it so it can never be replayed, and issue the ticket.
+		const resetToken = this.otpProvider.generateTicket();
+		await this.clientService.setResetPasswordToken(
+			client.id,
+			this.otpProvider.hash(resetToken),
+			this.otpProvider.ticketExpiry(),
 		);
-		return `${baseUrl}/reset-password?token=${rawToken}`;
+		await this.clientService.clearResetOtp(client.id);
+
+		return { resetToken };
 	}
 
-	async resetPassword(token: string, newPassword: string) {
-		const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-		const client = await this.clientService.findByValidResetToken(hashedToken);
+	async resetPassword(resetToken: string, newPassword: string) {
+		const client = await this.clientService.findByValidResetToken(
+			this.otpProvider.hash(resetToken),
+		);
 
 		if (!client) {
 			throw new ForbiddenException('Invalid or expired password reset token');

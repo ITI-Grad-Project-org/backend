@@ -34,7 +34,8 @@ public class EmailService {
 	public void sendPasswordReset(PasswordResetPayload payload) {
 		Context ctx = new Context();
 		ctx.setVariable("name", payload.name() != null && !payload.name().isBlank() ? payload.name() : "there");
-		ctx.setVariable("resetUrl", payload.resetUrl());
+		ctx.setVariable("otp", payload.otp());
+		ctx.setVariable("expiresInMinutes", payload.expiresInMinutes() != null ? payload.expiresInMinutes() : 10);
 
 		String html = templateEngine.process("password-reset", ctx);
 		send(payload.email(), "Reset your CoachHub password", html);

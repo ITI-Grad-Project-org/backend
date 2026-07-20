@@ -69,6 +69,7 @@ export interface AiCompletedPayload {
 export interface PasswordResetPayload {
 	email: string;
 	name: string;
-	rawToken: string;
-	resetUrl: string;
+	/** 6-digit code the user types into the app (web and mobile share this flow). */
+	otp: string;
+	expiresInMinutes: number;
 }
