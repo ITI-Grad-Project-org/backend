@@ -23,9 +23,14 @@ data:
   # AWS S3 (media uploads)
   AWS_REGION: "us-east-1"
   AWS_S3_ACL: "public-read"
-  # notification-service mail (production = Resend SMTP; password comes from app-secrets)
-  MAIL_HOST: "smtp.resend.com"
+  # notification-service mail. Currently Gmail SMTP (dev/demo) — the password is a
+  # Gmail App Password stored in app-secrets as MAIL_PASSWORD.
+  # Gmail caps at ~500 recipients/day and sends from a personal account; switch to
+  # Resend/SES for production (host smtp.resend.com, username "resend", API key).
+  MAIL_HOST: "smtp.gmail.com"
   MAIL_PORT: "587"
-  MAIL_USERNAME: "resend"
+  MAIL_USERNAME: "ahmedhossam9226@gmail.com"
   MAIL_SMTP_AUTH: "true"
   MAIL_SMTP_STARTTLS: "true"
+  # Gmail only sends as the authenticated account (or a verified alias).
+  MAIL_FROM: "ahmedhossam9226@gmail.com"

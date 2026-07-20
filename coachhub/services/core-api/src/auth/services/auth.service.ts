@@ -8,13 +8,12 @@ import {
 import { TokenProvider } from '../providers/token.provider';
 import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
 import { LoginDto } from '../dto/login.dto';
-import * as crypto from 'crypto';
 import { Coach } from '../../coaches/entities/coach.entity';
 import { RegisterCoachDto } from '../../coaches/dto/register-coach.dto';
 import { CoachesService } from '../../coaches/coaches.service';
 import { EventPublisherService } from '../../messaging/event-publisher.service';
 import { EventType } from '../../messaging/events';
-import { ConfigService } from '../../config';
+import { PasswordResetOtpProvider } from '../providers/password-reset-otp.provider';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +21,7 @@ export class AuthService {
 		private readonly coachesService: CoachesService,
 		private readonly tokenProvider: TokenProvider,
 		private readonly eventPublisherService: EventPublisherService,
-		private readonly configService: ConfigService,
+		private readonly otpProvider: PasswordResetOtpProvider,
 	) {}
 
 	async register(registerDto: RegisterCoachDto) {
@@ -32,15 +31,6 @@ export class AuthService {
 
 		if (existingCoach) {
 			throw new ConflictException('Email is already in use');
-		}
-
-		if (registerDto.phone) {
-			const existingPhone = await this.coachesService.findOneByPhone(
-				registerDto.phone,
-			);
-			if (existingPhone) {
-				throw new ConflictException('Phone number is already in use');
-			}
 		}
 
 		const hashedPassword = await this.tokenProvider.hashPassword(
@@ -100,8 +90,9 @@ export class AuthService {
 	}
 
 	async forgetPassword(email: string) {
+		// Always identical, so the endpoint can't be used to enumerate accounts.
 		const genericResponse = {
-			message: 'If an account exists, a password reset email has been sent',
+			message: 'If an account exists, a password reset code has been sent',
 		};
 
 		const coach = await this.coachesService.findOneByEmail(email);
@@ -109,25 +100,21 @@ export class AuthService {
 			return genericResponse;
 		}
 
-		const rawToken = crypto.randomBytes(32).toString('hex');
-		const hashedToken = crypto
-			.createHash('sha256')
-			.update(rawToken)
-			.digest('hex');
+		const otp = this.otpProvider.generateOtp();
 
-		await this.coachesService.setResetPasswordToken(
+		await this.coachesService.setResetOtp(
 			coach.id,
-			hashedToken,
-			new Date(Date.now() + 15 * 60 * 1000),
+			this.otpProvider.hash(otp),
+			this.otpProvider.otpExpiry(),
 		);
 
 		await this.eventPublisherService.publish(
 			EventType.PASSWORD_RESET,
 			{
 				email: coach.email,
-				name: `${coach.firstName} ${coach.lastName}`,
-				rawToken,
-				resetUrl: this.buildResetUrl(rawToken),
+				name: `${coach.firstName} ${coach.lastName}`.trim(),
+				otp,
+				expiresInMinutes: this.otpProvider.ttlMinutes,
 			},
 			{ tenantId: coach.tenants?.[0]?.id ?? 'system' },
 		);
@@ -135,17 +122,52 @@ export class AuthService {
 		return genericResponse;
 	}
 
-	private buildResetUrl(rawToken: string): string {
-		const baseUrl = this.configService.appConfig.frontendUrl.replace(
-			/\/+$/,
-			'',
+	/**
+	 * Stage 1 → 2. Exchanges a valid OTP for a single-use reset ticket so the
+	 * app can tell the user "wrong code" before showing the new-password screen.
+	 */
+	async verifyResetOtp(email: string, otp: string) {
+		const invalid = new ForbiddenException('Invalid or expired reset code');
+
+		const coach = await this.coachesService.findOneByEmailWithResetOtp(email);
+		if (!coach?.resetOtpHash || !coach.resetOtpExpires) {
+			throw invalid;
+		}
+
+		if (coach.resetOtpExpires.getTime() <= Date.now()) {
+			await this.coachesService.clearResetOtp(coach.id);
+			throw invalid;
+		}
+
+		// Burn the code once it has been guessed at too many times.
+		if (coach.resetOtpAttempts >= PasswordResetOtpProvider.MAX_ATTEMPTS) {
+			await this.coachesService.clearResetOtp(coach.id);
+			throw new ForbiddenException(
+				'Too many incorrect attempts. Please request a new code.',
+			);
+		}
+
+		if (!this.otpProvider.matches(otp, coach.resetOtpHash)) {
+			await this.coachesService.incrementResetOtpAttempts(coach.id);
+			throw invalid;
+		}
+
+		// Correct code: consume it so it can never be replayed, and issue the ticket.
+		const resetToken = this.otpProvider.generateTicket();
+		await this.coachesService.setResetPasswordToken(
+			coach.id,
+			this.otpProvider.hash(resetToken),
+			this.otpProvider.ticketExpiry(),
 		);
-		return `${baseUrl}/reset-password?token=${rawToken}`;
+		await this.coachesService.clearResetOtp(coach.id);
+
+		return { resetToken };
 	}
 
-	async resetPassword(token: string, newPassword: string) {
-		const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-		const coach = await this.coachesService.findByValidResetToken(hashedToken);
+	async resetPassword(resetToken: string, newPassword: string) {
+		const coach = await this.coachesService.findByValidResetToken(
+			this.otpProvider.hash(resetToken),
+		);
 
 		if (!coach) {
 			throw new ForbiddenException('Invalid or expired password reset token');

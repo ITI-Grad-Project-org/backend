@@ -17,6 +17,8 @@ import { ConfigService } from '../config';
 import { CoachesService } from '../coaches/coaches.service';
 import { ClientService } from '../clients/client.service';
 import { ClientMembershipService } from '../clients/client-membership.service';
+import { ClientIntakeService } from '../clients/client-intake.service';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { MembershipStatus } from '../common';
 
 const INVITATION_TTL_DAYS = 7;
@@ -33,6 +35,7 @@ export class InvitationService {
 		private readonly coachesService: CoachesService,
 		private readonly clientService: ClientService,
 		private readonly membershipService: ClientMembershipService,
+		private readonly intakeService: ClientIntakeService,
 	) {}
 
 	async create(
@@ -134,7 +137,11 @@ export class InvitationService {
 		return this.invitationRepository.save(invitation);
 	}
 
-	async accept(clientId: string, token: string): Promise<Invitation> {
+	async accept(
+		clientId: string,
+		token: string,
+		dto: AcceptInvitationDto = {},
+	): Promise<Invitation> {
 		const invitation = await this.invitationRepository.findOne({
 			where: { token },
 			relations: { tenant: true },
@@ -164,11 +171,19 @@ export class InvitationService {
 			);
 		}
 
-		await this.membershipService.createMembership(
+		const membership = await this.membershipService.createMembership(
 			clientId,
 			invitation.tenant.id,
 			MembershipStatus.ACTIVE,
 		);
+
+		if (dto.intake) {
+			await this.intakeService.createForMembership(
+				membership.id,
+				invitation.tenant.id,
+				dto.intake,
+			);
+		}
 
 		invitation.status = InvitaionStatusEnum.ACCEPTED;
 		invitation.receiver = { id: clientId } as any;

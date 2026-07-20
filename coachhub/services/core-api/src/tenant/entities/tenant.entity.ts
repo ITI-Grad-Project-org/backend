@@ -28,6 +28,14 @@ export class Tenant {
 	@Column({ name: 'logo_url', type: 'text', nullable: true })
 	logoUrl: string | null;
 
+	/**
+	 * Controls whether this coach shows up in the public directory and can
+	 * receive join requests. Turning it off hides the coach from browsing but
+	 * leaves existing clients untouched.
+	 */
+	@Column({ name: 'accepting_clients', default: true })
+	acceptingClients: boolean;
+
 	@Column({ length: 64, default: 'Africa/Cairo' })
 	timezone: string;
 

@@ -20,6 +20,7 @@ import { AuthService } from './services/auth.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgetPasswordDto } from './dto/forget-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
 import { JwtAuthGuard, JwtRefreshGuard } from './guards';
 import { CurrentUser, Public } from './decorators';
@@ -113,26 +114,49 @@ export class AuthController {
 	@Public()
 	@Throttle({ default: { ttl: 60_000, limit: 5 } })
 	@Post('forgot-password')
-	@ApiOperation({ summary: 'Request password reset email' })
+	@ApiOperation({ summary: 'Email a 6-digit password reset code' })
 	@ApiBody({ type: ForgetPasswordDto })
-	@ApiResponse({ status: 200, description: 'Password reset email sent' })
+	@ApiResponse({
+		status: 200,
+		description: 'Reset code sent if account exists',
+	})
 	@ApiResponse({ status: 400, description: 'Validation error' })
 	@HttpCode(HttpStatus.OK)
 	forgotPassword(@Body() forgetPasswordDto: ForgetPasswordDto) {
 		return this.authService.forgetPassword(forgetPasswordDto.email);
 	}
 
+	// Tighter than the other reset endpoints: this is the one an attacker would
+	// hammer to guess a 6-digit code (per-account attempts are capped too).
+	@Public()
+	@Throttle({ default: { ttl: 60_000, limit: 5 } })
+	@Post('verify-reset-otp')
+	@ApiOperation({ summary: 'Exchange a valid reset code for a reset token' })
+	@ApiBody({ type: VerifyResetOtpDto })
+	@ApiResponse({ status: 200, description: 'Returns a single-use resetToken' })
+	@ApiResponse({
+		status: 403,
+		description: 'Invalid, expired, or exhausted code',
+	})
+	@HttpCode(HttpStatus.OK)
+	verifyResetOtp(@Body() verifyResetOtpDto: VerifyResetOtpDto) {
+		return this.authService.verifyResetOtp(
+			verifyResetOtpDto.email,
+			verifyResetOtpDto.otp,
+		);
+	}
+
 	@Public()
 	@Throttle({ default: { ttl: 60_000, limit: 10 } })
 	@Post('reset-password')
-	@ApiOperation({ summary: 'Reset password using token from email' })
+	@ApiOperation({ summary: 'Set a new password using the reset token' })
 	@ApiBody({ type: ResetPasswordDto })
 	@ApiResponse({ status: 200, description: 'Password reset successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid or expired token' })
+	@ApiResponse({ status: 403, description: 'Invalid or expired reset token' })
 	@HttpCode(HttpStatus.OK)
 	resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
 		return this.authService.resetPassword(
-			resetPasswordDto.token,
+			resetPasswordDto.resetToken,
 			resetPasswordDto.newPassword,
 		);
 	}
