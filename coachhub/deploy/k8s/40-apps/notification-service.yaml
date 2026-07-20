@@ -1,0 +1,78 @@
+# ClusterIP-only, stateless. Email: Resend SMTP in production (config from
+# app-config; the API key rides in as the SMTP password from app-secrets).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: coachhub
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001              # 'spring' user pinned in the Dockerfile
+      containers:
+        - name: notification-service
+          image: coachhubacr.azurecr.io/notification-service:v1   # CI: replace with the release git SHA
+          ports:
+            - containerPort: 8083
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "8083"
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom: { configMapKeyRef: { name: app-config, key: RABBITMQ_HOST } }
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_USER } }
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_PASSWORD } }
+            - name: MAIL_HOST
+              valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_HOST } }
+            - name: MAIL_PORT
+              valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_PORT } }
+            - name: MAIL_USERNAME
+              valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_USERNAME } }
+            - name: MAIL_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: RESEND_API_KEY } }
+            - name: MAIL_SMTP_AUTH
+              valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_SMTP_AUTH } }
+            - name: MAIL_SMTP_STARTTLS
+              valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_SMTP_STARTTLS } }
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 5
+            failureThreshold: 24           # up to 2 min
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits:   { cpu: 500m, memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: coachhub
+spec:
+  type: ClusterIP
+  selector:
+    app: notification-service
+  ports:
+    - name: http
+      port: 8083
+      targetPort: http

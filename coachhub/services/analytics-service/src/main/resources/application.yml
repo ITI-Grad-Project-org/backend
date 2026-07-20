@@ -1,5 +1,7 @@
 server:
   port: ${SERVER_PORT:8082}
+  # Finish in-flight MQ messages / HTTP requests on SIGTERM (K8s rolling updates).
+  shutdown: graceful
 
 spring:
   application:
@@ -13,7 +15,10 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      # No Flyway/Liquibase yet, so Hibernate owns the analytics read-model schema.
+      # 'update' creates/extends tables in analytics_db; switch to 'validate' once
+      # a real migration tool lands.
+      ddl-auto: ${JPA_DDL_AUTO:update}
     show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
@@ -34,3 +39,11 @@ management:
   endpoint:
     health:
       show-details: always
+      # /actuator/health/{liveness,readiness} — used by Docker healthchecks and K8s probes.
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true

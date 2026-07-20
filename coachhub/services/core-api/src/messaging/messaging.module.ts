@@ -7,7 +7,8 @@ import { EVENTS_EXCHANGE } from './events';
 @Module({
 	controllers: [],
 	providers: [EventPublisherService],
-	exports: [EventPublisherService],
+	// RabbitMQModule re-exported so consumers (e.g. HealthModule) can inject AmqpConnection.
+	exports: [EventPublisherService, RabbitMQModule],
 	imports: [
 		RabbitMQModule.forRootAsync({
 			imports: [ConfigModule],

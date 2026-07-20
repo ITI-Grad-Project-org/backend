@@ -1,0 +1,28 @@
+# Same contract as deploy/docker/create-databases.sh: TypeORM/Hibernate cannot
+# create databases or roles, so this runs from /docker-entrypoint-initdb.d on
+# FIRST init of the Postgres PVC, before any app connects.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+  namespace: coachhub
+data:
+  10-create-databases.sh: |
+    #!/bin/sh
+    set -eu
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        CREATE USER core_user      WITH PASSWORD '${CORE_DB_PASSWORD}';
+        CREATE USER analytics_user WITH PASSWORD '${ANALYTICS_DB_PASSWORD}';
+
+        CREATE DATABASE core_db      OWNER core_user;
+        CREATE DATABASE analytics_db OWNER analytics_user;
+
+        REVOKE CONNECT ON DATABASE core_db      FROM PUBLIC;
+        REVOKE CONNECT ON DATABASE analytics_db FROM PUBLIC;
+        GRANT  CONNECT ON DATABASE core_db      TO core_user;
+        GRANT  CONNECT ON DATABASE analytics_db TO analytics_user;
+    EOSQL
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname core_db \
+        -c 'ALTER SCHEMA public OWNER TO core_user;'
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname analytics_db \
+        -c 'ALTER SCHEMA public OWNER TO analytics_user;'

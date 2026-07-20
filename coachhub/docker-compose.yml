@@ -1,4 +1,4 @@
-version: "3.9"
+name: coachhub
 
 networks:
   coachhub-net:
@@ -9,146 +9,185 @@ volumes:
   rabbitmq-data:
 
 services:
-  # ── Infrastructure ────────────────────────────────────────────────────────
+  # ── Infrastructure ─────────────────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.4-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-coachhub}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      POSTGRES_DB: ${POSTGRES_DB:-coachhub}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set in .env}
+      POSTGRES_DB: postgres
+      # Consumed by deploy/docker/create-databases.sh on first init.
+      CORE_DB_PASSWORD: ${CORE_DB_PASSWORD:?set in .env}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:?set in .env}
     ports:
-      - "5433:5432"
+      - "5433:5432"            # host 5433 avoids clashing with a local Postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    networks:
-      - coachhub-net
+      - ./deploy/docker/create-databases.sh:/docker-entrypoint-initdb.d/10-create-databases.sh:ro
+    networks: [coachhub-net]
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coachhub}" ]
-      interval: 10s
+      # Probing core_db (not the superuser DB) = ready only after the init
+      # script created the app databases.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres} -d core_db"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-coachhub}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-secret}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set in .env}
     ports:
       - "5672:5672"
-      - "15672:15672"   # management UI
+      - "15672:15672"          # management UI → http://localhost:15672
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      - coachhub-net
+    networks: [coachhub-net]
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 6
 
-  # ── Application services ──────────────────────────────────────────────────
+  # Disposable cache (locked decision) — deliberately no volume.
+  # NOTE: provisioned for core-api cache/sessions; app code does not consume it yet.
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    networks: [coachhub-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"            # SMTP
+      - "8025:8025"            # Web UI → http://localhost:8025
+    networks: [coachhub-net]
+
+  # ── Applications ───────────────────────────────────────────────────────────
   core-api:
     build:
       context: ./services/core-api
-      dockerfile: Dockerfile
+    image: ${REGISTRY:-coachhub.azurecr.io}/core-api:${IMAGE_TAG:-dev}
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-coachhub}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-coachhub}
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-coachhub}:${RABBITMQ_PASSWORD:-secret}@rabbitmq:5672
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-changeme_access}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-changeme_refresh}
+      # Dev convenience: auto-sync schema (no migrations exist yet).
+      # K8s/production runs with DB_SYNCHRONIZE=false + the migration Job.
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+      DATABASE_URL: postgresql://core_user:${CORE_DB_PASSWORD}@postgres:5432/core_db
+      REDIS_URL: redis://redis:6379          # not consumed by the app yet
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-coachhub}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set in .env}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?set in .env}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-30000}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-placeholder}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-placeholder}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-placeholder}
       AWS_S3_ACL: ${AWS_S3_ACL:-public-read}
-      AWS_S3_BASE_URL: ${AWS_S3_BASE_URL:-https://placeholder.s3.us-east-1.amazonaws.com}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-placeholder}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-placeholder}
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-30000}
-
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
     ports:
       - "3000:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - coachhub-net
+      postgres:  { condition: service_healthy }
+      rabbitmq:  { condition: service_healthy }
+      redis:     { condition: service_healthy }
+    networks: [coachhub-net]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   ai-service:
     build:
       context: ./services/ai-service
-      dockerfile: Dockerfile
+    image: ${REGISTRY:-coachhub.azurecr.io}/ai-service:${IMAGE_TAG:-dev}
     environment:
-      # Uses a live MongoDB Atlas cluster (Atlas Search supports the
-      # createSearchIndexes command the Spring AI vector store needs). Override
-      # via the SPRING_DATA_MONGODB_URI env var; default points at the dev cluster.
-      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:-mongodb+srv://dod:ahmeddada111@cluster0.atppyrg.mongodb.net/spring-rag-service?appName=Cluster0}
+      SERVER_PORT: 8081
+      # Managed MongoDB Atlas — URI only, never an in-compose Mongo.
+      SPRING_DATA_MONGODB_URI: ${MONGODB_ATLAS_URI:?set in .env}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-changeme}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?set in .env}
+      RAG_SEED_ON_STARTUP: ${RAG_SEED_ON_STARTUP:-true}
     ports:
       - "8081:8081"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - coachhub-net
+      rabbitmq: { condition: service_healthy }
+    networks: [coachhub-net]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   analytics-service:
     build:
       context: ./services/analytics-service
-      dockerfile: Dockerfile
+    image: ${REGISTRY:-coachhub.azurecr.io}/analytics-service:${IMAGE_TAG:-dev}
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-coachhub}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-coachhub}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/analytics_db
+      SPRING_DATASOURCE_USERNAME: analytics_user
+      SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     ports:
       - "8082:8082"
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - coachhub-net
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    networks: [coachhub-net]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   notification-service:
     build:
       context: ./services/notification-service
-      dockerfile: Dockerfile
+    image: ${REGISTRY:-coachhub.azurecr.io}/notification-service:${IMAGE_TAG:-dev}
     environment:
+      SERVER_PORT: 8083
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # Dev default: MailHog. Prod: Resend SMTP — see .env.example.
       MAIL_HOST: ${MAIL_HOST:-mailhog}
       MAIL_PORT: ${MAIL_PORT:-1025}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
     ports:
       - "8083:8083"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mailhog:
-        condition: service_started
-    networks:
-      - coachhub-net
-
-  mailhog:
-    image: mailhog/mailhog:v1.0.1
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # Web UI — open http://localhost:8025 to read captured emails
-    networks:
-      - coachhub-net
+      rabbitmq: { condition: service_healthy }
+      mailhog:  { condition: service_started }
+    networks: [coachhub-net]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
