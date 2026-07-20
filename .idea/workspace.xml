@@ -46,16 +46,16 @@
               <option name="branches">
                 <list>
                   <RecentBranch>
+                    <option name="branchName" value="main" />
+                    <option name="lastUsedInstant" value="1784118679" />
+                  </RecentBranch>
+                  <RecentBranch>
                     <option name="branchName" value="dod" />
                     <option name="lastUsedInstant" value="1784111507" />
                   </RecentBranch>
                   <RecentBranch>
                     <option name="branchName" value="dev" />
                     <option name="lastUsedInstant" value="1784011054" />
-                  </RecentBranch>
-                  <RecentBranch>
-                    <option name="branchName" value="main" />
-                    <option name="lastUsedInstant" value="1784011053" />
                   </RecentBranch>
                 </list>
               </option>
@@ -169,7 +169,7 @@
     "nodejs_package_manager_path": "npm",
     "prettierjs.PrettierConfiguration.Package": "/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/prettier",
     "settings.editor.selected.configurable": "preferences.pluginManager",
-    "ts.external.directory.path": "/home/aldod/.local/share/JetBrains/Toolbox/apps/intellij-idea-ultimate/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "ts.external.directory.path": "/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
