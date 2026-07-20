@@ -33,6 +33,21 @@ public class RabbitMqConfig {
 	}
 
 	@Bean
+	Binding bindClientRequested() {
+		return BindingBuilder.bind(notificationQueue()).to(eventsExchange()).with("client.requested");
+	}
+
+	@Bean
+	Binding bindClientRequestApproved() {
+		return BindingBuilder.bind(notificationQueue()).to(eventsExchange()).with("client.request.approved");
+	}
+
+	@Bean
+	Binding bindClientRequestRejected() {
+		return BindingBuilder.bind(notificationQueue()).to(eventsExchange()).with("client.request.rejected");
+	}
+
+	@Bean
 	Binding bindPlanAssigned() {
 		return BindingBuilder.bind(notificationQueue()).to(eventsExchange()).with("plan.assigned");
 	}

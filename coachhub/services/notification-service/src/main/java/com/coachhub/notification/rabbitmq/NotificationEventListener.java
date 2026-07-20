@@ -2,6 +2,8 @@ package com.coachhub.notification.rabbitmq;
 
 import com.coachhub.notification.config.RabbitMqConfig;
 import com.coachhub.notification.rabbitmq.payload.ClientInvitedPayload;
+import com.coachhub.notification.rabbitmq.payload.ClientRequestDecidedPayload;
+import com.coachhub.notification.rabbitmq.payload.ClientRequestedPayload;
 import com.coachhub.notification.rabbitmq.payload.PasswordResetPayload;
 import com.coachhub.notification.service.email.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +30,21 @@ public class NotificationEventListener {
 				ClientInvitedPayload clientInvitedPayload = objectMapper.convertValue(event.payload(),
 								ClientInvitedPayload.class);
 				emailService.sendClientInvite(clientInvitedPayload);
+			}
+			case "client.requested" -> {
+				ClientRequestedPayload clientRequestedPayload = objectMapper.convertValue(event.payload(),
+								ClientRequestedPayload.class);
+				emailService.sendJoinRequestReceived(clientRequestedPayload);
+			}
+			case "client.request.approved" -> {
+				ClientRequestDecidedPayload payload = objectMapper.convertValue(event.payload(),
+								ClientRequestDecidedPayload.class);
+				emailService.sendJoinRequestApproved(payload);
+			}
+			case "client.request.rejected" -> {
+				ClientRequestDecidedPayload payload = objectMapper.convertValue(event.payload(),
+								ClientRequestDecidedPayload.class);
+				emailService.sendJoinRequestRejected(payload);
 			}
 			case "password.reset" -> {
 				PasswordResetPayload passwordResetPayload = objectMapper.convertValue(event.payload(),

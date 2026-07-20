@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th = 'http://www.thymeleaf.org' >
+<head >
+	<meta charset = 'UTF-8' />
+	<title >An update on your request</title >
+</head >
+<body
+	style = 'margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;' >
+<table cellpadding = '0' cellspacing = '0' role = 'presentation'
+       style = 'padding:32px 0;'
+       width = '100%' >
+	<tr >
+		<td align = 'center' >
+			<table cellpadding = '0' cellspacing = '0' role = 'presentation'
+			       style = 'background:#ffffff;border-radius:12px;overflow:hidden;'
+			       width = '480' >
+				<tr >
+					<td
+						style = 'background:#1f6feb;padding:24px 32px;color:#ffffff;font-size:20px;font-weight:bold;' >
+						CoachHub
+					</td >
+				</tr >
+				<tr >
+					<td
+						style = 'padding:32px;color:#1f2328;font-size:15px;line-height:1.6;' >
+						<p style = 'margin:0 0 16px;' >Hi <span th:text = '${clientName}' >there</span >,
+						</p >
+						<p style = 'margin:0 0 16px;' >
+							<strong th:text = '${coachName}' >Your coach</strong >
+							isn't able to take you on right now.
+						</p >
+						<p style = 'margin:0 0 24px;' >Plenty of other coaches are accepting
+						                               new clients &mdash; have a look and find
+						                               the right fit.</p >
+						<p style = 'margin:0 0 24px;' >
+							<a
+								style = 'background:#1f6feb;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;display:inline-block;font-weight:bold;'
+								th:href = '${actionUrl}' >
+								Browse coaches
+							</a >
+						</p >
+						<p style = 'margin:0;color:#656d76;font-size:13px;' >
+							If the button doesn't work, paste this link into your
+							browser:<br />
+							<a style = 'color:#1f6feb;word-break:break-all;'
+							   th:href = '${actionUrl}'
+							   th:text = '${actionUrl}' >link</a >
+						</p >
+					</td >
+				</tr >
+			</table >
+		</td >
+	</tr >
+</table >
+</body >
+</html >

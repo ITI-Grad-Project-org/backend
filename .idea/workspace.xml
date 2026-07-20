@@ -18,7 +18,7 @@
     </persistenceIdMap>
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="406" />
+    <option name="cachedIndexableFilesCount" value="457" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -172,7 +172,7 @@
     "ts.external.directory.path": "/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration default="true" type="JetRunConfigurationType">
       <method v="2">
@@ -204,7 +204,8 @@
       <workItem from="1783866123081" duration="798000" />
       <workItem from="1784009679687" duration="10418000" />
       <workItem from="1784103696249" duration="14000" />
-      <workItem from="1784109907930" duration="3589000" />
+      <workItem from="1784109907930" duration="4357000" />
+      <workItem from="1784554090256" duration="5770000" />
     </task>
     <servers />
   </component>

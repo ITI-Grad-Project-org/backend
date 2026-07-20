@@ -62,7 +62,7 @@ kubectl -n "$NAMESPACE" create secret generic app-secrets \
   --from-literal=JWT_REFRESH_SECRET="$(getval JWT_REFRESH_SECRET)" \
   --from-literal=GEMINI_API_KEY="$(getval GEMINI_API_KEY)" \
   --from-literal=MONGODB_ATLAS_URI="$(getval MONGODB_ATLAS_URI)" \
-  --from-literal=RESEND_API_KEY="$(getval RESEND_API_KEY)" \
+  --from-literal=MAIL_PASSWORD="$(getval MAIL_PASSWORD)" \
   --from-literal=GOOGLE_OAUTH_CLIENT_ID="$(getval GOOGLE_OAUTH_CLIENT_ID)" \
   --from-literal=AWS_ACCESS_KEY_ID="$(getval AWS_ACCESS_KEY_ID)" \
   --from-literal=AWS_SECRET_ACCESS_KEY="$(getval AWS_SECRET_ACCESS_KEY)" \

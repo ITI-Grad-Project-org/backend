@@ -119,9 +119,49 @@ export class CoachesService {
 		});
 	}
 
+	/** Loads the hidden OTP columns — the reset flow needs them explicitly. */
+	findOneByEmailWithResetOtp(email: string) {
+		return this.coachRepository
+			.createQueryBuilder('coach')
+			.addSelect([
+				'coach.resetOtpHash',
+				'coach.resetOtpExpires',
+				'coach.resetOtpAttempts',
+			])
+			.leftJoinAndSelect('coach.tenants', 'tenant')
+			.where('coach.email = :email', { email })
+			.getOne();
+	}
+
+	/** Issuing a new OTP invalidates any ticket already handed out. */
+	setResetOtp(id: string, otpHash: string, expires: Date) {
+		return this.coachRepository.update(id, {
+			resetOtpHash: otpHash,
+			resetOtpExpires: expires,
+			resetOtpAttempts: 0,
+			resetPasswordToken: null,
+			resetPasswordExpires: null,
+		});
+	}
+
+	incrementResetOtpAttempts(id: string) {
+		return this.coachRepository.increment({ id }, 'resetOtpAttempts', 1);
+	}
+
+	clearResetOtp(id: string) {
+		return this.coachRepository.update(id, {
+			resetOtpHash: null,
+			resetOtpExpires: null,
+			resetOtpAttempts: 0,
+		});
+	}
+
 	resetCoachPassword(id: string, hashedPassword: string) {
 		return this.coachRepository.update(id, {
 			password: hashedPassword,
+			resetOtpHash: null,
+			resetOtpExpires: null,
+			resetOtpAttempts: 0,
 			resetPasswordToken: null,
 			resetPasswordExpires: null,
 			hashedRefreshToken: null,

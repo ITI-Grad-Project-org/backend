@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { ClientAuthController } from './client-auth.controller';
 import { ClientAuthService } from './services/client-auth.service';
 import { TokenProvider } from './providers/token.provider';
+import { PasswordResetOtpProvider } from './providers/password-reset-otp.provider';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { ClientJwtStrategy } from './strategies/client-jwt.strategy';
@@ -53,6 +54,7 @@ import { MessagingModule } from '../messaging/messaging.module';
 		AuthService,
 		ClientAuthService,
 		TokenProvider,
+		PasswordResetOtpProvider,
 		JwtStrategy,
 		JwtRefreshStrategy,
 		ClientJwtStrategy,

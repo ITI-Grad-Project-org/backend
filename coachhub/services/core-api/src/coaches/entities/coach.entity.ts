@@ -74,6 +74,18 @@ export class Coach {
 	@Column({ type: 'text', nullable: true, select: false })
 	hashedRefreshToken: string | null;
 
+	// Stage 1 of password reset: hashed 6-digit OTP emailed to the coach.
+	@Column({ type: 'text', nullable: true, select: false })
+	resetOtpHash: string | null;
+
+	@Column({ type: 'timestamptz', nullable: true, select: false })
+	resetOtpExpires: Date | null;
+
+	// Wrong-code counter — a 6-digit OTP is brute-forceable, so it is capped.
+	@Column({ type: 'int', default: 0, select: false })
+	resetOtpAttempts: number;
+
+	// Stage 2: single-use ticket handed out once the OTP verifies.
 	@Column({ type: 'text', nullable: true, select: false })
 	resetPasswordToken: string | null;
 

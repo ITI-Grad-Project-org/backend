@@ -41,12 +41,15 @@ spec:
               valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_PORT } }
             - name: MAIL_USERNAME
               valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_USERNAME } }
+            # Gmail App Password (or the provider's API key if you switch providers).
             - name: MAIL_PASSWORD
-              valueFrom: { secretKeyRef: { name: app-secrets, key: RESEND_API_KEY } }
+              valueFrom: { secretKeyRef: { name: app-secrets, key: MAIL_PASSWORD } }
             - name: MAIL_SMTP_AUTH
               valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_SMTP_AUTH } }
             - name: MAIL_SMTP_STARTTLS
               valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_SMTP_STARTTLS } }
+            - name: MAIL_FROM
+              valueFrom: { configMapKeyRef: { name: app-config, key: MAIL_FROM } }
           startupProbe:
             httpGet: { path: /actuator/health/liveness, port: http }
             periodSeconds: 5

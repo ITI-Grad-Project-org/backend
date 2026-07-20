@@ -119,9 +119,48 @@ export class ClientService {
 		});
 	}
 
+	/** Loads the hidden OTP columns — the reset flow needs them explicitly. */
+	findOneByEmailWithResetOtp(email: string) {
+		return this.clientRepository
+			.createQueryBuilder('client')
+			.addSelect([
+				'client.resetOtpHash',
+				'client.resetOtpExpires',
+				'client.resetOtpAttempts',
+			])
+			.where('client.email = :email', { email })
+			.getOne();
+	}
+
+	/** Issuing a new OTP invalidates any ticket already handed out. */
+	setResetOtp(id: string, otpHash: string, expires: Date) {
+		return this.clientRepository.update(id, {
+			resetOtpHash: otpHash,
+			resetOtpExpires: expires,
+			resetOtpAttempts: 0,
+			resetPasswordToken: null,
+			resetPasswordExpires: null,
+		});
+	}
+
+	incrementResetOtpAttempts(id: string) {
+		return this.clientRepository.increment({ id }, 'resetOtpAttempts', 1);
+	}
+
+	clearResetOtp(id: string) {
+		return this.clientRepository.update(id, {
+			resetOtpHash: null,
+			resetOtpExpires: null,
+			resetOtpAttempts: 0,
+		});
+	}
+
 	resetClientPassword(id: string, hashedPassword: string) {
 		return this.clientRepository.update(id, {
 			password: hashedPassword,
+			resetOtpHash: null,
+			resetOtpExpires: null,
+			resetOtpAttempts: 0,
 			resetPasswordToken: null,
 			resetPasswordExpires: null,
 			hashedRefreshToken: null,
