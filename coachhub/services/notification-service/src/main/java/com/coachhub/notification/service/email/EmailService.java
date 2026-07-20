@@ -6,6 +6,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,14 @@ import org.thymeleaf.context.Context;
 @RequiredArgsConstructor
 public class EmailService {
 	private static final Logger log = LoggerFactory.getLogger(EmailService.class);
-	private static final String FROM = "no-reply@coachhub.app";
+
+	/**
+	 * Must be an address the SMTP provider lets us send as. Gmail only accepts the
+	 * authenticated account (or a verified alias) and silently rewrites anything
+	 * else, so this is configuration rather than a constant.
+	 */
+	@Value("${coachhub.mail.from:no-reply@coachhub.app}")
+	private String from;
 
 	private final JavaMailSender mailSender;
 	private final TemplateEngine templateEngine;
@@ -45,7 +53,7 @@ public class EmailService {
 		try {
 			MimeMessage message = mailSender.createMimeMessage();
 			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-			helper.setFrom(FROM);
+			helper.setFrom(from);
 			helper.setTo(to);
 			helper.setSubject(subject);
 			helper.setText(html, true);

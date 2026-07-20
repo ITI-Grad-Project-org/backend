@@ -172,13 +172,14 @@ services:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
-      # Dev default: MailHog. Prod: Resend SMTP — see .env.example.
+      # Default: MailHog (offline capture). Set MAIL_* in .env for real Gmail/Resend SMTP.
       MAIL_HOST: ${MAIL_HOST:-mailhog}
       MAIL_PORT: ${MAIL_PORT:-1025}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
       MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@coachhub.app}
     ports:
       - "8083:8083"
     depends_on:
