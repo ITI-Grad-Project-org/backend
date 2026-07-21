@@ -49,6 +49,33 @@ export class ClientMembership {
 	@Column({ name: 'decided_at', type: 'timestamptz', nullable: true })
 	decidedAt: Date | null;
 
+	// Set when a coach approves a join request: the membership waits in `INVITED`
+	// until the client types this 6-digit code (only its hash is stored, wrong
+	// guesses are capped) — mirrors the coach-invite flow.
+	@Column({
+		name: 'invite_otp_hash',
+		type: 'text',
+		nullable: true,
+		select: false,
+	})
+	inviteOtpHash: string | null;
+
+	@Column({
+		name: 'invite_otp_expires',
+		type: 'timestamptz',
+		nullable: true,
+		select: false,
+	})
+	inviteOtpExpires: Date | null;
+
+	@Column({
+		name: 'invite_otp_attempts',
+		type: 'int',
+		default: 0,
+		select: false,
+	})
+	inviteOtpAttempts: number;
+
 	@Column({ name: 'joined_at', type: 'timestamptz', nullable: true })
 	joinedAt: Date | null;
 

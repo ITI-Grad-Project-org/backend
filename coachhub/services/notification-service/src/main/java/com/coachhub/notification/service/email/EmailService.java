@@ -35,7 +35,7 @@ public class EmailService {
 		Context ctx = new Context();
 		ctx.setVariable("clientName", payload.clientName() != null ? payload.clientName() : "there");
 		ctx.setVariable("coachName", payload.coachName());
-		ctx.setVariable("acceptUrl", payload.acceptUrl());
+		ctx.setVariable("otp", payload.otp());
 
 		String html = templateEngine.process("client-invited", ctx);
 		send(payload.clientEmail(), payload.coachName() + " invited you to CoachHub", html);
@@ -61,7 +61,7 @@ public class EmailService {
 		ctx.setVariable("clientName", blankToDefault(payload.clientName(), "there"));
 		ctx.setVariable("coachName", payload.coachName());
 		ctx.setVariable("tenantName", payload.tenantName());
-		ctx.setVariable("actionUrl", payload.actionUrl());
+		ctx.setVariable("otp", payload.otp());
 
 		String html = templateEngine.process("join-request-approved", ctx);
 		send(payload.clientEmail(), payload.coachName() + " accepted your request", html);

@@ -12,6 +12,7 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { InvitationModule } from './invitation/invitation.module';
 import { JoinRequestModule } from './join-requests/join-request.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { MeasurementsModule } from './measurements/measurements.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { PlansModule } from './plans/plans.module';
@@ -40,6 +41,7 @@ import { ExercisesModule } from './exercises/exercises.module';
 		TenantModule,
 		InvitationModule,
 		JoinRequestModule,
+		OnboardingModule,
 		ReviewsModule,
 		ExercisesModule,
 	],

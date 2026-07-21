@@ -50,6 +50,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Dev convenience: auto-sync schema (no migrations exist yet).
+      # K8s/production runs with DB_SYNCHRONIZE=false + the migration Job.
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
       DATABASE_URL: postgresql://${POSTGRES_USER:-coachhub}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-coachhub}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-coachhub}:${RABBITMQ_PASSWORD:-secret}@rabbitmq:5672
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-changeme_access}

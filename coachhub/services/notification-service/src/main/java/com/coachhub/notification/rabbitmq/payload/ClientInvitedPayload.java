@@ -6,8 +6,7 @@ public record ClientInvitedPayload(
 				String coachName,
 				String clientEmail,
 				String clientName,
-				String inviteToken,
-				String acceptUrl,
+				String otp,
 				String expiresAt
 ) {
 }
