@@ -6,6 +6,24 @@
   <component name="ChangeListManager">
     <list default="true" id="4f78e58d-5638-41b9-be88-bd6b6da24c41" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/app.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/app.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/client-membership.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/client-membership.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/dto/create-client.dto.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/dto/create-client.dto.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client-membership.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/clients/entities/client-membership.entity.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/common/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/common/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/dto/accept-invitation.dto.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/entities/invitation.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/entities/invitation.entity.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.controller.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.controller.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/invitation/invitation.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/join-requests/join-request.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/join-requests/join-request.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/join-requests/join-request.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/join-requests/join-request.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/core-api/src/messaging/events.ts" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/core-api/src/messaging/events.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/rabbitmq/payload/ClientInvitedPayload.java" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/rabbitmq/payload/ClientInvitedPayload.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/rabbitmq/payload/ClientRequestDecidedPayload.java" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/rabbitmq/payload/ClientRequestDecidedPayload.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/service/email/EmailService.java" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/java/com/coachhub/notification/service/email/EmailService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/resources/templates/client-invited.html" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/resources/templates/client-invited.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/resources/templates/join-request-approved.html" beforeDir="false" afterPath="$PROJECT_DIR$/coachhub/services/notification-service/src/main/resources/templates/join-request-approved.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -18,7 +36,7 @@
     </persistenceIdMap>
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="459" />
+    <option name="cachedIndexableFilesCount" value="465" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -35,6 +53,9 @@
     "url": "https://github.com/ITI-Grad-Project-org/backend.git",
     "accountId": "e94eb321-056b-4b8c-bec8-2d87e37ca0e2"
   }
+}]]></component>
+  <component name="KubernetesApiProvider"><![CDATA[{
+  "isMigrated": true
 }]]></component>
   <component name="McpProjectServerCommands">
     <commands />
@@ -68,6 +89,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "ts.external.directory.path": "/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -86,7 +108,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1784630999542</updated>
-      <workItem from="1784631003118" duration="1175000" />
+      <workItem from="1784631003118" duration="8360000" />
     </task>
     <servers />
   </component>

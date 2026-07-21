@@ -35,8 +35,8 @@ export interface ClientInvitedPayload {
 	coachName: string;
 	clientEmail: string;
 	clientName: string | null;
-	inviteToken: string;
-	acceptUrl: string;
+	/** 6-digit code the client types into the app to accept the invite. */
+	otp: string;
 	expiresAt: string;
 }
 
@@ -64,7 +64,12 @@ export interface ClientRequestDecidedPayload {
 	coachId: string;
 	coachName: string;
 	tenantName: string;
-	/** Where the client picks up next: their plan on approval, browsing on rejection. */
+	/**
+	 * 6-digit code the client types into the app to activate the membership.
+	 * Set on approval; null on rejection (nothing to confirm).
+	 */
+	otp: string | null;
+	/** Where the client picks up next on rejection — browsing the directory. */
 	actionUrl: string;
 }
 

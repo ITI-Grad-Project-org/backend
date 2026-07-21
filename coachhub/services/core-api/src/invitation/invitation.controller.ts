@@ -9,7 +9,6 @@ import {
 	Param,
 	ParseUUIDPipe,
 	Post,
-	UseGuards,
 } from '@nestjs/common';
 import {
 	ApiBearerAuth,
@@ -19,9 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { InvitationService } from './invitation.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
-import { AcceptInvitationDto } from './dto/accept-invitation.dto';
-import { CurrentClient, CurrentTenant, CurrentUser, Public } from '../auth';
-import { ClientJwtAuthGuard } from '../auth/guards/client-jwt-auth.guard';
+import { CurrentTenant, CurrentUser } from '../auth';
 
 @ApiTags('Invitations')
 @ApiBearerAuth()
@@ -89,40 +86,5 @@ export class InvitationController {
 		@Param('id', ParseUUIDPipe) id: string,
 	) {
 		return this.invitationService.revoke(tenantId, id);
-	}
-
-	@Public()
-	@Get('token/:token')
-	@ApiOperation({
-		summary: 'Preview an invitation by its token (used by the accept page)',
-	})
-	@ApiResponse({ status: 200, description: 'Invitation retrieved' })
-	@ApiResponse({ status: 404, description: 'Invitation not found' })
-	@HttpCode(HttpStatus.OK)
-	findByToken(@Param('token') token: string) {
-		return this.invitationService.findByToken(token);
-	}
-
-	@Public()
-	@UseGuards(ClientJwtAuthGuard)
-	@Post('token/:token/accept')
-	@ApiBearerAuth()
-	@ApiOperation({ summary: 'Accept an invitation as the logged-in client' })
-	@ApiResponse({ status: 200, description: 'Invitation accepted' })
-	@ApiResponse({
-		status: 400,
-		description: 'Invitation expired or not pending',
-	})
-	@ApiResponse({
-		status: 403,
-		description: 'Invitation addressed to another email',
-	})
-	@HttpCode(HttpStatus.OK)
-	accept(
-		@CurrentClient('clientId') clientId: string,
-		@Param('token') token: string,
-		@Body() acceptInvitationDto: AcceptInvitationDto,
-	) {
-		return this.invitationService.accept(clientId, token, acceptInvitationDto);
 	}
 }

@@ -19,7 +19,7 @@ data:
   FRONTEND_URL: "https://app.coachhub.example.com"
   # Comma-separated CORS allowlist. Every browser origin that calls the API must be
   # listed exactly (scheme + host + port); wildcards are illegal on credentialed requests.
-  ALLOWED_ORIGINS: "https://app.coachhub.example.com,http://localhost:5173"
+  ALLOWED_ORIGINS: "https://app.coachhub.example.com,https://uply-gamma.vercel.app,http://localhost:5173"
   # AWS S3 (media uploads)
   AWS_REGION: "us-east-1"
   AWS_S3_ACL: "public-read"

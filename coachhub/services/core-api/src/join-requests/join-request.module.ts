@@ -6,10 +6,11 @@ import { ClientModule } from '../clients/client.module';
 import { TenantModule } from '../tenant/tenant.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { ConfigModule } from '../config';
+import { OtpProvider } from '../common';
 
 @Module({
 	controllers: [ClientJoinRequestController, CoachJoinRequestController],
-	providers: [JoinRequestService],
+	providers: [JoinRequestService, OtpProvider],
 	imports: [ClientModule, TenantModule, MessagingModule, ConfigModule],
 	exports: [JoinRequestService],
 })

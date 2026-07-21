@@ -4,19 +4,16 @@ import { InvitationService } from './invitation.service';
 import { InvitationController } from './invitation.controller';
 import { Invitation } from './entities/invitation.entity';
 import { MessagingModule } from '../messaging/messaging.module';
-import { ConfigModule } from '../config';
 import { CoachesModule } from '../coaches/coaches.module';
-import { ClientModule } from '../clients/client.module';
+import { OtpProvider } from '../common';
 
 @Module({
 	controllers: [InvitationController],
-	providers: [InvitationService],
+	providers: [InvitationService, OtpProvider],
 	imports: [
 		TypeOrmModule.forFeature([Invitation]),
 		MessagingModule,
-		ConfigModule,
 		CoachesModule,
-		ClientModule,
 	],
 	exports: [InvitationService],
 })

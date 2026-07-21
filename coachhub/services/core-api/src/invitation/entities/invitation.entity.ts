@@ -30,9 +30,19 @@ export class Invitation {
 	})
 	status: InvitaionStatusEnum;
 
+	/** Internal opaque identifier — no longer emailed now the code replaced links. */
 	@Index({ unique: true })
 	@Column()
 	token: string;
+
+	// The client accepts by typing a 6-digit code from the invite email; only its
+	// hash is stored, and wrong guesses are capped so the short code can't be
+	// brute-forced. `expiresAt` doubles as the code's validity window.
+	@Column({ type: 'text', nullable: true, select: false })
+	otpHash: string | null;
+
+	@Column({ type: 'int', default: 0, select: false })
+	otpAttempts: number;
 
 	@Column({ type: 'timestamptz' })
 	expiresAt: Date;
