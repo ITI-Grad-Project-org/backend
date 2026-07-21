@@ -52,3 +52,5 @@ prisma/*.db-journal
 
 mydocs
 AGENTS.md
+
+.idea
