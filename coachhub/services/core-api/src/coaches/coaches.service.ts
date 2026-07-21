@@ -1,19 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { Coach } from './entities/coach.entity';
+import { DataSource, Repository } from 'typeorm';
+import { ExercisesService } from '../exercises/exercises.service';
 import { Tenant } from '../tenant/entities/tenant.entity';
 import { TenantService } from '../tenant/tenant.service';
 import { RegisterCoachDto } from './dto/register-coach.dto';
 import { UpdateCoachDto } from './dto/update-coach.dto';
+import { Coach } from './entities/coach.entity';
 
 @Injectable()
 export class CoachesService {
+	private readonly logger = new Logger(CoachesService.name);
+
 	constructor(
 		@InjectRepository(Coach)
 		private readonly coachRepository: Repository<Coach>,
 		private readonly tenantService: TenantService,
 		private readonly dataSource: DataSource,
+		private readonly exercisesService: ExercisesService,
 	) {}
 
 	async create(registerDto: RegisterCoachDto): Promise<Coach> {
@@ -21,7 +25,7 @@ export class CoachesService {
 			registerDto.businessName,
 		);
 
-		return this.dataSource.transaction(async (manager) => {
+		const savedCoach = await this.dataSource.transaction(async (manager) => {
 			const coach = manager.create(Coach, {
 				firstName: registerDto.firstName,
 				lastName: registerDto.lastName,
@@ -44,11 +48,23 @@ export class CoachesService {
 			});
 			const savedTenant = await manager.save(tenant);
 
-			await this.seedExerciseLibrary(manager, savedTenant.id);
-
 			savedCoach.tenants = [savedTenant];
 			return savedCoach;
 		});
+
+		const tenantId = savedCoach.tenants[0].id;
+
+		try {
+			await this.exercisesService.initializeCoachLibrary(tenantId);
+		} catch (error) {
+			const trace = error instanceof Error ? error.stack : String(error);
+			this.logger.error(
+				`Exercise library initialization failed for tenant ${tenantId}`,
+				trace,
+			);
+		}
+
+		return savedCoach;
 	}
 
 	findAll() {
@@ -138,29 +154,5 @@ export class CoachesService {
 
 	remove(id: string) {
 		return this.coachRepository.softDelete(id);
-	}
-
-	private seedExerciseLibrary(manager: EntityManager, tenantId: string) {
-		return manager.query(
-			`INSERT INTO exercises
-			 (tenant_id, source_seed_id, name, category, primary_muscle,
-			  secondary_muscles,
-			  equipment, demo_video_url, demo_gif_url, thumbnail_url,
-			  instruction_steps)
-			 SELECT $1,
-			        s.id,
-			        s.name,
-			        s.category,
-			        s.primary_muscle,
-			        s.secondary_muscles,
-			        s.equipment,
-			        s.demo_video_url,
-			        s.demo_gif_url,
-			        s.thumbnail_url,
-			        s.instruction_steps
-			 FROM default_exercises s
-			 WHERE s.is_active`,
-			[tenantId],
-		);
 	}
 }

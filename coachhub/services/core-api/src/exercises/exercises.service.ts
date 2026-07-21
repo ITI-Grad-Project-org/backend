@@ -5,7 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CreateExerciseDto } from './dto/create-exercise.dto';
 import { QueryExercisesDto } from './dto/query-exercises.dto';
 import { UpdateExerciseDto } from './dto/update-exercise.dto';
@@ -17,81 +17,62 @@ export class ExercisesService {
 	constructor(
 		@InjectRepository(Exercise)
 		private readonly exerciseRepo: Repository<Exercise>,
-		@InjectRepository(DefaultExercise)
-		private readonly defaultExerciseRepo: Repository<DefaultExercise>,
+		private readonly dataSource: DataSource,
 	) {}
 
 	async initializeCoachLibrary(tenantId: string) {
-		if (!tenantId) {
-			throw new BadRequestException(
-				'No Active Tenant Was Provided, Please Try again',
-			);
-		}
+		this.assertTenantContext(tenantId);
 
-		const checkDefaultExercises = await this.defaultExerciseRepo.find({
-			where: {
-				isActive: true,
-			},
-		});
+		return this.dataSource.transaction(async (manager) => {
+			const activeDefaultCount = await manager
+				.getRepository(DefaultExercise)
+				.countBy({ isActive: true });
 
-		if (checkDefaultExercises.length == 0) {
-			throw new NotFoundException(
-				'No Default Exercises were Found, Please Contact The Support or fill you library manually',
-			);
-		}
-
-		const tenantExercises = await this.exerciseRepo.find({
-			where: { tenantId },
-			relations: { sourceSeed: true },
-		});
-
-		const defaultExerciseIdsSet: Set<string> = new Set<string>();
-		const usedExerciseNamesSet: Set<string> = new Set<string>();
-		const exercisesToCreate: Exercise[] = [];
-		let skipped = 0;
-		let created = 0;
-
-		tenantExercises.forEach((tenantExercise) => {
-			usedExerciseNamesSet.add(this.normalizeExerciseName(tenantExercise.name));
-
-			if (tenantExercise.sourceSeed) {
-				defaultExerciseIdsSet.add(tenantExercise.sourceSeed.id);
+			if (activeDefaultCount === 0) {
+				throw new NotFoundException(
+					'No Default Exercises were Found, Please Contact The Support or fill you library manually',
+				);
 			}
-		});
 
-		checkDefaultExercises.forEach((exercise) => {
-			if (defaultExerciseIdsSet.has(exercise.id)) {
-				skipped++;
-			} else if (
-				usedExerciseNamesSet.has(this.normalizeExerciseName(exercise.name))
-			) {
-				skipped++;
-			} else {
-				const newExercise = this.exerciseRepo.create({
-					tenantId,
-					sourceSeed: exercise,
-					createdBy: null,
-					name: exercise.name,
-					category: exercise.category,
-					primaryMuscle: exercise.primaryMuscle,
-					secondaryMuscles: exercise.secondaryMuscles,
-					equipment: exercise.equipment,
-					demoVideoUrl: exercise.demoVideoUrl,
-					demoGifUrl: exercise.demoGifUrl,
-					thumbnailUrl: exercise.thumbnailUrl,
-					instructionSteps: exercise.instructionSteps,
-					isActive: true,
-				});
-				exercisesToCreate.push(newExercise);
-			}
-		});
+			const createdExercises: Array<{ id: string }> = await manager.query(
+				`INSERT INTO exercises
+				 (tenant_id, source_seed_id, created_by, name, category,
+				  primary_muscle, secondary_muscles, equipment, demo_video_url,
+				  demo_gif_url, thumbnail_url, instruction_steps, is_active)
+				 SELECT $1,
+				        seed.id,
+				        NULL,
+				        seed.name,
+				        seed.category,
+				        seed.primary_muscle,
+				        seed.secondary_muscles,
+				        seed.equipment,
+				        seed.demo_video_url,
+				        seed.demo_gif_url,
+				        seed.thumbnail_url,
+				        seed.instruction_steps,
+				        TRUE
+				 FROM default_exercises seed
+				 WHERE seed.is_active
+				   AND NOT EXISTS (
+				     SELECT 1
+				     FROM exercises existing
+				     WHERE existing.tenant_id = $1
+				       AND (
+				         existing.source_seed_id = seed.id
+				         OR LOWER(existing.name) = LOWER(seed.name)
+				       )
+				   )
+				 ON CONFLICT (tenant_id, name) DO NOTHING
+				 RETURNING id`,
+				[tenantId],
+			);
 
-		await this.exerciseRepo.save(exercisesToCreate);
-		created = exercisesToCreate.length;
-		return {
-			created,
-			skipped,
-		};
+			return {
+				created: createdExercises.length,
+				skipped: activeDefaultCount - createdExercises.length,
+			};
+		});
 	}
 
 	async addExerciseToLibrary(
