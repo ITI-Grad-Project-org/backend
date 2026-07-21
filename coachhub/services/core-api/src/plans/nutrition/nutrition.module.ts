@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FoodLibraryController } from './controllers/food-library.controller';
+import { MealLibraryController } from './controllers/meal-library.controller';
 import { FoodLog } from './entities/food-log.entity';
 import { Food } from './entities/food.entity';
 import { LoggedMeal } from './entities/logged-meal.entity';
@@ -13,6 +14,7 @@ import { NutritionPlan } from './entities/nutrition-plan.entity';
 import { PlannedMealFood } from './entities/planned-meal-food.entity';
 import { PlannedMeal } from './entities/planned-meal.entity';
 import { FoodLibraryService } from './services/food-library.service';
+import { MealLibraryService } from './services/meal-library.service';
 
 @Module({
 	imports: [
@@ -30,7 +32,7 @@ import { FoodLibraryService } from './services/food-library.service';
 			FoodLog,
 		]),
 	],
-	controllers: [FoodLibraryController],
-	providers: [FoodLibraryService],
+	controllers: [FoodLibraryController, MealLibraryController],
+	providers: [FoodLibraryService, MealLibraryService],
 })
 export class NutritionModule {}

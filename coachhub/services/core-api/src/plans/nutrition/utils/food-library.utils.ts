@@ -10,7 +10,7 @@ export function assertActiveTenant(tenantId: string | null) {
 }
 
 export function normalizeFoodDisplayText(value: string) {
-	return value.trim().replace(/\s+/g, ' ');
+	return value.trim().replace(/\s+/g, ' '); // what does this regex do ?
 }
 
 export function normalizeNullableFoodDisplayText(value?: string | null) {
