@@ -42,7 +42,7 @@ export class NutritionPlanDay {
 	@JoinColumn({ name: 'nutrition_plan_week_id' })
 	nutritionPlanWeek: NutritionPlanWeek;
 
-	/** 1 = Monday through 7 = Sunday. */
+	/** Relative day within the rolling plan week: 1 through 7. */
 	@Column({ name: 'day_number', type: 'smallint' })
 	dayNumber: number;
 

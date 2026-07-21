@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ClientMembership } from '../../clients/entities/client-membership.entity';
+import { ClientNutritionPlansController } from './controllers/client-nutrition-plans.controller';
 import { FoodLibraryController } from './controllers/food-library.controller';
 import { MealLibraryController } from './controllers/meal-library.controller';
 import { FoodLog } from './entities/food-log.entity';
@@ -13,12 +15,14 @@ import { NutritionPlanWeek } from './entities/nutrition-plan-week.entity';
 import { NutritionPlan } from './entities/nutrition-plan.entity';
 import { PlannedMealFood } from './entities/planned-meal-food.entity';
 import { PlannedMeal } from './entities/planned-meal.entity';
+import { ClientNutritionPlansService } from './services/client-nutrition-plans.service';
 import { FoodLibraryService } from './services/food-library.service';
 import { MealLibraryService } from './services/meal-library.service';
 
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([
+			ClientMembership,
 			Food,
 			Meal,
 			MealIngredient,
@@ -32,7 +36,15 @@ import { MealLibraryService } from './services/meal-library.service';
 			FoodLog,
 		]),
 	],
-	controllers: [FoodLibraryController, MealLibraryController],
-	providers: [FoodLibraryService, MealLibraryService],
+	controllers: [
+		FoodLibraryController,
+		MealLibraryController,
+		ClientNutritionPlansController,
+	],
+	providers: [
+		FoodLibraryService,
+		MealLibraryService,
+		ClientNutritionPlansService,
+	],
 })
 export class NutritionModule {}
