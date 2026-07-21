@@ -210,13 +210,70 @@ export class ClientMembershipService {
 		return membership;
 	}
 
-	decideRequest(membership: ClientMembership, approved: boolean) {
-		membership.status = approved
-			? MembershipStatus.ACTIVE
-			: MembershipStatus.REJECTED;
-		membership.joinedAt = approved ? new Date() : null;
+	/**
+	 * Approval no longer activates immediately: the membership waits in `INVITED`
+	 * holding a hashed code, and only `activateInvited` (after the client types
+	 * the code) flips it to `ACTIVE`. Symmetric with the coach-invite flow.
+	 */
+	approveWithOtp(
+		membership: ClientMembership,
+		otpHash: string,
+		otpExpires: Date,
+	) {
+		membership.status = MembershipStatus.INVITED;
+		membership.joinedAt = null;
+		membership.decidedAt = new Date();
+		membership.inviteOtpHash = otpHash;
+		membership.inviteOtpExpires = otpExpires;
+		membership.inviteOtpAttempts = 0;
+		return this.membershipRepository.save(membership);
+	}
+
+	rejectRequest(membership: ClientMembership) {
+		membership.status = MembershipStatus.REJECTED;
+		membership.joinedAt = null;
 		membership.decidedAt = new Date();
 		return this.membershipRepository.save(membership);
+	}
+
+	/** Approved-but-unconfirmed memberships for a client, with the hidden OTP columns. */
+	findInvitedWithOtp(clientId: string): Promise<ClientMembership[]> {
+		return this.membershipRepository
+			.createQueryBuilder('membership')
+			.leftJoin('membership.client', 'client')
+			.leftJoinAndSelect('membership.tenant', 'tenant')
+			.leftJoinAndSelect('tenant.ownerCoach', 'ownerCoach')
+			.addSelect([
+				'membership.inviteOtpHash',
+				'membership.inviteOtpExpires',
+				'membership.inviteOtpAttempts',
+			])
+			.where('client.id = :clientId', { clientId })
+			.andWhere('membership.status = :status', {
+				status: MembershipStatus.INVITED,
+			})
+			.getMany();
+	}
+
+	/** The client typed the right code: activate and burn the code. */
+	activateInvited(membership: ClientMembership) {
+		membership.status = MembershipStatus.ACTIVE;
+		membership.joinedAt = new Date();
+		membership.inviteOtpHash = null;
+		membership.inviteOtpExpires = null;
+		membership.inviteOtpAttempts = 0;
+		return this.membershipRepository.save(membership);
+	}
+
+	async incrementInviteOtpAttempts(membershipIds: string[]): Promise<void> {
+		if (membershipIds.length === 0) {
+			return;
+		}
+		await this.membershipRepository.increment(
+			{ id: In(membershipIds) },
+			'inviteOtpAttempts',
+			1,
+		);
 	}
 
 	async withdrawRequest(clientId: string, membershipId: string) {

@@ -13,6 +13,10 @@ import { ConfigService } from '../config';
 import { EventPublisherService } from '../messaging/event-publisher.service';
 import { EventType } from '../messaging/events';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
+import { OtpProvider } from '../common';
+
+/** Approval codes live as long as coach invites — a week to open the app. */
+const APPROVAL_OTP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Client-initiated mirror of the invitation flow: instead of a coach emailing a
@@ -31,6 +35,7 @@ export class JoinRequestService {
 		private readonly clientService: ClientService,
 		private readonly eventPublisherService: EventPublisherService,
 		private readonly configService: ConfigService,
+		private readonly otpProvider: OtpProvider,
 	) {}
 
 	private buildUrl(path: string): string {
@@ -122,10 +127,20 @@ export class JoinRequestService {
 			throw new NotFoundException('Requesting client no longer exists');
 		}
 
-		const decided = await this.membershipService.decideRequest(
-			membership,
-			approved,
-		);
+		// On approval the membership stays `INVITED` holding a code; the client
+		// activates it by entering that code via `confirm`. Rejection is terminal.
+		let otp: string | null = null;
+		let decided;
+		if (approved) {
+			otp = this.otpProvider.generateOtp();
+			decided = await this.membershipService.approveWithOtp(
+				membership,
+				this.otpProvider.hash(otp),
+				this.otpProvider.expiryFromNow(APPROVAL_OTP_TTL_MS),
+			);
+		} else {
+			decided = await this.membershipService.rejectRequest(membership);
+		}
 
 		await this.eventPublisherService.publish(
 			approved
@@ -139,7 +154,8 @@ export class JoinRequestService {
 				coachId: tenant.ownerCoach.id,
 				coachName: `${tenant.ownerCoach.firstName} ${tenant.ownerCoach.lastName}`,
 				tenantName: tenant.name,
-				actionUrl: this.buildUrl(approved ? '/client/intake' : '/coaches'),
+				otp,
+				actionUrl: this.buildUrl(approved ? '/client/onboarding' : '/coaches'),
 			},
 			{ tenantId },
 		);

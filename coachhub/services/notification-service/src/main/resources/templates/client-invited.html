@@ -29,21 +29,18 @@
 							<strong th:text = '${coachName}' >Your coach</strong >
 							has invited you to train together on CoachHub.
 						</p >
-						<p style = 'margin:0 0 24px;' >Click below to accept the invitation
-						                               and set up your account.</p >
-						<p style = 'margin:0 0 24px;' >
-							<a
-								style = 'background:#1f6feb;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;display:inline-block;font-weight:bold;'
-								th:href = '${acceptUrl}' >
-								Accept invitation
-							</a >
+						<p style = 'margin:0 0 24px;' >Enter this code in the CoachHub app to
+						                               accept the invitation and set up your
+						                               account.</p >
+						<p style = 'margin:0 0 24px;text-align:center;' >
+							<span
+								style = 'display:inline-block;background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px;padding:16px 28px;font-family:monospace;font-size:32px;font-weight:bold;letter-spacing:8px;color:#1f2328;'
+								th:text = '${otp}' >000000</span >
 						</p >
 						<p style = 'margin:0;color:#656d76;font-size:13px;' >
-							If the button doesn't work, paste this link into your
-							browser:<br />
-							<a style = 'color:#1f6feb;word-break:break-all;'
-							   th:href = '${acceptUrl}'
-							   th:text = '${acceptUrl}' >link</a >
+							For your security, never share this code with anyone. If you
+							weren't expecting this invitation, you can safely ignore this
+							email.
 						</p >
 					</td >
 				</tr >

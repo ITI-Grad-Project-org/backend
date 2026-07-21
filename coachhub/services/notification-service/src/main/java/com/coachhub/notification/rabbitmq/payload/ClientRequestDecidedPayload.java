@@ -9,6 +9,7 @@ public record ClientRequestDecidedPayload(
 				String coachId,
 				String coachName,
 				String tenantName,
+				String otp,
 				String actionUrl
 ) {
 }

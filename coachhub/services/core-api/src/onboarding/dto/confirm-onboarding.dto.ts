@@ -2,14 +2,15 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsOptional, ValidateNested } from 'class-validator';
 import { CreateClientIntakeDto } from '../../clients/dto/create-client-intake.dto';
+import { ValidateOnboardingDto } from './validate-onboarding.dto';
 
 /**
- * The onboarding "last step" screen submits the whole per-tenant questionnaire
- * with the same tap that accepts the invitation, so the intake rides along
- * here. It stays optional — a client can accept first and fill the intake
- * later through `POST /client/me/intake`.
+ * Same code as `ValidateOnboardingDto`, plus the intake questionnaire the
+ * onboarding "last step" screen submits with the same tap. Intake stays
+ * optional — the client can join first and fill it in later through
+ * `POST /client/me/intake`.
  */
-export class AcceptInvitationDto {
+export class ConfirmOnboardingDto extends ValidateOnboardingDto {
 	@ApiPropertyOptional({ type: CreateClientIntakeDto })
 	@IsOptional()
 	@ValidateNested()
