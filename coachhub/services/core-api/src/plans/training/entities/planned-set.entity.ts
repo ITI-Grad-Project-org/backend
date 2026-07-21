@@ -17,6 +17,14 @@ import { IntensityType, numericTransformer, SetType } from '../../../common';
 @Check(
 	`"reps_min" IS NOT NULL OR "duration_seconds" IS NOT NULL OR "set_type" IN ('amrap', 'to_failure', 'drop_set')`,
 )
+@Check(
+	'ck_planned_sets_single_prescription_mode',
+	`NOT ("reps_min" IS NOT NULL AND "duration_seconds" IS NOT NULL)`,
+)
+@Check(
+	'ck_planned_sets_reps_max_requires_min',
+	`"reps_max" IS NULL OR "reps_min" IS NOT NULL`,
+)
 @Check(`("intensity_type" IS NULL) = ("intensity_value" IS NULL)`)
 @Index('ix_planned_sets_ex', ['plannedExerciseId'])
 export class PlannedSet {

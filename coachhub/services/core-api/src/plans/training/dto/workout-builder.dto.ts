@@ -3,11 +3,13 @@ import { Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	ArrayMinSize,
+	IsArray,
 	IsBoolean,
 	IsInt,
 	IsOptional,
 	IsString,
 	Matches,
+	Max,
 	MaxLength,
 	Min,
 	ValidateNested,
@@ -17,6 +19,10 @@ import {
 	PrescribedSetDto,
 	PrescribeExerciseDto,
 } from './prescribe-exercise.dto';
+import {
+	TEMPO_PATTERN,
+	TRAINING_VALIDATION_LIMITS,
+} from '../utils/training-validation.constants';
 
 export class UpdateProgramDayDto {
 	@ApiPropertyOptional({ nullable: true, maxLength: 150 })
@@ -25,9 +31,13 @@ export class UpdateProgramDayDto {
 	@MaxLength(150)
 	name?: string | null;
 
-	@ApiPropertyOptional({ nullable: true })
+	@ApiPropertyOptional({
+		nullable: true,
+		maxLength: TRAINING_VALIDATION_LIMITS.dayNotesLength,
+	})
 	@IsOptional()
 	@IsString()
+	@MaxLength(TRAINING_VALIDATION_LIMITS.dayNotesLength)
 	notes?: string | null;
 
 	@ApiPropertyOptional()
@@ -54,40 +64,69 @@ export class CreateAndPrescribeExerciseDto {
 }
 
 export class UpdatePlannedExerciseDto {
-	@ApiPropertyOptional({ minimum: 1 })
+	@ApiPropertyOptional({
+		minimum: 1,
+		maximum: TRAINING_VALIDATION_LIMITS.exercisesPerDay,
+	})
 	@IsOptional()
 	@IsInt()
 	@Min(1)
+	@Max(TRAINING_VALIDATION_LIMITS.exercisesPerDay)
 	position?: number;
 
-	@ApiPropertyOptional({ minimum: 1, nullable: true })
+	@ApiPropertyOptional({
+		minimum: 1,
+		maximum: TRAINING_VALIDATION_LIMITS.exercisesPerDay,
+		nullable: true,
+	})
 	@IsOptional()
 	@IsInt()
 	@Min(1)
+	@Max(TRAINING_VALIDATION_LIMITS.exercisesPerDay)
 	supersetGroup?: number | null;
 
-	@ApiPropertyOptional({ minimum: 0 })
+	@ApiPropertyOptional({
+		minimum: 0,
+		maximum: TRAINING_VALIDATION_LIMITS.restSeconds,
+	})
 	@IsOptional()
 	@IsInt()
 	@Min(0)
+	@Max(TRAINING_VALIDATION_LIMITS.restSeconds)
 	restSeconds?: number;
 
-	@ApiPropertyOptional({ example: '3-1-1-0', nullable: true })
+	@ApiPropertyOptional({
+		example: '3-1-X-0',
+		description:
+			'Four tempo phases; each phase accepts a digit or X for an explosive phase',
+		nullable: true,
+	})
 	@IsOptional()
-	@Matches(/^\d-\d-\d-\d$/)
+	@Matches(TEMPO_PATTERN, {
+		message: 'tempo must use four digit-or-X phases such as 3-1-X-0',
+	})
 	tempo?: string | null;
 
-	@ApiPropertyOptional({ nullable: true })
+	@ApiPropertyOptional({
+		nullable: true,
+		maxLength: TRAINING_VALIDATION_LIMITS.coachNotesLength,
+	})
 	@IsOptional()
 	@IsString()
+	@MaxLength(TRAINING_VALIDATION_LIMITS.coachNotesLength)
 	coachNotes?: string | null;
 }
 
 export class ReplacePlannedSetsDto {
-	@ApiProperty({ type: [PrescribedSetDto] })
+	@ApiProperty({
+		type: [PrescribedSetDto],
+		minItems: 1,
+		maxItems: TRAINING_VALIDATION_LIMITS.setsPerExercise,
+	})
+	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => PrescribedSetDto)
 	@ArrayMinSize(1)
-	@ArrayMaxSize(20)
+	@ArrayMaxSize(TRAINING_VALIDATION_LIMITS.setsPerExercise)
 	sets: PrescribedSetDto[];
 }
