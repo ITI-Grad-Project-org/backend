@@ -15,9 +15,9 @@ import { Program } from '../entities/program.entity';
 import {
 	getDateOnlyInTimeZone,
 	getScheduledDate,
-	isValidDateOnly,
 } from '../utils/program-date.utils';
 import {
+	assertTrainingCalendarRange,
 	mapBuilderProgram,
 	mapClientProgramSummary,
 } from '../utils/training-service.utils';
@@ -370,13 +370,6 @@ export class ClientTrainingProgramsService {
 	 * used in range queries, preventing invalid or reversed calendar searches.
 	 */
 	private assertCalendarRange(query: ClientTrainingCalendarQueryDto) {
-		if (!isValidDateOnly(query.from) || !isValidDateOnly(query.to)) {
-			throw new BadRequestException('Calendar range dates must be valid');
-		}
-		if (query.from > query.to) {
-			throw new BadRequestException(
-				'Calendar range from date cannot be after to date',
-			);
-		}
+		assertTrainingCalendarRange(query.from, query.to);
 	}
 }
