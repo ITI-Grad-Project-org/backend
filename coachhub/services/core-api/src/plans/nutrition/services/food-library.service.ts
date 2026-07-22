@@ -18,10 +18,7 @@ import {
 	normalizeFoodLookupText,
 	normalizeNullableFoodDisplayText,
 } from '../utils/food-library.utils';
-import {
-	assertRealisticFoodDefinition,
-	mapFoodWithNutritionWarnings,
-} from '../utils/nutrition-validation.utils';
+import { assertRealisticFoodDefinition } from '../utils/nutrition-validation.utils';
 
 @Injectable()
 export class FoodLibraryService {
@@ -65,7 +62,7 @@ export class FoodLibraryService {
 
 		try {
 			const saved = await this.foodRepository.save(food);
-			return mapFoodWithNutritionWarnings(saved);
+		return saved;
 		} catch (error) {
 			throwFoodConflictForUniqueViolation(error);
 			throw error;
@@ -113,7 +110,7 @@ export class FoodLibraryService {
 			.addOrderBy('food.id', 'ASC')
 			.getMany();
 
-		return foods.map(mapFoodWithNutritionWarnings);
+		return foods;
 	}
 
 	async findFood(tenantId: string | null, foodId: string) {
@@ -123,7 +120,7 @@ export class FoodLibraryService {
 			activeTenantId,
 			foodId,
 		);
-		return mapFoodWithNutritionWarnings(food);
+		return food;
 	}
 
 	async updateFood(
@@ -186,7 +183,7 @@ export class FoodLibraryService {
 
 		try {
 			const saved = await this.foodRepository.save(food);
-			return mapFoodWithNutritionWarnings(saved);
+		return saved;
 		} catch (error) {
 			throwFoodConflictForUniqueViolation(error);
 			throw error;

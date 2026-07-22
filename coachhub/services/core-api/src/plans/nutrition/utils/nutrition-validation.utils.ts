@@ -57,26 +57,10 @@ export type FoodDefinitionForValidation = {
 	fiberG?: number | null;
 };
 
-export type FoodNutritionWarning = {
-	type: 'calorie_macro_mismatch';
-	message: string;
-	advisory: true;
-	declaredCalories: number;
-	estimatedCalories: number;
-};
-
 const CALORIES_PER_GRAM_PROTEIN = 4;
-const CALORIES_PER_GRAM_CARBOHYDRATE = 4;
 const CALORIES_PER_GRAM_FAT = 9;
-const ESTIMATED_CALORIES_PER_GRAM_FIBER = 2;
 const CALORIE_FLOOR_MINIMUM_TOLERANCE = 5;
 const CALORIE_FLOOR_TOLERANCE_RATIO = 0.2;
-const CALORIE_WARNING_MINIMUM_TOLERANCE = 20;
-const CALORIE_WARNING_TOLERANCE_RATIO = 0.25;
-
-function roundCalories(value: number) {
-	return Math.round((value + Number.EPSILON) * 100) / 100;
-}
 
 /**
  * Applies unit-aware limits to one reusable Food definition. DTO decorators
@@ -151,51 +135,6 @@ export function assertRealisticFoodDefinition(
 			'calories are too low for the declared protein and fat',
 		);
 	}
-}
-
-/**
- * Returns non-blocking warnings when declared calories differ substantially
- * from a broad macro-based estimate. This is advisory because fiber, sugar
- * alcohols, label rounding, and regional labeling rules can change the result.
- */
-export function buildFoodNutritionWarnings(
-	food: FoodDefinitionForValidation,
-): FoodNutritionWarning[] {
-	const fiberG = Math.min(food.fiberG ?? 0, food.carbsG);
-	const digestibleCarbsG = Math.max(0, food.carbsG - fiberG);
-	const estimatedCalories = roundCalories(
-		food.proteinG * CALORIES_PER_GRAM_PROTEIN +
-			digestibleCarbsG * CALORIES_PER_GRAM_CARBOHYDRATE +
-			fiberG * ESTIMATED_CALORIES_PER_GRAM_FIBER +
-			food.fatG * CALORIES_PER_GRAM_FAT,
-	);
-	const tolerance = Math.max(
-		CALORIE_WARNING_MINIMUM_TOLERANCE,
-		estimatedCalories * CALORIE_WARNING_TOLERANCE_RATIO,
-	);
-
-	if (Math.abs(food.calories - estimatedCalories) <= tolerance) return [];
-
-	return [
-		{
-			type: 'calorie_macro_mismatch',
-			message:
-				'Declared calories differ substantially from the macro-based estimate; verify the nutrition label',
-			advisory: true,
-			declaredCalories: food.calories,
-			estimatedCalories,
-		},
-	];
-}
-
-/** Adds advisory nutrition warnings without changing the stored Food entity. */
-export function mapFoodWithNutritionWarnings<
-	TFood extends FoodDefinitionForValidation,
->(food: TFood) {
-	return {
-		...food,
-		nutritionWarnings: buildFoodNutritionWarnings(food),
-	};
 }
 
 /** Validates a real Meal ingredient amount against its Food's serving unit. */
