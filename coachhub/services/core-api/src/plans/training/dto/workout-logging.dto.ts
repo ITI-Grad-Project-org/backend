@@ -11,6 +11,7 @@ import {
 	Min,
 } from 'class-validator';
 import { SetOutcome } from '../../../common';
+import { TRAINING_VALIDATION_LIMITS } from '../utils/training-validation.constants';
 
 const SUBMITTED_SET_OUTCOMES = [
 	SetOutcome.COMPLETED,
@@ -20,22 +21,40 @@ const SUBMITTED_SET_OUTCOMES = [
 const EXTRA_SET_OUTCOMES = [SetOutcome.COMPLETED, SetOutcome.PARTIAL];
 
 class ActualSetValuesDto {
-	@ApiPropertyOptional({ example: 10, nullable: true })
+	@ApiPropertyOptional({
+		example: 10,
+		minimum: 0,
+		maximum: TRAINING_VALIDATION_LIMITS.repetitions,
+		nullable: true,
+	})
 	@IsOptional()
 	@IsInt()
 	@Min(0)
+	@Max(TRAINING_VALIDATION_LIMITS.repetitions)
 	reps?: number | null;
 
-	@ApiPropertyOptional({ example: 72.5, nullable: true })
+	@ApiPropertyOptional({
+		example: 72.5,
+		minimum: 0,
+		maximum: TRAINING_VALIDATION_LIMITS.weightKg,
+		nullable: true,
+	})
 	@IsOptional()
-	@IsNumber()
+	@IsNumber({ maxDecimalPlaces: 2 })
 	@Min(0)
+	@Max(TRAINING_VALIDATION_LIMITS.weightKg)
 	weightKg?: number | null;
 
-	@ApiPropertyOptional({ example: 60, nullable: true })
+	@ApiPropertyOptional({
+		example: 60,
+		minimum: 1,
+		maximum: TRAINING_VALIDATION_LIMITS.setDurationSeconds,
+		nullable: true,
+	})
 	@IsOptional()
 	@IsInt()
 	@Min(1)
+	@Max(TRAINING_VALIDATION_LIMITS.setDurationSeconds)
 	durationSeconds?: number | null;
 
 	@ApiPropertyOptional({
@@ -45,9 +64,9 @@ class ActualSetValuesDto {
 		nullable: true,
 	})
 	@IsOptional()
-	@IsNumber()
+	@IsNumber({ maxDecimalPlaces: 1 })
 	@Min(1)
-	@Max(10)
+	@Max(TRAINING_VALIDATION_LIMITS.rpe)
 	rpe?: number | null;
 }
 
@@ -72,11 +91,15 @@ export class CreateExtraLoggedSetDto extends ActualSetValuesDto {
 }
 
 export class CompleteWorkoutDto {
-	@ApiPropertyOptional({ example: 55, minimum: 1, maximum: 32767 })
+	@ApiPropertyOptional({
+		example: 55,
+		minimum: 1,
+		maximum: TRAINING_VALIDATION_LIMITS.workoutDurationMinutes,
+	})
 	@IsOptional()
 	@IsInt()
 	@Min(1)
-	@Max(32767)
+	@Max(TRAINING_VALIDATION_LIMITS.workoutDurationMinutes)
 	durationMinutes?: number;
 
 	@ApiPropertyOptional({ example: 'Felt strong today', maxLength: 5000 })
@@ -87,8 +110,8 @@ export class CompleteWorkoutDto {
 
 	@ApiPropertyOptional({ example: 8.5, minimum: 1, maximum: 10 })
 	@IsOptional()
-	@IsNumber()
+	@IsNumber({ maxDecimalPlaces: 1 })
 	@Min(1)
-	@Max(10)
+	@Max(TRAINING_VALIDATION_LIMITS.rpe)
 	overallRpe?: number;
 }

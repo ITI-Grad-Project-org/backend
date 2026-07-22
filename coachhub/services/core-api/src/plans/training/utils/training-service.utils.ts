@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { ProgramStatus, SetType } from '../../../common';
+import { IntensityType, ProgramStatus, SetType } from '../../../common';
 import { PrescribedSetDto } from '../dto/prescribe-exercise.dto';
 import { ProgramDay } from '../entities/program-day.entity';
 import { Program } from '../entities/program.entity';
@@ -8,6 +8,7 @@ import {
 	getScheduledDate,
 	isValidDateOnly,
 } from './program-date.utils';
+import { TRAINING_VALIDATION_LIMITS } from './training-validation.constants';
 
 export type ProgramSchedulePhase = 'scheduled' | 'active' | 'ended';
 
@@ -35,6 +36,27 @@ export function assertStartDate(startDate: string, timezone: string) {
 	if (startDate < today) {
 		throw new BadRequestException(
 			'startDate cannot be before today in the tenant timezone',
+		);
+	}
+}
+
+/** Validates ordered, real date-only bounds and caps calendar query size. */
+export function assertTrainingCalendarRange(from: string, to: string) {
+	if (!isValidDateOnly(from) || !isValidDateOnly(to)) {
+		throw new BadRequestException('Calendar range dates must be valid');
+	}
+	if (from > to) {
+		throw new BadRequestException(
+			'Calendar range from date cannot be after to date',
+		);
+	}
+
+	const fromTimestamp = Date.parse(`${from}T00:00:00Z`);
+	const toTimestamp = Date.parse(`${to}T00:00:00Z`);
+	const inclusiveDays = (toTimestamp - fromTimestamp) / 86_400_000 + 1;
+	if (inclusiveDays > TRAINING_VALIDATION_LIMITS.calendarRangeDays) {
+		throw new BadRequestException(
+			`Calendar range cannot exceed ${TRAINING_VALIDATION_LIMITS.calendarRangeDays} days`,
 		);
 	}
 }
@@ -125,18 +147,71 @@ export function assertWorkoutDay(day: ProgramDay) {
 }
 
 /**
- * Applies cross-field validation that decorators cannot express: when both rep
- * bounds are supplied, the maximum must not be lower than the minimum.
+ * Validates relationships between set fields that decorators cannot express:
+ * prescription mode, rep-range order, required targets, and intensity pairing
+ * and ranges.
  */
 export function validateSetPrescriptions(sets: PrescribedSetDto[]) {
 	for (const set of sets) {
+		const setType = set.setType ?? SetType.WORKING;
+		const hasRepsMin = set.repsMin != null;
+		const hasRepsMax = set.repsMax != null;
+		const hasDuration = set.durationSeconds != null;
+
+		if (hasRepsMax && !hasRepsMin) {
+			throw new BadRequestException('repsMax requires repsMin');
+		}
+		if (hasRepsMin && hasDuration) {
+			throw new BadRequestException(
+				'A set must be prescribed by repetitions or duration, not both',
+			);
+		}
 		if (
-			set.repsMin !== undefined &&
-			set.repsMax !== undefined &&
-			set.repsMax < set.repsMin
+			!hasRepsMin &&
+			!hasDuration &&
+			![SetType.AMRAP, SetType.TO_FAILURE, SetType.DROP_SET].includes(setType)
 		) {
+			throw new BadRequestException(
+				'Repetitions or duration is required for this set type',
+			);
+		}
+		if (hasRepsMin && hasRepsMax && set.repsMax < set.repsMin) {
 			throw new BadRequestException('Max reps cannot be less than Min reps');
 		}
+
+		const hasIntensityType = set.intensityType != null;
+		const hasIntensityValue = set.intensityValue != null;
+		if (hasIntensityType !== hasIntensityValue) {
+			throw new BadRequestException(
+				'intensityType and intensityValue must be provided together',
+			);
+		}
+		if (!hasIntensityType || !hasIntensityValue) continue;
+
+		switch (set.intensityType) {
+			case IntensityType.RPE:
+				assertIntensityRange(set.intensityValue, 1, 10, 'RPE');
+				break;
+			case IntensityType.RIR:
+				assertIntensityRange(set.intensityValue, 0, 10, 'RIR');
+				break;
+			case IntensityType.PERCENT_1RM:
+				assertIntensityRange(set.intensityValue, 1, 100, '%1RM');
+				break;
+		}
+	}
+}
+
+function assertIntensityRange(
+	value: number,
+	minimum: number,
+	maximum: number,
+	label: string,
+) {
+	if (value < minimum || value > maximum) {
+		throw new BadRequestException(
+			`${label} must be between ${minimum} and ${maximum}`,
+		);
 	}
 }
 

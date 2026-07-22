@@ -6,8 +6,13 @@ import {
 	IsOptional,
 	IsString,
 	IsUUID,
+	MaxLength,
 } from 'class-validator';
-import { DifficultyLevel, FitnessGoal, ProgramStatus } from '../../../common';
+import {
+	DifficultyLevel,
+	FitnessGoal,
+	ProgramStatus,
+} from '../../../common';
 
 export class QueryClientProgramsDto {
 	@ApiPropertyOptional({ format: 'uuid' })
@@ -33,6 +38,7 @@ export class QueryClientProgramsDto {
 	@ApiPropertyOptional({ description: 'Case-insensitive program name search' })
 	@IsOptional()
 	@IsString()
+	@MaxLength(150)
 	search?: string;
 
 	@ApiPropertyOptional({ default: false })

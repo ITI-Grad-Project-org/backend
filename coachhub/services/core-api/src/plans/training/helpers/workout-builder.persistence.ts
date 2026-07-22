@@ -20,6 +20,7 @@ import {
 	normalizeOptionalText,
 	validateSetPrescriptions,
 } from '../utils/training-service.utils';
+import { TRAINING_VALIDATION_LIMITS } from '../utils/training-validation.constants';
 
 /**
  * Validates that a day belongs to the tenant's editable client program, then
@@ -134,6 +135,11 @@ export async function insertExerciseSnapshot(
 		where: { programDayId: day.id },
 		order: { position: 'ASC' },
 	});
+	if (existing.length >= TRAINING_VALIDATION_LIMITS.exercisesPerDay) {
+		throw new BadRequestException(
+			`A workout day cannot contain more than ${TRAINING_VALIDATION_LIMITS.exercisesPerDay} exercises`,
+		);
+	}
 	const position = body.position ?? existing.length + 1;
 	if (position < 1 || position > existing.length + 1) {
 		throw new BadRequestException(
