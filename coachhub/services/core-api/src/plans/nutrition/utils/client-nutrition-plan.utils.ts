@@ -8,6 +8,15 @@ import {
 } from '../../../common';
 import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
 import { NutritionPlan } from '../entities/nutrition-plan.entity';
+import {
+	buildDietaryAdvisoryWarnings,
+	calculatePlannedDayTotals,
+	ClientDietaryProfile,
+	getDietaryAdvisoryNotice,
+	mapClientDietaryProfile,
+	mapNutritionVariance,
+	mapPlannedMealResponse,
+} from './nutrition-builder.utils';
 
 export type NutritionPlanSchedulePhase = 'scheduled' | 'active' | 'ended';
 
@@ -162,37 +171,62 @@ export function mapClientNutritionPlanSummary(
 export function mapClientNutritionPlanBuilder(
 	plan: NutritionPlan,
 	timezone: string,
+	dietaryProfile: ClientDietaryProfile = null,
 	now = new Date(),
 ) {
 	const weeks = [...(plan.weeks ?? [])].sort(
 		(left, right) => left.weekNumber - right.weekNumber,
 	);
+	const mappedWeeks = weeks.map((week) => {
+		const days = [...(week.days ?? [])].sort(
+			(left, right) => left.dayNumber - right.dayNumber,
+		);
+		return {
+			id: week.id,
+			weekNumber: week.weekNumber,
+			notes: week.notes,
+			days: days.map((day) => {
+				const scheduledDate = getScheduledDate(
+					plan.startDate as string,
+					week.weekNumber,
+					day.dayNumber,
+				);
+				const meals = [...(day.meals ?? [])].sort(
+					(left, right) => left.position - right.position,
+				);
+				const effectiveTargets = mapEffectiveDayTargets(plan, day);
+				const prescribedTotals = calculatePlannedDayTotals(meals);
+				const warnings = buildDietaryAdvisoryWarnings(
+					day.id,
+					scheduledDate,
+					meals,
+					dietaryProfile,
+				);
+
+				return {
+					id: day.id,
+					dayNumber: day.dayNumber,
+					scheduledDate,
+					isFlexibleDay: day.isFlexibleDay,
+					targetOverrides: mapDayTargetOverrides(day),
+					effectiveTargets,
+					prescribedTotals,
+					variance: mapNutritionVariance(effectiveTargets, prescribedTotals),
+					notes: day.notes,
+					warnings,
+					meals: meals.map(mapPlannedMealResponse),
+				};
+			}),
+		};
+	});
 
 	return {
 		...mapClientNutritionPlanSummary(plan, timezone, now),
-		weeks: weeks.map((week) => {
-			const days = [...(week.days ?? [])].sort(
-				(left, right) => left.dayNumber - right.dayNumber,
-			);
-			return {
-				id: week.id,
-				weekNumber: week.weekNumber,
-				notes: week.notes,
-				days: days.map((day) => ({
-					id: day.id,
-					dayNumber: day.dayNumber,
-					scheduledDate: getScheduledDate(
-						plan.startDate as string,
-						week.weekNumber,
-						day.dayNumber,
-					),
-					isFlexibleDay: day.isFlexibleDay,
-					targetOverrides: mapDayTargetOverrides(day),
-					effectiveTargets: mapEffectiveDayTargets(plan, day),
-					notes: day.notes,
-					meals: day.meals ?? [],
-				})),
-			};
-		}),
+		clientDietaryProfile: mapClientDietaryProfile(dietaryProfile),
+		dietaryAdvisoryNotice: getDietaryAdvisoryNotice(),
+		warnings: mappedWeeks.flatMap((week) =>
+			week.days.flatMap((day) => day.warnings),
+		),
+		weeks: mappedWeeks,
 	};
 }

@@ -57,7 +57,7 @@ export function assertUniqueMealFoods(items: MealItemDto[]) {
 }
 
 function roundNutrient(value: number) {
-	return Math.round((value + Number.EPSILON) * 100) / 100; // what is this ? and why use epsilon here ?
+	return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function calculateRawFoodNutrients(food: Food, amount: number): RawNutrients {
@@ -86,7 +86,6 @@ export function calculateFoodNutrients(food: Food, amount: number) {
 }
 
 export function calculateMealTotals(
-	// what does this line do ?
 	ingredients: Pick<MealIngredient, 'amount' | 'food'>[],
 ): CalculatedNutrients {
 	const totals: RawNutrients = {
@@ -116,7 +115,6 @@ export function calculateMealTotals(
 }
 
 export function mapMealResponse(meal: Meal) {
-	//can you expalin this to me line by line including the spreads and flatmap ? tell me the pupose of each thing here.
 	const ingredients = [...(meal.ingredients ?? [])].sort(
 		(left, right) => left.position - right.position,
 	);

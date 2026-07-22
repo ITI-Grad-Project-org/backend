@@ -18,6 +18,10 @@ import {
 	normalizeFoodLookupText,
 	normalizeNullableFoodDisplayText,
 } from '../utils/food-library.utils';
+import {
+	assertRealisticFoodDefinition,
+	mapFoodWithNutritionWarnings,
+} from '../utils/nutrition-validation.utils';
 
 @Injectable()
 export class FoodLibraryService {
@@ -32,6 +36,7 @@ export class FoodLibraryService {
 		body: CreateFoodDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
+		assertRealisticFoodDefinition(body);
 		const name = normalizeFoodDisplayText(body.name);
 		const brand = normalizeNullableFoodDisplayText(body.brand);
 		await assertFoodIdentityAvailable(
@@ -59,7 +64,8 @@ export class FoodLibraryService {
 		});
 
 		try {
-			return await this.foodRepository.save(food);
+			const saved = await this.foodRepository.save(food);
+			return mapFoodWithNutritionWarnings(saved);
 		} catch (error) {
 			throwFoodConflictForUniqueViolation(error);
 			throw error;
@@ -101,16 +107,23 @@ export class FoodLibraryService {
 			});
 		}
 
-		return foodsQuery
+		const foods = await foodsQuery
 			.orderBy('LOWER(food.name)', 'ASC')
 			.addOrderBy("LOWER(COALESCE(food.brand, ''))", 'ASC')
 			.addOrderBy('food.id', 'ASC')
 			.getMany();
+
+		return foods.map(mapFoodWithNutritionWarnings);
 	}
 
 	async findFood(tenantId: string | null, foodId: string) {
 		const activeTenantId = assertActiveTenant(tenantId);
-		return findTenantFoodOrFail(this.foodRepository, activeTenantId, foodId);
+		const food = await findTenantFoodOrFail(
+			this.foodRepository,
+			activeTenantId,
+			foodId,
+		);
+		return mapFoodWithNutritionWarnings(food);
 	}
 
 	async updateFood(
@@ -130,6 +143,15 @@ export class FoodLibraryService {
 			body.brand !== undefined
 				? normalizeNullableFoodDisplayText(body.brand)
 				: food.brand;
+		assertRealisticFoodDefinition({
+			servingSize: body.servingSize ?? food.servingSize,
+			servingUnit: body.servingUnit ?? food.servingUnit,
+			calories: body.calories ?? food.calories,
+			proteinG: body.proteinG ?? food.proteinG,
+			carbsG: body.carbsG ?? food.carbsG,
+			fatG: body.fatG ?? food.fatG,
+			fiberG: body.fiberG === undefined ? food.fiberG : body.fiberG,
+		});
 
 		if (
 			normalizeFoodLookupText(nextName) !==
@@ -163,7 +185,8 @@ export class FoodLibraryService {
 		if (body.isActive !== undefined) food.isActive = body.isActive;
 
 		try {
-			return await this.foodRepository.save(food);
+			const saved = await this.foodRepository.save(food);
+			return mapFoodWithNutritionWarnings(saved);
 		} catch (error) {
 			throwFoodConflictForUniqueViolation(error);
 			throw error;

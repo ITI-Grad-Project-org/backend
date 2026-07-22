@@ -15,6 +15,10 @@ import {
 	Min,
 } from 'class-validator';
 import { DietaryPreference, ServingUnit } from '../../../common';
+import {
+	FOOD_NUTRIENT_LIMITS,
+	MAX_FOOD_REFERENCE_AMOUNT,
+} from '../utils/nutrition-validation.utils';
 
 export class CreateFoodDto {
 	@ApiProperty({ example: 'Chicken breast' })
@@ -30,55 +34,77 @@ export class CreateFoodDto {
 	@MaxLength(100)
 	brand?: string | null;
 
-	@ApiProperty({ example: 100, description: 'Reference serving amount' })
+	@ApiProperty({
+		example: 100,
+		maximum: MAX_FOOD_REFERENCE_AMOUNT,
+		description:
+			'Reference serving amount; the API applies a stricter maximum for the selected unit',
+	})
 	@Type(() => Number)
 	@IsNumber({ maxDecimalPlaces: 2 })
 	@IsPositive()
-	@Max(999999.99)
+	@Max(MAX_FOOD_REFERENCE_AMOUNT)
 	servingSize: number;
 
 	@ApiProperty({ enum: ServingUnit, example: ServingUnit.G })
 	@IsEnum(ServingUnit)
 	servingUnit: ServingUnit;
 
-	@ApiProperty({ example: 165, description: 'Calories per reference serving' })
+	@ApiProperty({
+		example: 165,
+		maximum: FOOD_NUTRIENT_LIMITS.calories,
+		description: 'Calories per reference serving',
+	})
 	@Type(() => Number)
 	@IsNumber({ maxDecimalPlaces: 2 })
 	@Min(0)
-	@Max(999999.99)
+	@Max(FOOD_NUTRIENT_LIMITS.calories)
 	calories: number;
 
-	@ApiProperty({ example: 31, description: 'Protein grams per serving' })
+	@ApiProperty({
+		example: 31,
+		maximum: FOOD_NUTRIENT_LIMITS.proteinG,
+		description: 'Protein grams per serving',
+	})
 	@Type(() => Number)
 	@IsNumber({ maxDecimalPlaces: 2 })
 	@Min(0)
-	@Max(99999.99)
+	@Max(FOOD_NUTRIENT_LIMITS.proteinG)
 	proteinG: number;
 
-	@ApiProperty({ example: 0, description: 'Carbohydrate grams per serving' })
+	@ApiProperty({
+		example: 0,
+		maximum: FOOD_NUTRIENT_LIMITS.carbsG,
+		description: 'Carbohydrate grams per serving',
+	})
 	@Type(() => Number)
 	@IsNumber({ maxDecimalPlaces: 2 })
 	@Min(0)
-	@Max(99999.99)
+	@Max(FOOD_NUTRIENT_LIMITS.carbsG)
 	carbsG: number;
 
-	@ApiProperty({ example: 3.6, description: 'Fat grams per serving' })
+	@ApiProperty({
+		example: 3.6,
+		maximum: FOOD_NUTRIENT_LIMITS.fatG,
+		description: 'Fat grams per serving',
+	})
 	@Type(() => Number)
 	@IsNumber({ maxDecimalPlaces: 2 })
 	@Min(0)
-	@Max(99999.99)
+	@Max(FOOD_NUTRIENT_LIMITS.fatG)
 	fatG: number;
 
 	@ApiPropertyOptional({
 		example: 0,
 		nullable: true,
+		maximum: FOOD_NUTRIENT_LIMITS.fiberG,
 		description: 'Fiber grams per serving',
 	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsNumber({ maxDecimalPlaces: 2 })
 	@Min(0)
-	@Max(99999.99)
+	@Max(FOOD_NUTRIENT_LIMITS.fiberG)
 	fiberG?: number | null;
 
 	@ApiPropertyOptional({

@@ -19,8 +19,7 @@ import {
 	Min,
 } from 'class-validator';
 import { FitnessGoal } from '../../../common';
-
-const MAX_DATABASE_INTEGER = 2_147_483_647;
+import { NUTRITION_TARGET_LIMITS } from '../utils/nutrition-validation.utils';
 
 export class CreateClientNutritionPlanDto {
 	@ApiProperty({ format: 'uuid', description: 'Active client membership id' })
@@ -63,52 +62,82 @@ export class CreateClientNutritionPlanDto {
 	})
 	startDate: string;
 
-	@ApiPropertyOptional({ example: 2200, minimum: 1, nullable: true })
+	@ApiPropertyOptional({
+		example: 2200,
+		minimum: NUTRITION_TARGET_LIMITS.calories.min,
+		maximum: NUTRITION_TARGET_LIMITS.calories.max,
+		nullable: true,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@Min(1)
-	@Max(MAX_DATABASE_INTEGER)
+	@Min(NUTRITION_TARGET_LIMITS.calories.min)
+	@Max(NUTRITION_TARGET_LIMITS.calories.max)
 	targetCalories?: number | null;
 
-	@ApiPropertyOptional({ example: 170, minimum: 0, nullable: true })
+	@ApiPropertyOptional({
+		example: 170,
+		minimum: NUTRITION_TARGET_LIMITS.proteinG.min,
+		maximum: NUTRITION_TARGET_LIMITS.proteinG.max,
+		nullable: true,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@Min(0)
-	@Max(MAX_DATABASE_INTEGER)
+	@Min(NUTRITION_TARGET_LIMITS.proteinG.min)
+	@Max(NUTRITION_TARGET_LIMITS.proteinG.max)
 	targetProteinG?: number | null;
 
-	@ApiPropertyOptional({ example: 230, minimum: 0, nullable: true })
+	@ApiPropertyOptional({
+		example: 230,
+		minimum: NUTRITION_TARGET_LIMITS.carbsG.min,
+		maximum: NUTRITION_TARGET_LIMITS.carbsG.max,
+		nullable: true,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@Min(0)
-	@Max(MAX_DATABASE_INTEGER)
+	@Min(NUTRITION_TARGET_LIMITS.carbsG.min)
+	@Max(NUTRITION_TARGET_LIMITS.carbsG.max)
 	targetCarbsG?: number | null;
 
-	@ApiPropertyOptional({ example: 65, minimum: 0, nullable: true })
+	@ApiPropertyOptional({
+		example: 65,
+		minimum: NUTRITION_TARGET_LIMITS.fatG.min,
+		maximum: NUTRITION_TARGET_LIMITS.fatG.max,
+		nullable: true,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@Min(0)
-	@Max(MAX_DATABASE_INTEGER)
+	@Min(NUTRITION_TARGET_LIMITS.fatG.min)
+	@Max(NUTRITION_TARGET_LIMITS.fatG.max)
 	targetFatG?: number | null;
 
-	@ApiPropertyOptional({ example: 30, minimum: 0, nullable: true })
+	@ApiPropertyOptional({
+		example: 30,
+		minimum: NUTRITION_TARGET_LIMITS.fiberG.min,
+		maximum: NUTRITION_TARGET_LIMITS.fiberG.max,
+		nullable: true,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@Min(0)
-	@Max(MAX_DATABASE_INTEGER)
+	@Min(NUTRITION_TARGET_LIMITS.fiberG.min)
+	@Max(NUTRITION_TARGET_LIMITS.fiberG.max)
 	targetFiberG?: number | null;
 
-	@ApiPropertyOptional({ example: 3000, minimum: 0, nullable: true })
+	@ApiPropertyOptional({
+		example: 3000,
+		minimum: NUTRITION_TARGET_LIMITS.waterMl.min,
+		maximum: NUTRITION_TARGET_LIMITS.waterMl.max,
+		nullable: true,
+	})
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
-	@Min(0)
-	@Max(MAX_DATABASE_INTEGER)
+	@Min(NUTRITION_TARGET_LIMITS.waterMl.min)
+	@Max(NUTRITION_TARGET_LIMITS.waterMl.max)
 	targetWaterMl?: number | null;
 }
 

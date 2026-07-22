@@ -18,6 +18,10 @@ import {
 	ValidateNested,
 } from 'class-validator';
 import { DietaryPreference } from '../../../common';
+import {
+	MAX_MEAL_FOOD_AMOUNT,
+	MAX_MEAL_ITEMS,
+} from '../utils/nutrition-validation.utils';
 
 export class MealItemDto {
 	@ApiProperty({ format: 'uuid', description: 'Active tenant Food id' })
@@ -26,12 +30,13 @@ export class MealItemDto {
 
 	@ApiProperty({
 		example: 150,
+		maximum: MAX_MEAL_FOOD_AMOUNT,
 		description: "Real amount in the referenced Food's serving unit",
 	})
 	@Type(() => Number)
 	@IsNumber({ maxDecimalPlaces: 2 })
 	@IsPositive()
-	@Max(999999.99)
+	@Max(MAX_MEAL_FOOD_AMOUNT)
 	amount: number;
 }
 
@@ -86,10 +91,14 @@ export class CreateMealDto {
 	@MaxLength(100, { each: true })
 	allergens?: string[];
 
-	@ApiProperty({ type: [MealItemDto], minItems: 1, maxItems: 100 })
+	@ApiProperty({
+		type: [MealItemDto],
+		minItems: 1,
+		maxItems: MAX_MEAL_ITEMS,
+	})
 	@IsArray()
 	@ArrayMinSize(1)
-	@ArrayMaxSize(100)
+	@ArrayMaxSize(MAX_MEAL_ITEMS)
 	@ValidateNested({ each: true })
 	@Type(() => MealItemDto)
 	items: MealItemDto[];

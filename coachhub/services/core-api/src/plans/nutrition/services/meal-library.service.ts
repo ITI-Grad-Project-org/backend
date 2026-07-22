@@ -114,7 +114,6 @@ export class MealLibraryService {
 				);
 				const repository = manager.getRepository(Meal);
 
-				//can you explain to me what is this whole next name thing ? i don't really get it.
 				const nextName =
 					body.name === undefined ? meal.name : normalizeMealName(body.name);
 

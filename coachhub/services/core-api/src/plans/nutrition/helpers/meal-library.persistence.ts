@@ -6,6 +6,7 @@ import { Food } from '../entities/food.entity';
 import { MealIngredient } from '../entities/meal-ingredient.entity';
 import { Meal } from '../entities/meal.entity';
 import { normalizeFoodLookupText } from '../utils/food-library.utils';
+import { assertRealisticMealFoodAmount } from '../utils/nutrition-validation.utils';
 
 export const DUPLICATE_MEAL_MESSAGE = 'A Meal with this name already exists';
 
@@ -29,7 +30,6 @@ export async function assertMealIdentityAvailable(
 			name: normalizeFoodLookupText(name),
 		});
 
-	// why do we add this exulded meal ? what purpose does it serve ?
 	if (excludeMealId) {
 		query.andWhere('meal.id != :excludeMealId', { excludeMealId });
 	}
@@ -65,7 +65,6 @@ export async function findTenantMeals(
 		});
 	}
 
-	//EXPALIN THIS QUERY TO me
 	if (filters.allergen?.trim()) {
 		query.andWhere(
 			`(
@@ -148,7 +147,6 @@ export async function findActiveTenantFoodsOrFail(
 			'One or more active library Foods were not found',
 		);
 	}
-	// what does this line do exactly ? and does it return a map that conatins an array of obejcts or what exactly ?
 	return new Map(foods.map((food) => [food.id, food]));
 }
 
@@ -160,6 +158,12 @@ export async function writeMealIngredients(
 	replaceExisting = false,
 ) {
 	const repository = manager.getRepository(MealIngredient);
+	for (const item of items) {
+		const food = foodsById.get(item.foodId);
+		if (food) {
+			assertRealisticMealFoodAmount(item.amount, food.servingUnit);
+		}
+	}
 	if (replaceExisting) {
 		await repository.delete({ mealId });
 	}

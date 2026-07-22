@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { ClientIntake } from '../../../clients/entities/client-intake.entity';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import {
 	deriveInclusiveEndDate,
@@ -44,7 +45,7 @@ export class ClientNutritionPlansService {
 	) {
 		const activeTenantId = assertNutritionTenant(tenantId);
 
-		return this.dataSource.transaction(async (manager) => {
+		const planId = await this.dataSource.transaction(async (manager) => {
 			const tenant = await manager.getRepository(Tenant).findOneBy({
 				id: activeTenantId,
 			});
@@ -70,7 +71,6 @@ export class ClientNutritionPlansService {
 			const weekRepository = manager.getRepository(NutritionPlanWeek);
 			const dayRepository = manager.getRepository(NutritionPlanDay);
 
-			// can you explain this to me ?
 			const weeks = Array.from({ length: body.durationWeeks }, (_, weekIndex) =>
 				weekRepository.create({
 					tenantId: activeTenantId,
@@ -120,8 +120,10 @@ export class ClientNutritionPlansService {
 			});
 
 			const savedPlan = await planRepository.save(plan);
-			return mapClientNutritionPlanBuilder(savedPlan, tenant.timezone);
+			return savedPlan.id;
 		});
+
+		return this.getClientPlan(activeTenantId, planId);
 	}
 
 	async findClientPlans(
@@ -131,7 +133,7 @@ export class ClientNutritionPlansService {
 		const activeTenantId = assertNutritionTenant(tenantId);
 		const plansQuery = this.nutritionPlanRepository
 			.createQueryBuilder('plan')
-			.leftJoinAndSelect('plan.membership', 'membership') // i have a qesution here, why left join ?
+			.leftJoinAndSelect('plan.membership', 'membership')
 			.leftJoinAndSelect('membership.client', 'client')
 			.where('plan.tenant_id = :tenantId', { tenantId: activeTenantId })
 			.andWhere('plan.plan_type = :planType', {
@@ -186,12 +188,18 @@ export class ClientNutritionPlansService {
 			relations: {
 				membership: { client: true },
 				tenant: true,
-				weeks: { days: true },
+				weeks: { days: { meals: { foods: true } } },
 			},
 			order: {
 				weeks: {
 					weekNumber: 'ASC',
-					days: { dayNumber: 'ASC' },
+					days: {
+						dayNumber: 'ASC',
+						meals: {
+							position: 'ASC',
+							foods: { position: 'ASC' },
+						},
+					},
 				},
 			},
 		});
@@ -200,7 +208,20 @@ export class ClientNutritionPlansService {
 			throw new NotFoundException('Client nutrition plan not found');
 		}
 
-		return mapClientNutritionPlanBuilder(plan, plan.tenant.timezone);
+		const dietaryProfile = plan.membershipId
+			? await this.dataSource.getRepository(ClientIntake).findOne({
+					where: {
+						membership: { id: plan.membershipId },
+						tenant: { id: activeTenantId },
+					},
+				})
+			: null;
+
+		return mapClientNutritionPlanBuilder(
+			plan,
+			plan.tenant.timezone,
+			dietaryProfile,
+		);
 	}
 
 	async updateClientPlan(
