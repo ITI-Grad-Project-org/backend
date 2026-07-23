@@ -1,12 +1,7 @@
-import {
-	ConflictException,
-	Injectable,
-	NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UpdateNutritionPlanDayDto } from '../dto/nutrition-builder.dto';
 import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
-import { PlannedMeal } from '../entities/planned-meal.entity';
 import { lockEditableNutritionDay } from '../helpers/nutrition-builder.persistence';
 import {
 	assertNutritionTenant,
@@ -35,17 +30,6 @@ export class NutritionPlanDaysService {
 				planId,
 				dayId,
 			);
-
-			if (body.isFlexibleDay === true) {
-				const mealCount = await manager.getRepository(PlannedMeal).count({
-					where: { nutritionPlanDayId: day.id },
-				});
-				if (mealCount > 0) {
-					throw new ConflictException(
-						'Remove all planned Meals before marking this day as flexible',
-					);
-				}
-			}
 
 			if (body.isFlexibleDay !== undefined) {
 				day.isFlexibleDay = body.isFlexibleDay;

@@ -31,7 +31,9 @@ import {
 	UpdateNutritionPlanDayDto,
 	UpdatePlannedMealDto,
 } from '../dto/nutrition-builder.dto';
+import { RescheduleClientNutritionPlanDto } from '../dto/nutrition-plan-lifecycle.dto';
 import { ClientNutritionPlansService } from '../services/client-nutrition-plans.service';
+import { NutritionPlanLifecycleService } from '../services/nutrition-plan-lifecycle.service';
 import { NutritionPlanDaysService } from '../services/nutrition-plan-days.service';
 import { PlannedMealsService } from '../services/planned-meals.service';
 
@@ -41,6 +43,7 @@ import { PlannedMealsService } from '../services/planned-meals.service';
 export class ClientNutritionPlansController {
 	constructor(
 		private readonly clientNutritionPlansService: ClientNutritionPlansService,
+		private readonly nutritionPlanLifecycleService: NutritionPlanLifecycleService,
 		private readonly nutritionPlanDaysService: NutritionPlanDaysService,
 		private readonly plannedMealsService: PlannedMealsService,
 	) {}
@@ -106,6 +109,104 @@ export class ClientNutritionPlansController {
 			tenantId,
 			planId,
 			body,
+		);
+	}
+
+	@Post(':planId/publish')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Publish a complete client nutrition-plan draft' })
+	@ApiResponse({ status: 200, description: 'Client nutrition plan published' })
+	@ApiResponse({ status: 400, description: 'Plan is incomplete' })
+	@ApiResponse({ status: 409, description: 'Lifecycle or overlap conflict' })
+	publishClientPlan(
+		@CurrentTenant() tenantId: string | null,
+		@Param('planId', ParseUUIDPipe) planId: string,
+	) {
+		return this.nutritionPlanLifecycleService.publishClientPlan(
+			tenantId,
+			planId,
+		);
+	}
+
+	@Post(':planId/reschedule')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Reschedule a scheduled published nutrition plan',
+		description:
+			'Only a currently scheduled plan can be rescheduled. The new startDate may be today in the tenant timezone; when today is selected, the plan becomes active immediately and cannot be rescheduled again because active plans are immutable to rescheduling.',
+	})
+	@ApiResponse({
+		status: 200,
+		description:
+			'Client nutrition plan rescheduled; selecting today makes its schedule phase active immediately',
+	})
+	@ApiResponse({
+		status: 409,
+		description:
+			'Plan is not currently scheduled, or the requested dates overlap another published plan',
+	})
+	rescheduleClientPlan(
+		@CurrentTenant() tenantId: string | null,
+		@Param('planId', ParseUUIDPipe) planId: string,
+		@Body() body: RescheduleClientNutritionPlanDto,
+	) {
+		return this.nutritionPlanLifecycleService.rescheduleClientPlan(
+			tenantId,
+			planId,
+			body,
+		);
+	}
+
+	@Post(':planId/cancel')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Cancel a scheduled or active published nutrition plan',
+		description:
+			'Drafts should be archived instead of cancelled. Ended plans are historical and cannot be cancelled.',
+	})
+	@ApiResponse({ status: 200, description: 'Client nutrition plan cancelled' })
+	@ApiResponse({
+		status: 409,
+		description: 'Plan is a draft, already cancelled, or has already ended',
+	})
+	cancelClientPlan(
+		@CurrentTenant() tenantId: string | null,
+		@Param('planId', ParseUUIDPipe) planId: string,
+	) {
+		return this.nutritionPlanLifecycleService.cancelClientPlan(
+			tenantId,
+			planId,
+		);
+	}
+
+	@Post(':planId/unarchive')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Restore an archived client nutrition plan to coach lists',
+	})
+	@ApiResponse({ status: 200, description: 'Client nutrition plan unarchived' })
+	@ApiResponse({ status: 404, description: 'Client nutrition plan not found' })
+	unarchiveClientPlan(
+		@CurrentTenant() tenantId: string | null,
+		@Param('planId', ParseUUIDPipe) planId: string,
+	) {
+		return this.nutritionPlanLifecycleService.unarchiveClientPlan(
+			tenantId,
+			planId,
+		);
+	}
+
+	@Delete(':planId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Archive a client nutrition plan from coach lists' })
+	@ApiResponse({ status: 200, description: 'Client nutrition plan archived' })
+	archiveClientPlan(
+		@CurrentTenant() tenantId: string | null,
+		@Param('planId', ParseUUIDPipe) planId: string,
+	) {
+		return this.nutritionPlanLifecycleService.archiveClientPlan(
+			tenantId,
+			planId,
 		);
 	}
 

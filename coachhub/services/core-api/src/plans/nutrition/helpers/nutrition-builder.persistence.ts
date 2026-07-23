@@ -1,12 +1,9 @@
-import {
-	BadRequestException,
-	ConflictException,
-	NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
 import { NutritionPlanStatus, NutritionPlanType } from '../../../common';
 import { AddMealFromLibraryDto } from '../dto/nutrition-builder.dto';
 import { Meal } from '../entities/meal.entity';
+import { NutritionDayLog } from '../entities/nutrition-day-log.entity';
 import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
 import { PlannedMealFood } from '../entities/planned-meal-food.entity';
 import { PlannedMeal } from '../entities/planned-meal.entity';
@@ -14,6 +11,7 @@ import {
 	assertUniqueItemOverrideIds,
 	mapPlannedMealResponse,
 } from '../utils/nutrition-builder.utils';
+import { assertPublishedNutritionDayIsEditable } from '../utils/nutrition-lifecycle.utils';
 import {
 	normalizeMealAllergens,
 	normalizeNullableMealText,
@@ -31,8 +29,8 @@ import {
  * 1. Loads the requested day together with its parent week and plan.
  * 2. Confirms that both the day and plan belong to the active tenant.
  * 3. Confirms that the day belongs to the requested plan.
- * 4. Allows only client plans that are still drafts, because other plan types
- *    and non-draft plans must not be changed by the builder.
+ * 4. Allows draft plans plus published days that are not past and have no
+ *    canonical nutrition log.
  * 5. Takes a pessimistic write lock so two requests cannot safely edit the same
  *    day at the same time; the lock is released when the transaction finishes.
  * 6. Returns a not-found response when any check fails, including cross-tenant
@@ -49,6 +47,7 @@ export async function lockEditableNutritionDay(
 		.createQueryBuilder('day')
 		.innerJoinAndSelect('day.nutritionPlanWeek', 'week')
 		.innerJoinAndSelect('week.nutritionPlan', 'plan')
+		.innerJoinAndSelect('plan.tenant', 'tenant')
 		.where('day.id = :dayId', { dayId })
 		.andWhere('day.tenant_id = :tenantId', { tenantId })
 		.andWhere('plan.id = :planId', { planId })
@@ -56,14 +55,31 @@ export async function lockEditableNutritionDay(
 		.andWhere('plan.plan_type = :planType', {
 			planType: NutritionPlanType.CLIENT,
 		})
-		.andWhere('plan.status = :status', {
-			status: NutritionPlanStatus.DRAFT,
+		.andWhere('plan.status IN (:...statuses)', {
+			statuses: [NutritionPlanStatus.DRAFT, NutritionPlanStatus.PUBLISHED],
 		})
 		.setLock('pessimistic_write')
 		.getOne();
 
 	if (!day) {
 		throw new NotFoundException('Editable nutrition plan day not found');
+	}
+
+	const plan = day.nutritionPlanWeek.nutritionPlan;
+	if (plan.status === NutritionPlanStatus.PUBLISHED) {
+		const hasCanonicalLog = await manager
+			.getRepository(NutritionDayLog)
+			.createQueryBuilder('log')
+			.where('log.nutrition_plan_day_id = :dayId', { dayId: day.id })
+			.andWhere('log.tenant_id = :tenantId', { tenantId })
+			.getExists();
+		assertPublishedNutritionDayIsEditable(
+			plan.startDate as string,
+			day.nutritionPlanWeek.weekNumber,
+			day.dayNumber,
+			plan.tenant.timezone,
+			hasCanonicalLog,
+		);
 	}
 
 	return day;
@@ -227,8 +243,8 @@ export async function rewritePlannedMealPositions(
  * immutable planned Meal and Food snapshot.
  *
  * In plain English, it:
- * 1. Rejects flexible days because flexible days cannot contain prescribed
- *    Meals.
+ * 1. Supports both fully prescribed and hybrid flexible days. A flexible day
+ *    may retain planned Meals while leaving the rest of the intake flexible.
  * 2. Sorts the reusable Meal ingredients and validates that each amount
  *    override appears once and belongs to this Meal.
  * 3. Applies the requested amounts; an amount of zero deliberately leaves that
@@ -259,12 +275,6 @@ export async function insertPlannedMealSnapshot(
 	meal: Meal,
 	body: Omit<AddMealFromLibraryDto, 'mealId'>,
 ) {
-	if (day.isFlexibleDay) {
-		throw new ConflictException(
-			'Flexible nutrition days cannot contain planned Meals',
-		);
-	}
-
 	const ingredients = [...(meal.ingredients ?? [])].sort(
 		(left, right) => left.position - right.position,
 	);

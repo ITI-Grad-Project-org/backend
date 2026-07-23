@@ -28,7 +28,10 @@ import {
 } from '../utils/nutrition-validation.utils';
 
 export class UpdateNutritionPlanDayDto {
-	@ApiPropertyOptional()
+	@ApiPropertyOptional({
+		description:
+			'Allows flexible intake for the day; planned Meals may still be included for a hybrid day',
+	})
 	@IsOptional()
 	@IsBoolean()
 	isFlexibleDay?: boolean;
