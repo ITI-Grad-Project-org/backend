@@ -147,12 +147,30 @@ export class ProgramLifecycleService {
 
 		return { message: 'Client program archived' };
 	}
+
+	async unarchiveClientProgram(tenantId: string | null, programId: string) {
+		const activeTenantId = assertActiveTenant(tenantId);
+		await this.dataSource.transaction(async (manager) => {
+			const program = await lockClientProgram(
+				manager,
+				activeTenantId,
+				programId,
+			);
+			program.isArchived = false;
+			await manager.getRepository(Program).save(program);
+		});
+
+		return this.clientProgramsService.getClientProgram(
+			activeTenantId,
+			programId,
+		);
+	}
 }
 
 /**
  * Loads the tenant-owned client program and locks it for the lifecycle change.
- * The row lock prevents two publish, reschedule, cancel, or archive requests
- * from making decisions from the same stale program state.
+ * The row lock prevents two publish, reschedule, cancel, archive, or unarchive
+ * requests from making decisions from the same stale program state.
  */
 async function lockClientProgram(
 	manager: EntityManager,
