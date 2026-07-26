@@ -1,6 +1,7 @@
 export * from './membership-status.enum';
 export * from './gender.enum';
 export * from './coach-specialty.enum';
+export * from './offline-availability.enum';
 export * from './intake.enums';
 export * from './workout.enums';
 export * from './nutrition.enums';

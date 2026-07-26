@@ -3,6 +3,9 @@ export const SCHEMA_VERSION = '1.0.0';
 
 export const EventType = {
 	CLIENT_INVITED: 'client.invited',
+	CLIENT_REQUESTED: 'client.requested',
+	CLIENT_REQUEST_APPROVED: 'client.request.approved',
+	CLIENT_REQUEST_REJECTED: 'client.request.rejected',
 	PLAN_ASSIGNED: 'plan.assigned',
 	CHECKIN_DUE: 'checkin.due',
 	CHECKIN_SUBMITTED: 'checkin.submitted',
@@ -32,9 +35,42 @@ export interface ClientInvitedPayload {
 	coachName: string;
 	clientEmail: string;
 	clientName: string | null;
-	inviteToken: string;
-	acceptUrl: string;
+	/** 6-digit code the client types into the app to accept the invite. */
+	otp: string;
 	expiresAt: string;
+}
+
+/** Client-initiated join request — notifies the coach. */
+export interface ClientRequestedPayload {
+	membershipId: string;
+	clientId: string;
+	clientName: string;
+	clientEmail: string;
+	coachId: string;
+	coachEmail: string;
+	coachName: string;
+	tenantName: string;
+	message: string | null;
+	/** Deep link to the coach's pending-requests screen. */
+	requestsUrl: string;
+}
+
+/** Coach's decision on a join request — notifies the client. */
+export interface ClientRequestDecidedPayload {
+	membershipId: string;
+	clientId: string;
+	clientEmail: string;
+	clientName: string;
+	coachId: string;
+	coachName: string;
+	tenantName: string;
+	/**
+	 * 6-digit code the client types into the app to activate the membership.
+	 * Set on approval; null on rejection (nothing to confirm).
+	 */
+	otp: string | null;
+	/** Where the client picks up next on rejection — browsing the directory. */
+	actionUrl: string;
 }
 
 export interface PlanAssignedPayload {
@@ -69,6 +105,7 @@ export interface AiCompletedPayload {
 export interface PasswordResetPayload {
 	email: string;
 	name: string;
-	rawToken: string;
-	resetUrl: string;
+	/** 6-digit code the user types into the app (web and mobile share this flow). */
+	otp: string;
+	expiresInMinutes: number;
 }

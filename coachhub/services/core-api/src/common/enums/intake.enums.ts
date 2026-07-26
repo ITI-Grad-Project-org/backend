@@ -5,6 +5,7 @@ export enum FitnessGoal {
 	STRENGTH = 'strength',
 	ENDURANCE = 'endurance',
 	GENERAL_HEALTH = 'general_health',
+	YOGA_MOBILITY = 'yoga_mobility',
 }
 
 export enum ActivityLevel {
@@ -33,10 +34,33 @@ export enum EquipmentType {
 
 export enum DietaryPreference {
 	NONE = 'none',
+	OMNIVORE = 'omnivore',
 	HALAL = 'halal',
+	KOSHER = 'kosher',
 	VEGETARIAN = 'vegetarian',
 	VEGAN = 'vegan',
+	PESCATARIAN = 'pescatarian',
+	GLUTEN_FREE = 'gluten_free',
 	KETO = 'keto',
 	LOW_CARB = 'low_carb',
 	INTERMITTENT_FASTING = 'intermittent_fasting',
+}
+
+/** "What are you focused on?" — onboarding step 4. */
+export enum FocusArea {
+	STRENGTH = 'strength',
+	YOGA = 'yoga',
+	CARDIO = 'cardio',
+	WEIGHT_LOSS = 'weight_loss',
+	MOBILITY = 'mobility',
+}
+
+/** "Training style" preference — onboarding step 4. */
+export enum TrainingStyle {
+	STRENGTH = 'strength',
+	HYPERTROPHY = 'hypertrophy',
+	CARDIO = 'cardio',
+	HIIT = 'hiit',
+	MOBILITY = 'mobility',
+	YOGA = 'yoga',
 }

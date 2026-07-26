@@ -12,8 +12,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MatchConstraint } from 'src/common';
 
 /**
- * Standalone client registration (design §7.2, minus the invitation token —
- * invitations are accepted through `POST /invitations/accept` afterwards).
+ * Standalone client registration (design §7.2, minus the invitation code —
+ * invitations are accepted through `POST /invitation/accept` afterwards).
  * Body/demographic details are filled in later via `PATCH /clients/me`.
  */
 export class CreateClientDto {

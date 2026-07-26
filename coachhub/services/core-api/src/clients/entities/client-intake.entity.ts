@@ -15,7 +15,9 @@ import {
 	DietaryPreference,
 	EquipmentType,
 	FitnessGoal,
+	FocusArea,
 	TrainingExperience,
+	TrainingStyle,
 } from '../../common';
 
 @Entity('client_intakes')
@@ -34,13 +36,16 @@ export class ClientIntake {
 	@Column({ type: 'enum', enum: FitnessGoal, enumName: 'fitness_goal' })
 	goal: FitnessGoal;
 
+	// Not asked during onboarding — coaches fill it in later, so it stays null
+	// until then.
 	@Column({
 		name: 'activity_level',
 		type: 'enum',
 		enum: ActivityLevel,
 		enumName: 'activity_level',
+		nullable: true,
 	})
-	activityLevel: ActivityLevel;
+	activityLevel: ActivityLevel | null;
 
 	@Column({
 		name: 'training_experience',
@@ -56,6 +61,26 @@ export class ClientIntake {
 		nullable: true,
 	})
 	trainingDaysPerWeek: number | null;
+
+	@Column({
+		name: 'focus_areas',
+		type: 'enum',
+		enum: FocusArea,
+		enumName: 'focus_area',
+		array: true,
+		default: '{}',
+	})
+	focusAreas: FocusArea[];
+
+	@Column({
+		name: 'training_styles',
+		type: 'enum',
+		enum: TrainingStyle,
+		enumName: 'training_style',
+		array: true,
+		default: '{}',
+	})
+	trainingStyles: TrainingStyle[];
 
 	@Column({
 		name: 'available_equipment',

@@ -1,12 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ExercisesService } from '../exercises/exercises.service';
+import { Coach } from './entities/coach.entity';
 import { Tenant } from '../tenant/entities/tenant.entity';
 import { TenantService } from '../tenant/tenant.service';
 import { RegisterCoachDto } from './dto/register-coach.dto';
 import { UpdateCoachDto } from './dto/update-coach.dto';
-import { Coach } from './entities/coach.entity';
 
 @Injectable()
 export class CoachesService {
@@ -30,12 +30,7 @@ export class CoachesService {
 				firstName: registerDto.firstName,
 				lastName: registerDto.lastName,
 				email: registerDto.email,
-				phone: registerDto.phone ?? null,
 				password: registerDto.password,
-				bio: registerDto.bio ?? null,
-				specialties: registerDto.specialties ?? [],
-				yearsExperience: registerDto.yearsExperience ?? null,
-				certifications: registerDto.certifications ?? [],
 			});
 			const savedCoach = await manager.save(coach);
 
@@ -135,9 +130,49 @@ export class CoachesService {
 		});
 	}
 
+	/** Loads the hidden OTP columns — the reset flow needs them explicitly. */
+	findOneByEmailWithResetOtp(email: string) {
+		return this.coachRepository
+			.createQueryBuilder('coach')
+			.addSelect([
+				'coach.resetOtpHash',
+				'coach.resetOtpExpires',
+				'coach.resetOtpAttempts',
+			])
+			.leftJoinAndSelect('coach.tenants', 'tenant')
+			.where('coach.email = :email', { email })
+			.getOne();
+	}
+
+	/** Issuing a new OTP invalidates any ticket already handed out. */
+	setResetOtp(id: string, otpHash: string, expires: Date) {
+		return this.coachRepository.update(id, {
+			resetOtpHash: otpHash,
+			resetOtpExpires: expires,
+			resetOtpAttempts: 0,
+			resetPasswordToken: null,
+			resetPasswordExpires: null,
+		});
+	}
+
+	incrementResetOtpAttempts(id: string) {
+		return this.coachRepository.increment({ id }, 'resetOtpAttempts', 1);
+	}
+
+	clearResetOtp(id: string) {
+		return this.coachRepository.update(id, {
+			resetOtpHash: null,
+			resetOtpExpires: null,
+			resetOtpAttempts: 0,
+		});
+	}
+
 	resetCoachPassword(id: string, hashedPassword: string) {
 		return this.coachRepository.update(id, {
 			password: hashedPassword,
+			resetOtpHash: null,
+			resetOtpExpires: null,
+			resetOtpAttempts: 0,
 			resetPasswordToken: null,
 			resetPasswordExpires: null,
 			hashedRefreshToken: null,
@@ -148,11 +183,24 @@ export class CoachesService {
 		return this.coachRepository.update(id, { hashedRefreshToken: null });
 	}
 
-	update(id: string, updateCoachDto: UpdateCoachDto) {
+	/**
+	 * Phone is set during profile setup rather than sign-up, so the uniqueness
+	 * check lives here — the column is unique and would otherwise surface as a
+	 * raw driver error.
+	 */
+	async update(id: string, updateCoachDto: UpdateCoachDto) {
+		if (updateCoachDto.phone) {
+			const existingPhone = await this.findOneByPhone(updateCoachDto.phone);
+			if (existingPhone && existingPhone.id !== id) {
+				throw new ConflictException('Phone number is already in use');
+			}
+		}
+
 		return this.coachRepository.update(id, updateCoachDto);
 	}
 
 	remove(id: string) {
 		return this.coachRepository.softDelete(id);
 	}
+
 }

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th = 'http://www.thymeleaf.org' >
+<head >
+	<meta charset = 'UTF-8' />
+	<title >You're in</title >
+</head >
+<body
+	style = 'margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;' >
+<table cellpadding = '0' cellspacing = '0' role = 'presentation'
+       style = 'padding:32px 0;'
+       width = '100%' >
+	<tr >
+		<td align = 'center' >
+			<table cellpadding = '0' cellspacing = '0' role = 'presentation'
+			       style = 'background:#ffffff;border-radius:12px;overflow:hidden;'
+			       width = '480' >
+				<tr >
+					<td
+						style = 'background:#1f6feb;padding:24px 32px;color:#ffffff;font-size:20px;font-weight:bold;' >
+						CoachHub
+					</td >
+				</tr >
+				<tr >
+					<td
+						style = 'padding:32px;color:#1f2328;font-size:15px;line-height:1.6;' >
+						<p style = 'margin:0 0 16px;' >Hi <span th:text = '${clientName}' >there</span >,
+						</p >
+						<p style = 'margin:0 0 16px;' >
+							<strong th:text = '${coachName}' >Your coach</strong >
+							accepted your request &mdash; you're now training with
+							<span th:text = '${tenantName}' >their team</span >.
+						</p >
+						<p style = 'margin:0 0 24px;' >Enter this code in the CoachHub app to
+						                               confirm and answer a few quick questions,
+						                               so your coach can build the right plan
+						                               for you.</p >
+						<p style = 'margin:0 0 24px;text-align:center;' >
+							<span
+								style = 'display:inline-block;background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px;padding:16px 28px;font-family:monospace;font-size:32px;font-weight:bold;letter-spacing:8px;color:#1f2328;'
+								th:text = '${otp}' >000000</span >
+						</p >
+						<p style = 'margin:0;color:#656d76;font-size:13px;' >
+							For your security, never share this code with anyone.
+						</p >
+					</td >
+				</tr >
+			</table >
+		</td >
+	</tr >
+</table >
+</body >
+</html >

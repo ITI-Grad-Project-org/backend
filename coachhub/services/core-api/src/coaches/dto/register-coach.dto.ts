@@ -1,46 +1,22 @@
 import {
 	IsEmail,
-	IsEnum,
-	IsInt,
 	IsNotEmpty,
 	IsOptional,
-	IsPhoneNumber,
 	IsString,
 	IsTimeZone,
-	IsUrl,
 	Length,
 	MaxLength,
-	Min,
 	MinLength,
 	Validate,
-	ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CoachSpecialty, MatchConstraint } from 'src/common';
+import { MatchConstraint } from 'src/common';
 
-export class CertificationDto {
-	@ApiProperty({ example: 'NASM CPT' })
-	@IsString()
-	@IsNotEmpty()
-	name: string;
-
-	@ApiPropertyOptional({ example: 'NASM' })
-	@IsOptional()
-	@IsString()
-	issuer?: string;
-
-	@ApiPropertyOptional({ example: 2022 })
-	@IsOptional()
-	@IsInt()
-	year?: number;
-
-	@ApiPropertyOptional({ example: 'https://nasm.org/verify/123' })
-	@IsOptional()
-	@IsUrl()
-	credentialUrl?: string;
-}
-
+/**
+ * Sign-up only asks who they are and what to call their business — everything
+ * shown on the public profile is filled in afterwards through
+ * `PATCH /coaches/me`, which backs the five-step setup wizard.
+ */
 export class RegisterCoachDto {
 	@ApiProperty({ example: 'Jane' })
 	@IsString()
@@ -59,11 +35,6 @@ export class RegisterCoachDto {
 	@IsNotEmpty()
 	email: string;
 
-	@ApiPropertyOptional({ example: '+201000000000' })
-	@IsOptional()
-	@IsPhoneNumber()
-	phone?: string;
-
 	@ApiProperty({ example: 'password123', minLength: 6 })
 	@IsString()
 	@IsNotEmpty()
@@ -76,29 +47,10 @@ export class RegisterCoachDto {
 	@Validate(MatchConstraint, ['password'])
 	confirmPassword: string;
 
-	@ApiPropertyOptional({ example: 'Strength coach with 8 years of experience' })
-	@IsOptional()
-	@IsString()
-	bio?: string;
-
-	@ApiPropertyOptional({ enum: CoachSpecialty, isArray: true })
-	@IsOptional()
-	@IsEnum(CoachSpecialty, { each: true })
-	specialties?: CoachSpecialty[];
-
-	@ApiPropertyOptional({ example: 8 })
-	@IsOptional()
-	@IsInt()
-	@Min(0)
-	yearsExperience?: number;
-
-	@ApiPropertyOptional({ type: [CertificationDto] })
-	@IsOptional()
-	@ValidateNested({ each: true })
-	@Type(() => CertificationDto)
-	certifications?: CertificationDto[];
-
-	@ApiProperty({ example: 'Iron Temple Coaching' })
+	@ApiProperty({
+		example: 'Iron Temple Coaching',
+		description: 'Business/brand name — becomes the coach’s tenant',
+	})
 	@IsString()
 	@IsNotEmpty()
 	@MaxLength(150)

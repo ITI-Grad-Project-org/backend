@@ -3,6 +3,7 @@ import {
 	IsEnum,
 	IsNumber,
 	IsOptional,
+	IsUrl,
 	Max,
 	Min,
 } from 'class-validator';
@@ -31,5 +32,17 @@ export class UpdateClientDto extends PartialType(
 	@Min(50)
 	@Max(300)
 	heightCm?: number;
-}
 
+	@ApiPropertyOptional({ example: 72.5 })
+	@IsOptional()
+	@IsNumber()
+	@Min(20)
+	@Max(500)
+	weightKg?: number;
+
+	// The client uploads through POST /upload/image first and sends back the URL.
+	@ApiPropertyOptional({ example: 'https://cdn.example.com/avatars/sara.jpg' })
+	@IsOptional()
+	@IsUrl()
+	avatarUrl?: string;
+}

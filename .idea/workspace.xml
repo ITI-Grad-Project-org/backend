@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e9bd3ccf-a4df-413e-932d-9669a6bd57e2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="4f78e58d-5638-41b9-be88-bd6b6da24c41" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -14,145 +12,51 @@
   </component>
   <component name="CopilotPersistence">
     <persistenceIdMap>
-      <entry key="_/home/aldod/Documents/iti-graduation-project/backend" value="3GLJU0pnUOpLUQGr4I2bRlTKzr3" />
+      <entry key="_/home/aldod/Documents/iti-graduation-project/backend" value="3GoHS3MMc40y2kdUHSWt7dzsghb" />
     </persistenceIdMap>
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="406" />
+    <option name="cachedIndexableFilesCount" value="465" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
-  </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="GitHub Workflow" />
-      </list>
-    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory">{
-  &quot;lastFilter&quot;: {
-    &quot;state&quot;: &quot;OPEN&quot;,
-    &quot;assignee&quot;: &quot;AhmedHossam777&quot;
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "AhmedHossam777"
   }
-}</component>
-  <component name="GitToolBoxStore">
-    <option name="recentBranches">
-      <RecentBranches>
-        <option name="branchesForRepo">
-          <list>
-            <RecentBranchesForRepo>
-              <option name="branches">
-                <list>
-                  <RecentBranch>
-                    <option name="branchName" value="dod" />
-                    <option name="lastUsedInstant" value="1784111507" />
-                  </RecentBranch>
-                  <RecentBranch>
-                    <option name="branchName" value="dev" />
-                    <option name="lastUsedInstant" value="1784011054" />
-                  </RecentBranch>
-                  <RecentBranch>
-                    <option name="branchName" value="main" />
-                    <option name="lastUsedInstant" value="1784011053" />
-                  </RecentBranch>
-                </list>
-              </option>
-              <option name="repositoryRootUrl" value="file://$PROJECT_DIR$" />
-            </RecentBranchesForRepo>
-          </list>
-        </option>
-      </RecentBranches>
-    </option>
-  </component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/ITI-Grad-Project-org/backend.git&quot;,
-    &quot;accountId&quot;: &quot;e94eb321-056b-4b8c-bec8-2d87e37ca0e2&quot;
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/ITI-Grad-Project-org/backend.git",
+    "accountId": "e94eb321-056b-4b8c-bec8-2d87e37ca0e2"
   }
-}</component>
-  <component name="KubernetesApiPersistence">{}</component>
-  <component name="KubernetesApiProvider">{
-  &quot;isMigrated&quot;: true
-}</component>
+}]]></component>
+  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
+  <component name="KubernetesApiProvider"><![CDATA[{
+  "isMigrated": true
+}]]></component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
   </component>
-  <component name="NextEditCompletionFeaturesState">
-    <decayedCancelled>
-      <entry key="MS100" value="1.3448042867980405" />
-      <entry key="MS500" value="3.1634529520597283" />
-      <entry key="S2" value="7.204334526648904" />
-      <entry key="S5" value="14.648367377893276" />
-      <entry key="S10" value="22.072040555566883" />
-      <entry key="S30" value="30.786833014534224" />
-      <entry key="S60" value="33.70309857495566" />
-      <entry key="M2" value="35.30076378610294" />
-      <entry key="M5" value="36.30768072339446" />
-      <entry key="M10" value="36.65238313314871" />
-      <entry key="M15" value="36.7785224058417" />
-      <entry key="M30" value="37.066740121366706" />
-      <entry key="H1" value="37.68324284572703" />
-      <entry key="H2" value="38.46237915302988" />
-      <entry key="H4" value="39.100751690936825" />
-      <entry key="D1" value="39.827859589687286" />
-      <entry key="W1" value="39.97479928461942" />
-    </decayedCancelled>
-    <decayedSelected>
-      <entry key="MS100" value="0.0" />
-      <entry key="MS500" value="0.0" />
-      <entry key="S2" value="0.0" />
-      <entry key="S5" value="0.0" />
-      <entry key="S10" value="3.6750217296453374E-219" />
-      <entry key="S30" value="1.5431920256106786E-73" />
-      <entry key="S60" value="3.928348285998434E-37" />
-      <entry key="M2" value="6.267653696558559E-19" />
-      <entry key="M5" value="5.234099774095565E-8" />
-      <entry key="M10" value="2.2878155026346772E-4" />
-      <entry key="M15" value="0.003740652219770732" />
-      <entry key="M30" value="0.061160871640050546" />
-      <entry key="H1" value="0.24730724138215293" />
-      <entry key="H2" value="0.49729995111818887" />
-      <entry key="H4" value="0.7051949738321928" />
-      <entry key="D1" value="0.9434485066318749" />
-      <entry key="W1" value="0.9917182708100318" />
-    </decayedSelected>
-    <decayedShown>
-      <entry key="MS100" value="1.2846789274123045" />
-      <entry key="MS500" value="3.1370808067305145" />
-      <entry key="S2" value="7.1893008142990436" />
-      <entry key="S5" value="14.635505511024416" />
-      <entry key="S10" value="22.062039331714416" />
-      <entry key="S30" value="30.782068761128944" />
-      <entry key="S60" value="33.700474207228446" />
-      <entry key="M2" value="35.29938498876976" />
-      <entry key="M5" value="36.307112428176374" />
-      <entry key="M10" value="36.652324264794615" />
-      <entry key="M15" value="36.78206451837139" />
-      <entry key="M30" value="37.12775127504753" />
-      <entry key="H1" value="37.93039387432698" />
-      <entry key="H2" value="38.959546393744496" />
-      <entry key="H4" value="39.805857606361705" />
-      <entry key="D1" value="40.77128891683916" />
-      <entry key="W1" value="40.96651468999594" />
-    </decayedShown>
-  </component>
-  <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 7,
-  &quot;fromUser&quot;: false
-}</component>
-  <component name="ProjectId" id="3GLJU0pnUOpLUQGr4I2bRlTKzr3" />
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 8
+}]]></component>
+  <component name="ProjectId" id="3GoHS3MMc40y2kdUHSWt7dzsghb" />
   <component name="ProjectViewState">
+    <option name="autoscrollFromSource" value="true" />
+    <option name="autoscrollToSource" value="true" />
     <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="openDirectoriesWithSingleClick" value="true" />
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
     <option name="showScratchesAndConsoles" value="false" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -161,29 +65,15 @@
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/home/aldod/Documents/iti-graduation-project/backend",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "prettierjs.PrettierConfiguration.Package": "/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/prettier",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "ts.external.directory.path": "/home/aldod/.local/share/JetBrains/Toolbox/apps/intellij-idea-ultimate/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "ts.external.directory.path": "/home/aldod/Documents/iti-graduation-project/backend/coachhub/services/core-api/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager">
-    <configuration default="true" type="JetRunConfigurationType">
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
-      <option name="filePath" />
-      <method v="2" />
-    </configuration>
-  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -194,17 +84,12 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="e9bd3ccf-a4df-413e-932d-9669a6bd57e2" name="Changes" comment="" />
-      <created>1783744928064</created>
+      <changelist id="4f78e58d-5638-41b9-be88-bd6b6da24c41" name="Changes" comment="" />
+      <created>1784630999542</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1783744928064</updated>
-      <workItem from="1783744929291" duration="10675000" />
-      <workItem from="1783864190913" duration="1557000" />
-      <workItem from="1783866123081" duration="798000" />
-      <workItem from="1784009679687" duration="10418000" />
-      <workItem from="1784103696249" duration="14000" />
-      <workItem from="1784109907930" duration="3589000" />
+      <updated>1784630999542</updated>
+      <workItem from="1784631003118" duration="8920000" />
     </task>
     <servers />
   </component>
