@@ -1,7 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
 import {
-	IsBoolean,
 	IsEnum,
 	IsOptional,
 	IsString,
@@ -10,7 +8,8 @@ import {
 } from 'class-validator';
 import { DietaryPreference, ServingUnit } from '../../../common';
 
-export class QueryFoodsDto {
+/** Client Food reads deliberately omit includeInactive. */
+export class ClientFoodLibraryQueryDto {
 	@ApiPropertyOptional({
 		description:
 			'Case-insensitive literal substring search against name or brand. SQL wildcard characters are treated as normal text. Whitespace-only input applies no search filter.',
@@ -38,14 +37,4 @@ export class QueryFoodsDto {
 	})
 	@MaxLength(100)
 	allergen?: string;
-
-	@ApiPropertyOptional({ default: false })
-	@IsOptional()
-	@Transform(({ value }) => {
-		if (value === true || value === 'true') return true;
-		if (value === false || value === 'false') return false;
-		return value;
-	})
-	@IsBoolean()
-	includeInactive?: boolean;
 }

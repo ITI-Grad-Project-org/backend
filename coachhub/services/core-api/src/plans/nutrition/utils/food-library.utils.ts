@@ -23,6 +23,11 @@ export function normalizeFoodLookupText(value?: string | null) {
 	return normalizeNullableFoodDisplayText(value)?.toLocaleLowerCase() ?? '';
 }
 
+/** Escapes PostgreSQL LIKE control characters for a literal substring search. */
+export function escapePostgresLikePattern(value: string) {
+	return value.replace(/[\\%_]/g, '\\$&');
+}
+
 export function normalizeFoodDietaryTags(tags?: DietaryPreference[]) {
 	return [...new Set(tags ?? [])];
 }

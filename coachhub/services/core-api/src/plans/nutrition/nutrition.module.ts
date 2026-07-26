@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientIntake } from '../../clients/entities/client-intake.entity';
 import { ClientMembership } from '../../clients/entities/client-membership.entity';
 import { ClientNutritionPlansController } from './controllers/client-nutrition-plans.controller';
+import { ClientNutritionController } from './controllers/client-nutrition.controller';
 import { FoodLibraryController } from './controllers/food-library.controller';
 import { MealLibraryController } from './controllers/meal-library.controller';
 import { FoodLog } from './entities/food-log.entity';
@@ -17,6 +18,7 @@ import { NutritionPlan } from './entities/nutrition-plan.entity';
 import { PlannedMealFood } from './entities/planned-meal-food.entity';
 import { PlannedMeal } from './entities/planned-meal.entity';
 import { ClientNutritionPlansService } from './services/client-nutrition-plans.service';
+import { ClientNutritionScheduleService } from './services/client-nutrition-schedule.service';
 import { FoodLibraryService } from './services/food-library.service';
 import { MealLibraryService } from './services/meal-library.service';
 import { NutritionPlanLifecycleService } from './services/nutrition-plan-lifecycle.service';
@@ -45,11 +47,13 @@ import { PlannedMealsService } from './services/planned-meals.service';
 		FoodLibraryController,
 		MealLibraryController,
 		ClientNutritionPlansController,
+		ClientNutritionController,
 	],
 	providers: [
 		FoodLibraryService,
 		MealLibraryService,
 		ClientNutritionPlansService,
+		ClientNutritionScheduleService,
 		NutritionPlanLifecycleService,
 		NutritionPlanDaysService,
 		PlannedMealsService,

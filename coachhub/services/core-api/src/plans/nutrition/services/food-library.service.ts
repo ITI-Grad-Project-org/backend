@@ -12,6 +12,7 @@ import {
 } from '../helpers/food-library.persistence';
 import {
 	assertActiveTenant,
+	escapePostgresLikePattern,
 	normalizeFoodAllergens,
 	normalizeFoodDietaryTags,
 	normalizeFoodDisplayText,
@@ -62,7 +63,7 @@ export class FoodLibraryService {
 
 		try {
 			const saved = await this.foodRepository.save(food);
-		return saved;
+			return saved;
 		} catch (error) {
 			throwFoodConflictForUniqueViolation(error);
 			throw error;
@@ -81,8 +82,10 @@ export class FoodLibraryService {
 
 		if (query.search?.trim()) {
 			foodsQuery.andWhere(
-				"(food.name ILIKE :search OR COALESCE(food.brand, '') ILIKE :search)",
-				{ search: `%${query.search.trim()}%` },
+				"(food.name ILIKE :search ESCAPE '\\' OR COALESCE(food.brand, '') ILIKE :search ESCAPE '\\')",
+				{
+					search: `%${escapePostgresLikePattern(query.search.trim())}%`,
+				},
 			);
 		}
 
@@ -183,7 +186,7 @@ export class FoodLibraryService {
 
 		try {
 			const saved = await this.foodRepository.save(food);
-		return saved;
+			return saved;
 		} catch (error) {
 			throwFoodConflictForUniqueViolation(error);
 			throw error;

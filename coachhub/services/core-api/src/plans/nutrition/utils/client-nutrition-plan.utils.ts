@@ -185,38 +185,9 @@ export function mapClientNutritionPlanBuilder(
 			id: week.id,
 			weekNumber: week.weekNumber,
 			notes: week.notes,
-			days: days.map((day) => {
-				const scheduledDate = getScheduledDate(
-					plan.startDate as string,
-					week.weekNumber,
-					day.dayNumber,
-				);
-				const meals = [...(day.meals ?? [])].sort(
-					(left, right) => left.position - right.position,
-				);
-				const effectiveTargets = mapEffectiveDayTargets(plan, day);
-				const prescribedTotals = calculatePlannedDayTotals(meals);
-				const warnings = buildDietaryAdvisoryWarnings(
-					day.id,
-					scheduledDate,
-					meals,
-					dietaryProfile,
-				);
-
-				return {
-					id: day.id,
-					dayNumber: day.dayNumber,
-					scheduledDate,
-					isFlexibleDay: day.isFlexibleDay,
-					targetOverrides: mapDayTargetOverrides(day),
-					effectiveTargets,
-					prescribedTotals,
-					variance: mapNutritionVariance(effectiveTargets, prescribedTotals),
-					notes: day.notes,
-					warnings,
-					meals: meals.map(mapPlannedMealResponse),
-				};
-			}),
+			days: days.map((day) =>
+				mapClientNutritionDay(plan, week.weekNumber, day, dietaryProfile),
+			),
 		};
 	});
 
@@ -228,5 +199,43 @@ export function mapClientNutritionPlanBuilder(
 			week.days.flatMap((day) => day.warnings),
 		),
 		weeks: mappedWeeks,
+	};
+}
+
+export function mapClientNutritionDay(
+	plan: NutritionPlan,
+	weekNumber: number,
+	day: NutritionPlanDay,
+	dietaryProfile: ClientDietaryProfile = null,
+) {
+	const scheduledDate = getScheduledDate(
+		plan.startDate as string,
+		weekNumber,
+		day.dayNumber,
+	);
+	const meals = [...(day.meals ?? [])].sort(
+		(left, right) => left.position - right.position,
+	);
+	const effectiveTargets = mapEffectiveDayTargets(plan, day);
+	const prescribedTotals = calculatePlannedDayTotals(meals);
+	const warnings = buildDietaryAdvisoryWarnings(
+		day.id,
+		scheduledDate,
+		meals,
+		dietaryProfile,
+	);
+
+	return {
+		id: day.id,
+		dayNumber: day.dayNumber,
+		scheduledDate,
+		isFlexibleDay: day.isFlexibleDay,
+		targetOverrides: mapDayTargetOverrides(day),
+		effectiveTargets,
+		prescribedTotals,
+		variance: mapNutritionVariance(effectiveTargets, prescribedTotals),
+		notes: day.notes,
+		warnings,
+		meals: meals.map(mapPlannedMealResponse),
 	};
 }
