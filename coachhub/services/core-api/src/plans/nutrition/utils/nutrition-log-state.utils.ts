@@ -25,7 +25,8 @@ export interface NutritionLogStateSource {
 
 /**
  * Returns true at or after 06:00 on the day after the scheduled nutrition day,
- * using the tenant's local calendar and clock.
+ * using the tenant's local calendar and clock. The check is derived instead of
+ * stored so expired logs can become read-only without a background database job.
  */
 export function isNutritionLogPastDeadline(
 	scheduledDate: string,
@@ -40,7 +41,11 @@ export function isNutritionLogPastDeadline(
 	return getTimeOnlyInTimeZone(now, timezone) >= '06:00:00';
 }
 
-/** A submission after the scheduled local calendar day is retrospective. */
+/**
+ * Marks activity after the scheduled tenant-local calendar day as retrospective.
+ * The flag keeps late-night submissions visible to clients and coaches without
+ * rejecting them during the allowed next-morning grace period.
+ */
 export function isNutritionLogRetrospective(
 	scheduledDate: string,
 	timezone: string,
@@ -48,6 +53,53 @@ export function isNutritionLogRetrospective(
 ) {
 	return getDateOnlyInTimeZone(activityAt, timezone) > scheduledDate;
 }
+
+/**
+ * Returns whether the current tenant-local time is inside the complete write
+ * window: from scheduled-day midnight until 06:00 the next morning. Response
+ * mapping uses this helper to expose isWritable from the same rules enforced by
+ * mutation services.
+ */
+export function isNutritionLogWindowOpen(
+	scheduledDate: string,
+	timezone: string,
+	now = new Date(),
+) {
+	return (
+		getDateOnlyInTimeZone(now, timezone) >= scheduledDate &&
+		!isNutritionLogPastDeadline(scheduledDate, timezone, now)
+	);
+}
+
+/**
+ * Derives one final day outcome from all planned Meal outcomes. Empty outcome
+ * lists represent fully flexible days and map to not-applicable later; uniform
+ * completed or skipped lists keep that result, while partial or mixed lists
+ * become partial. Centralizing this rule makes finalization deterministic.
+ */
+export function deriveNutritionAdherenceOutcome(
+	outcomes: NutritionAdherenceOutcome[],
+): NutritionAdherenceOutcome | null {
+	if (outcomes.length === 0) return null;
+	if (
+		outcomes.every((outcome) => outcome === NutritionAdherenceOutcome.COMPLETED)
+	) {
+		return NutritionAdherenceOutcome.COMPLETED;
+	}
+	if (
+		outcomes.every((outcome) => outcome === NutritionAdherenceOutcome.SKIPPED)
+	) {
+		return NutritionAdherenceOutcome.SKIPPED;
+	}
+	return NutritionAdherenceOutcome.PARTIAL;
+}
+
+/**
+ * Converts a nullable stored log into the client-facing state used by plan,
+ * calendar, day, and log responses. It derives incomplete from the deadline,
+ * derives retrospective from the latest activity, and deliberately omits the
+ * internal updatedAt field from the nested response.
+ */
 
 export function mapNutritionDayLogState(
 	log: NutritionLogStateSource | null,
@@ -92,6 +144,11 @@ export function mapNutritionDayLogState(
 	};
 }
 
+/**
+ * Converts a finalized database outcome into its display state. A null outcome
+ * means a fully flexible day with no planned Meals, so it becomes
+ * not_applicable rather than looking incomplete or skipped.
+ */
 function mapFinalizedOutcome(
 	outcome: NutritionAdherenceOutcome | null,
 ): ClientNutritionLogState {
@@ -107,6 +164,11 @@ function mapFinalizedOutcome(
 	}
 }
 
+/**
+ * Formats only the tenant-local clock portion of an instant as HH:mm:ss. The
+ * deadline helper needs this stable 24-hour value to make the exact 06:00:00
+ * boundary comparison independent of the server's own timezone.
+ */
 function getTimeOnlyInTimeZone(date: Date, timezone: string) {
 	const parts = new Intl.DateTimeFormat('en-GB', {
 		timeZone: timezone,

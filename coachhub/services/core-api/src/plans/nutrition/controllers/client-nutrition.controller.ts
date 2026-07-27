@@ -1,10 +1,13 @@
 import {
+	Body,
 	Controller,
 	Get,
 	HttpCode,
 	HttpStatus,
 	Param,
 	ParseUUIDPipe,
+	Patch,
+	Post,
 	Query,
 	UseGuards,
 } from '@nestjs/common';
@@ -23,6 +26,11 @@ import { ClientFoodLibraryQueryDto } from '../dto/client-food-library-query.dto'
 import { ClientNutritionCalendarQueryDto } from '../dto/client-nutrition-calendar-query.dto';
 import { ClientNutritionPlanListQueryDto } from '../dto/client-nutrition-plan-list-query.dto';
 import {
+	ClientNutritionDayLogDetailResponseDto,
+	UpdateLoggedMealOutcomeDto,
+	UpdateNutritionDayLogDto,
+} from '../dto/nutrition-logging.dto';
+import {
 	ClientCurrentNutritionPlanResponseDto,
 	ClientFoodResponseDto,
 	ClientNutritionApiErrorResponseDto,
@@ -31,6 +39,7 @@ import {
 	ClientNutritionPlanResponseDto,
 	ClientNutritionPlanSummaryResponseDto,
 } from '../dto/client-nutrition-response.dto';
+import { ClientNutritionLoggingService } from '../services/client-nutrition-logging.service';
 import { ClientNutritionScheduleService } from '../services/client-nutrition-schedule.service';
 
 @ApiTags('client/me/nutrition')
@@ -41,6 +50,7 @@ import { ClientNutritionScheduleService } from '../services/client-nutrition-sch
 export class ClientNutritionController {
 	constructor(
 		private readonly clientNutritionScheduleService: ClientNutritionScheduleService,
+		private readonly clientNutritionLoggingService: ClientNutritionLoggingService,
 	) {}
 
 	@Get('plans')
@@ -170,6 +180,177 @@ export class ClientNutritionController {
 			clientId,
 			tenantId,
 			dayId,
+		);
+	}
+
+	@Post('days/:dayId/log')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Start or resume my nutrition log for one day' })
+	@ApiOkResponse({
+		description: 'Nutrition day log started or resumed',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Published nutrition day not found for the active membership',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description:
+			'The day is in the future, its deadline passed, its plan was cancelled, or its log is finalized',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	startOrResumeLog(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('dayId', ParseUUIDPipe) dayId: string,
+	) {
+		return this.clientNutritionLoggingService.startOrResumeLog(
+			clientId,
+			tenantId,
+			dayId,
+		);
+	}
+
+	@Post('days/:dayId/skip')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Skip and finalize one prescribed nutrition day' })
+	@ApiOkResponse({
+		description: 'Nutrition day skipped',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Published nutrition day not found for the active membership',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description:
+			'The day is not writable, is fully flexible without planned Meals, or its log is finalized',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	skipDay(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('dayId', ParseUUIDPipe) dayId: string,
+	) {
+		return this.clientNutritionLoggingService.skipDay(
+			clientId,
+			tenantId,
+			dayId,
+		);
+	}
+
+	@Get('logs/:logId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Get one of my nutrition day logs' })
+	@ApiOkResponse({
+		description: 'Nutrition day log retrieved',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Nutrition day log not found for the active membership',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	getLog(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+	) {
+		return this.clientNutritionLoggingService.getLog(clientId, tenantId, logId);
+	}
+
+	@Patch('logs/:logId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Update water or client notes on my nutrition log' })
+	@ApiOkResponse({
+		description: 'Nutrition day log updated',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'No supported field was supplied or a value is invalid',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Nutrition day log not found for the active membership',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The log is finalized or its write deadline passed',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	updateLog(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Body() body: UpdateNutritionDayLogDto,
+	) {
+		return this.clientNutritionLoggingService.updateLog(
+			clientId,
+			tenantId,
+			logId,
+			body,
+		);
+	}
+
+	@Patch('logs/:logId/meals/:loggedMealId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Report the outcome of one prescribed Meal' })
+	@ApiOkResponse({
+		description: 'Logged Meal outcome updated',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'The Meal outcome or notes are invalid',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Nutrition log or Logged Meal not found for this membership',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The log is finalized or its write deadline passed',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	updateMealOutcome(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Param('loggedMealId', ParseUUIDPipe) loggedMealId: string,
+		@Body() body: UpdateLoggedMealOutcomeDto,
+	) {
+		return this.clientNutritionLoggingService.updateMealOutcome(
+			clientId,
+			tenantId,
+			logId,
+			loggedMealId,
+			body,
+		);
+	}
+
+	@Post('logs/:logId/complete')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Complete and finalize my nutrition day log' })
+	@ApiOkResponse({
+		description: 'Nutrition day log completed',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Nutrition day log not found for the active membership',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description:
+			'A planned Meal is still pending, the log is finalized, or its deadline passed',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	completeLog(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+	) {
+		return this.clientNutritionLoggingService.completeLog(
+			clientId,
+			tenantId,
+			logId,
 		);
 	}
 
