@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	HttpCode,
 	HttpStatus,
@@ -15,6 +16,7 @@ import {
 	ApiBadRequestResponse,
 	ApiBearerAuth,
 	ApiConflictResponse,
+	ApiCreatedResponse,
 	ApiNotFoundResponse,
 	ApiOkResponse,
 	ApiOperation,
@@ -27,6 +29,8 @@ import { ClientNutritionCalendarQueryDto } from '../dto/client-nutrition-calenda
 import { ClientNutritionPlanListQueryDto } from '../dto/client-nutrition-plan-list-query.dto';
 import {
 	ClientNutritionDayLogDetailResponseDto,
+	CreateActualFoodLogDto,
+	UpdateActualFoodLogDto,
 	UpdateLoggedMealOutcomeDto,
 	UpdateNutritionDayLogDto,
 } from '../dto/nutrition-logging.dto';
@@ -323,6 +327,115 @@ export class ClientNutritionController {
 			logId,
 			loggedMealId,
 			body,
+		);
+	}
+
+	@Post('logs/:logId/foods')
+	@HttpCode(HttpStatus.CREATED)
+	@ApiOperation({
+		summary: 'Add a library-backed or manual actual Food entry',
+		description:
+			'Library entries use foodId and amount. Manual entries omit foodId and provide foodName with optional total nutrients.',
+	})
+	@ApiCreatedResponse({
+		description: 'Actual Food entry created and updated log totals returned',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description:
+			'The library/manual entry shape or a supplied value is invalid',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description:
+			'Nutrition log, active library Food, or linked Logged Meal not found for this membership',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The log is finalized or its write deadline passed',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	createActualFood(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Body() body: CreateActualFoodLogDto,
+	) {
+		return this.clientNutritionLoggingService.createActualFood(
+			clientId,
+			tenantId,
+			logId,
+			body,
+		);
+	}
+
+	@Patch('logs/:logId/foods/:foodLogId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Update one actual Food entry while its log is writable',
+	})
+	@ApiOkResponse({
+		description: 'Actual Food entry updated and recalculated log returned',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description:
+			'No supported field was supplied or the entry shape is invalid',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description:
+			'Nutrition log, actual Food, active library Food, or linked Logged Meal not found',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The log is finalized or its write deadline passed',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	updateActualFood(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Param('foodLogId', ParseUUIDPipe) foodLogId: string,
+		@Body() body: UpdateActualFoodLogDto,
+	) {
+		return this.clientNutritionLoggingService.updateActualFood(
+			clientId,
+			tenantId,
+			logId,
+			foodLogId,
+			body,
+		);
+	}
+
+	@Delete('logs/:logId/foods/:foodLogId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Delete one actual Food entry while its log is writable',
+	})
+	@ApiOkResponse({
+		description: 'Actual Food entry deleted and recalculated log returned',
+		type: ClientNutritionDayLogDetailResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Nutrition log or actual Food entry not found',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The log is finalized or its write deadline passed',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	deleteActualFood(
+		@CurrentClient('clientId') clientId: string,
+		@CurrentTenant() tenantId: string | null,
+		@Param('logId', ParseUUIDPipe) logId: string,
+		@Param('foodLogId', ParseUUIDPipe) foodLogId: string,
+	) {
+		return this.clientNutritionLoggingService.deleteActualFood(
+			clientId,
+			tenantId,
+			logId,
+			foodLogId,
 		);
 	}
 

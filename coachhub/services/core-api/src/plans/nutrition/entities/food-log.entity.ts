@@ -50,7 +50,10 @@ export class FoodLog {
 	@Column({ name: 'nutrition_day_log_id', type: 'uuid' })
 	nutritionDayLogId: string;
 
-	@ManyToOne(() => NutritionDayLog, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => NutritionDayLog, (log) => log.foodLogs, {
+		nullable: false,
+		onDelete: 'CASCADE',
+	})
 	@JoinColumn({ name: 'nutrition_day_log_id' })
 	nutritionDayLog: NutritionDayLog;
 

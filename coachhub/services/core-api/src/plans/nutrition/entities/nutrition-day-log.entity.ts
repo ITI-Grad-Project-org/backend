@@ -13,6 +13,7 @@ import {
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import { NutritionAdherenceOutcome, NutritionLogStatus } from '../../../common';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
+import { FoodLog } from './food-log.entity';
 import { LoggedMeal } from './logged-meal.entity';
 import { NutritionPlanDay } from './nutrition-plan-day.entity';
 import { NutritionPlan } from './nutrition-plan.entity';
@@ -105,6 +106,9 @@ export class NutritionDayLog {
 		cascade: ['insert'],
 	})
 	meals: LoggedMeal[];
+
+	@OneToMany(() => FoodLog, (foodLog) => foodLog.nutritionDayLog)
+	foodLogs: FoodLog[];
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
 	createdAt: Date;

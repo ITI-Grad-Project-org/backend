@@ -31,10 +31,15 @@ import {
 	UpdateNutritionPlanDayDto,
 	UpdatePlannedMealDto,
 } from '../dto/nutrition-builder.dto';
+import {
+	CoachNutritionDayReviewResponseDto,
+	CoachNutritionPlanLogsResponseDto,
+} from '../dto/nutrition-log-review.dto';
 import { RescheduleClientNutritionPlanDto } from '../dto/nutrition-plan-lifecycle.dto';
 import { ClientNutritionPlansService } from '../services/client-nutrition-plans.service';
 import { NutritionPlanLifecycleService } from '../services/nutrition-plan-lifecycle.service';
 import { NutritionPlanDaysService } from '../services/nutrition-plan-days.service';
+import { NutritionLogReviewService } from '../services/nutrition-log-review.service';
 import { PlannedMealsService } from '../services/planned-meals.service';
 
 @ApiTags('coach/client-nutrition-plans')
@@ -46,6 +51,7 @@ export class ClientNutritionPlansController {
 		private readonly nutritionPlanLifecycleService: NutritionPlanLifecycleService,
 		private readonly nutritionPlanDaysService: NutritionPlanDaysService,
 		private readonly plannedMealsService: PlannedMealsService,
+		private readonly nutritionLogReviewService: NutritionLogReviewService,
 	) {}
 
 	@Post()
@@ -76,6 +82,55 @@ export class ClientNutritionPlansController {
 		@Query() query: QueryClientNutritionPlansDto,
 	) {
 		return this.clientNutritionPlansService.findClientPlans(tenantId, query);
+	}
+
+	@Get(':planId/logs')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Review all nutrition logs for one tenant client plan',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Nutrition plan logs retrieved',
+		type: CoachNutritionPlanLogsResponseDto,
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'Client nutrition plan not found in the active tenant',
+	})
+	listPlanLogs(
+		@CurrentTenant() tenantId: string | null,
+		@Param('planId', ParseUUIDPipe) planId: string,
+	) {
+		return this.nutritionLogReviewService.listPlanLogs(tenantId, planId);
+	}
+
+	@Get(':planId/days/:dayId/log')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary:
+			'Review one nutrition prescription beside reported and actual intake',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Nutrition plan day review retrieved',
+		type: CoachNutritionDayReviewResponseDto,
+	})
+	@ApiResponse({
+		status: 404,
+		description:
+			'Client nutrition plan day not found under this plan and active tenant',
+	})
+	getPlanDayLog(
+		@CurrentTenant() tenantId: string | null,
+		@Param('planId', ParseUUIDPipe) planId: string,
+		@Param('dayId', ParseUUIDPipe) dayId: string,
+	) {
+		return this.nutritionLogReviewService.getPlanDayLog(
+			tenantId,
+			planId,
+			dayId,
+		);
 	}
 
 	@Get(':planId')

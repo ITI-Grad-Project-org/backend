@@ -14,11 +14,16 @@ import {
 	NutritionLogStatus,
 	NutritionPlanStatus,
 	NutritionPlanType,
+	ServingUnit,
 } from '../../../common';
 import {
+	CreateActualFoodLogDto,
+	UpdateActualFoodLogDto,
 	UpdateLoggedMealOutcomeDto,
 	UpdateNutritionDayLogDto,
 } from '../dto/nutrition-logging.dto';
+import { FoodLog } from '../entities/food-log.entity';
+import { Food } from '../entities/food.entity';
 import { LoggedMeal } from '../entities/logged-meal.entity';
 import { NutritionDayLog } from '../entities/nutrition-day-log.entity';
 import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
@@ -28,6 +33,21 @@ import {
 	calculatePlannedMealTotals,
 	mapPlannedMealResponse,
 } from '../utils/nutrition-builder.utils';
+import {
+	normalizeFoodDisplayText,
+	normalizeNullableFoodDisplayText,
+} from '../utils/food-library.utils';
+import {
+	calculateActualNutritionTotals,
+	calculateLibraryFoodLogSnapshot,
+	mapActualFoodLogResponse,
+	recalculateLibraryFoodLogAmount,
+} from '../utils/nutrition-food-log.utils';
+import {
+	assertRealisticActualFoodAmount,
+	assertRealisticActualFoodNutrients,
+	assertRealisticFoodReferenceAmount,
+} from '../utils/nutrition-validation.utils';
 import {
 	deriveNutritionAdherenceOutcome,
 	isNutritionLogPastDeadline,
@@ -185,6 +205,183 @@ export class ClientNutritionLoggingService {
 			await repository.save(loggedMeal);
 			log.updatedAt = now;
 			await manager.getRepository(NutritionDayLog).save(log);
+
+			return mapReloadedNutritionLog(
+				manager,
+				activeTenantId,
+				membership,
+				log.id,
+				now,
+			);
+		});
+	}
+
+	async createActualFood(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+		body: CreateActualFoodLogDto,
+		now = new Date(),
+	) {
+		const activeTenantId = assertNutritionTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const membership = await getActiveMembership(
+				manager,
+				clientId,
+				activeTenantId,
+			);
+			const log = await lockOwnedWritableLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				logId,
+				membership.tenant.timezone,
+				now,
+			);
+			await assertLoggedMealBelongsToLog(
+				manager,
+				log.id,
+				body.loggedMealId ?? null,
+			);
+
+			const repository = manager.getRepository(FoodLog);
+			const foodLog = repository.create({
+				tenantId: activeTenantId,
+				membershipId: membership.id,
+				nutritionDayLogId: log.id,
+				loggedMealId: body.loggedMealId ?? null,
+				foodId: null,
+				mealSlot: body.mealSlot,
+				foodName: '',
+				brand: null,
+				servingSize: null,
+				servingUnit: null,
+				amount: null,
+				calories: null,
+				proteinG: null,
+				carbsG: null,
+				fatG: null,
+				fiberG: null,
+				clientNotes: normalizeClientNotes(body.clientNotes ?? null),
+				loggedAt: now,
+			});
+			await applyActualFoodDefinition(manager, foodLog, activeTenantId, body);
+			await repository.save(foodLog);
+			await touchNutritionLog(manager, log, now);
+
+			return mapReloadedNutritionLog(
+				manager,
+				activeTenantId,
+				membership,
+				log.id,
+				now,
+			);
+		});
+	}
+
+	async updateActualFood(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+		foodLogId: string,
+		body: UpdateActualFoodLogDto,
+		now = new Date(),
+	) {
+		if (Object.keys(body).length === 0) {
+			throw new BadRequestException(
+				'Provide at least one actual Food field to update',
+			);
+		}
+		const activeTenantId = assertNutritionTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const membership = await getActiveMembership(
+				manager,
+				clientId,
+				activeTenantId,
+			);
+			const log = await lockOwnedWritableLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				logId,
+				membership.tenant.timezone,
+				now,
+			);
+			const repository = manager.getRepository(FoodLog);
+			const foodLog = await repository.findOne({
+				where: {
+					id: foodLogId,
+					tenantId: activeTenantId,
+					membershipId: membership.id,
+					nutritionDayLogId: log.id,
+				},
+			});
+			if (!foodLog) {
+				throw new NotFoundException('Actual Food entry not found');
+			}
+
+			if (body.loggedMealId !== undefined) {
+				await assertLoggedMealBelongsToLog(manager, log.id, body.loggedMealId);
+				foodLog.loggedMealId = body.loggedMealId;
+			}
+			if (body.mealSlot !== undefined) foodLog.mealSlot = body.mealSlot;
+			if (body.clientNotes !== undefined) {
+				foodLog.clientNotes = normalizeClientNotes(body.clientNotes);
+			}
+			await applyActualFoodDefinition(manager, foodLog, activeTenantId, body);
+			await repository.save(foodLog);
+			await touchNutritionLog(manager, log, now);
+
+			return mapReloadedNutritionLog(
+				manager,
+				activeTenantId,
+				membership,
+				log.id,
+				now,
+			);
+		});
+	}
+
+	async deleteActualFood(
+		clientId: string,
+		tenantId: string | null,
+		logId: string,
+		foodLogId: string,
+		now = new Date(),
+	) {
+		const activeTenantId = assertNutritionTenant(tenantId);
+
+		return this.dataSource.transaction(async (manager) => {
+			const membership = await getActiveMembership(
+				manager,
+				clientId,
+				activeTenantId,
+			);
+			const log = await lockOwnedWritableLog(
+				manager,
+				activeTenantId,
+				membership.id,
+				logId,
+				membership.tenant.timezone,
+				now,
+			);
+			const repository = manager.getRepository(FoodLog);
+			const foodLog = await repository.findOne({
+				where: {
+					id: foodLogId,
+					tenantId: activeTenantId,
+					membershipId: membership.id,
+					nutritionDayLogId: log.id,
+				},
+			});
+			if (!foodLog) {
+				throw new NotFoundException('Actual Food entry not found');
+			}
+
+			await repository.remove(foodLog);
+			await touchNutritionLog(manager, log, now);
 
 			return mapReloadedNutritionLog(
 				manager,
@@ -570,12 +767,14 @@ function loadOwnedNutritionLogByDay(
 		relations: {
 			nutritionPlan: { tenant: true },
 			meals: { plannedMeal: { foods: true } },
+			foodLogs: true,
 		},
 		order: {
 			meals: {
 				position: 'ASC',
 				plannedMeal: { foods: { position: 'ASC' } },
 			},
+			foodLogs: { loggedAt: 'ASC', createdAt: 'ASC', id: 'ASC' },
 		},
 	});
 }
@@ -596,12 +795,14 @@ function loadOwnedNutritionLog(
 		relations: {
 			nutritionPlan: { tenant: true },
 			meals: { plannedMeal: { foods: true } },
+			foodLogs: true,
 		},
 		order: {
 			meals: {
 				position: 'ASC',
 				plannedMeal: { foods: { position: 'ASC' } },
 			},
+			foodLogs: { loggedAt: 'ASC', createdAt: 'ASC', id: 'ASC' },
 		},
 	});
 }
@@ -642,6 +843,7 @@ function mapNutritionLogResponse(
 	now: Date,
 ) {
 	const state = mapNutritionDayLogState(log, log.scheduledDate, timezone, now);
+	const foodLogs = [...(log.foodLogs ?? [])].sort(compareActualFoodLogs);
 
 	return {
 		id: log.id,
@@ -659,6 +861,8 @@ function mapNutritionLogResponse(
 		isWritable:
 			log.status === NutritionLogStatus.IN_PROGRESS &&
 			isNutritionLogWindowOpen(log.scheduledDate, timezone, now),
+		actualTotals: calculateActualNutritionTotals(foodLogs),
+		actualFoods: foodLogs.map(mapActualFoodLogResponse),
 		meals: [...(log.meals ?? [])]
 			.sort((left, right) => left.position - right.position)
 			.map((meal) => {
@@ -679,6 +883,9 @@ function mapNutritionLogResponse(
 					},
 					outcome: meal.outcome,
 					clientNotes: meal.clientNotes,
+					actualTotals: calculateActualNutritionTotals(
+						foodLogs.filter((foodLog) => foodLog.loggedMealId === meal.id),
+					),
 					plannedFoods: planned.foods,
 				};
 			}),
@@ -694,4 +901,152 @@ function normalizeClientNotes(value: string | null) {
 	if (value === null) return null;
 	const normalized = value.trim();
 	return normalized.length === 0 ? null : normalized;
+}
+
+async function assertLoggedMealBelongsToLog(
+	manager: EntityManager,
+	logId: string,
+	loggedMealId: string | null,
+) {
+	if (loggedMealId === null) return;
+
+	const loggedMeal = await manager.getRepository(LoggedMeal).findOne({
+		where: { id: loggedMealId, nutritionDayLogId: logId },
+		select: { id: true },
+	});
+	if (!loggedMeal) {
+		throw new NotFoundException('Logged Meal not found');
+	}
+}
+
+async function applyActualFoodDefinition(
+	manager: EntityManager,
+	foodLog: FoodLog,
+	tenantId: string,
+	body: CreateActualFoodLogDto | UpdateActualFoodLogDto,
+) {
+	const nextFoodId =
+		body.foodId === undefined ? foodLog.foodId : (body.foodId ?? null);
+
+	if (nextFoodId) {
+		assertNoManualFoodSnapshotFields(body);
+		const amount = body.amount === undefined ? foodLog.amount : body.amount;
+		if (amount === null || amount === undefined) {
+			throw new BadRequestException(
+				'amount is required for a library-backed actual Food entry',
+			);
+		}
+
+		if (foodLog.foodId === nextFoodId) {
+			if (body.amount !== undefined && body.amount !== foodLog.amount) {
+				assertRealisticActualFoodAmount(
+					body.amount,
+					foodLog.servingUnit as ServingUnit,
+				);
+				const snapshot = recalculateLibraryFoodLogAmount(foodLog, body.amount);
+				assertRealisticActualFoodNutrients(snapshot);
+				Object.assign(foodLog, snapshot);
+			}
+			return;
+		}
+
+		const food = await manager.getRepository(Food).findOne({
+			where: {
+				id: nextFoodId,
+				tenantId,
+				isActive: true,
+			},
+		});
+		if (!food) {
+			throw new NotFoundException('Active Food not found');
+		}
+		assertRealisticActualFoodAmount(amount, food.servingUnit);
+		const snapshot = calculateLibraryFoodLogSnapshot(food, amount);
+		assertRealisticActualFoodNutrients(snapshot);
+		Object.assign(foodLog, snapshot);
+		return;
+	}
+
+	foodLog.foodId = null;
+	const suppliedFoodName = body.foodName as string | null | undefined;
+	const foodName =
+		suppliedFoodName === undefined
+			? foodLog.foodName
+			: suppliedFoodName === null
+				? ''
+				: normalizeFoodDisplayText(suppliedFoodName);
+	if (!foodName) {
+		throw new BadRequestException(
+			'foodName is required for a manual actual Food entry',
+		);
+	}
+	foodLog.foodName = foodName;
+
+	if (body.brand !== undefined) {
+		foodLog.brand = normalizeNullableFoodDisplayText(body.brand);
+	}
+	if (body.servingSize !== undefined) {
+		foodLog.servingSize = body.servingSize;
+	}
+	if (body.servingUnit !== undefined) {
+		foodLog.servingUnit = body.servingUnit;
+	}
+	if (body.amount !== undefined) foodLog.amount = body.amount;
+	if (body.calories !== undefined) foodLog.calories = body.calories;
+	if (body.proteinG !== undefined) foodLog.proteinG = body.proteinG;
+	if (body.carbsG !== undefined) foodLog.carbsG = body.carbsG;
+	if (body.fatG !== undefined) foodLog.fatG = body.fatG;
+	if (body.fiberG !== undefined) foodLog.fiberG = body.fiberG;
+
+	if (foodLog.servingSize !== null && foodLog.servingUnit !== null) {
+		assertRealisticFoodReferenceAmount(
+			foodLog.servingSize,
+			foodLog.servingUnit,
+		);
+	}
+	if (foodLog.amount !== null && foodLog.servingUnit !== null) {
+		assertRealisticActualFoodAmount(foodLog.amount, foodLog.servingUnit);
+	}
+	assertRealisticActualFoodNutrients(foodLog);
+}
+
+function assertNoManualFoodSnapshotFields(
+	body: CreateActualFoodLogDto | UpdateActualFoodLogDto,
+) {
+	const manualFields = [
+		'foodName',
+		'brand',
+		'servingSize',
+		'servingUnit',
+		'calories',
+		'proteinG',
+		'carbsG',
+		'fatG',
+		'fiberG',
+	] as const;
+	if (manualFields.some((field) => body[field] !== undefined)) {
+		throw new BadRequestException(
+			'Library-backed entries accept foodId and amount; Food details are copied by the server',
+		);
+	}
+}
+
+async function touchNutritionLog(
+	manager: EntityManager,
+	log: NutritionDayLog,
+	now: Date,
+) {
+	log.updatedAt = now;
+	await manager.getRepository(NutritionDayLog).save(log);
+}
+
+function compareActualFoodLogs(left: FoodLog, right: FoodLog) {
+	const loggedAtDifference =
+		new Date(left.loggedAt).getTime() - new Date(right.loggedAt).getTime();
+	if (loggedAtDifference !== 0) return loggedAtDifference;
+
+	const createdAtDifference =
+		new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+	if (createdAtDifference !== 0) return createdAtDifference;
+	return left.id.localeCompare(right.id);
 }

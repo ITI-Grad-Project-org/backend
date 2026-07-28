@@ -47,6 +47,36 @@ export const MAX_MEAL_FOOD_AMOUNT = Math.max(
 	...Object.values(MEAL_FOOD_AMOUNT_LIMITS),
 );
 
+/**
+ * Broad safety limits for one client-reported Food entry. These are input
+ * sanity bounds, not recommended intake targets. They allow unusually large
+ * meals and endurance use cases while rejecting database-sized values that
+ * cannot represent one person's real Food entry.
+ */
+export const ACTUAL_FOOD_NUTRIENT_LIMITS = {
+	calories: 5_000,
+	proteinG: 500,
+	carbsG: 1_000,
+	fatG: 500,
+	fiberG: 150,
+} as const;
+
+export const ACTUAL_FOOD_AMOUNT_LIMITS: Record<ServingUnit, number> = {
+	[ServingUnit.G]: 5_000,
+	[ServingUnit.ML]: 5_000,
+	[ServingUnit.PIECE]: 50,
+	[ServingUnit.CUP]: 20,
+	[ServingUnit.TBSP]: 64,
+	[ServingUnit.SCOOP]: 20,
+};
+
+export const MAX_ACTUAL_FOOD_AMOUNT = Math.max(
+	...Object.values(ACTUAL_FOOD_AMOUNT_LIMITS),
+);
+
+/** Maximum reported water for one day; this is not a hydration recommendation. */
+export const MAX_DAILY_WATER_CONSUMED_ML = 12_000;
+
 export type FoodDefinitionForValidation = {
 	servingSize: number;
 	servingUnit: ServingUnit;
@@ -130,7 +160,10 @@ export function assertRealisticFoodDefinition(
 		CALORIE_FLOOR_MINIMUM_TOLERANCE,
 		minimumCaloriesFromProteinAndFat * CALORIE_FLOOR_TOLERANCE_RATIO,
 	);
-	if (food.calories < minimumCaloriesFromProteinAndFat - calorieFloorTolerance) {
+	if (
+		food.calories <
+		minimumCaloriesFromProteinAndFat - calorieFloorTolerance
+	) {
 		throw new BadRequestException(
 			'calories are too low for the declared protein and fat',
 		);
@@ -148,5 +181,65 @@ export function assertRealisticMealFoodAmount(
 		throw new BadRequestException(
 			`${field} cannot exceed ${maximum} ${servingUnit}`,
 		);
+	}
+}
+
+/** Validates a client-reported amount against the selected serving unit. */
+export function assertRealisticActualFoodAmount(
+	amount: number,
+	servingUnit: ServingUnit,
+	field = 'amount',
+) {
+	const maximum = ACTUAL_FOOD_AMOUNT_LIMITS[servingUnit];
+	if (amount > maximum) {
+		throw new BadRequestException(
+			`${field} cannot exceed ${maximum} ${servingUnit} for one actual Food entry`,
+		);
+	}
+}
+
+/** Applies the reusable Food reference-serving limit to a manual diary entry. */
+export function assertRealisticFoodReferenceAmount(
+	amount: number,
+	servingUnit: ServingUnit,
+) {
+	const maximum = FOOD_REFERENCE_AMOUNT_LIMITS[servingUnit];
+	if (amount > maximum) {
+		throw new BadRequestException(
+			`servingSize cannot exceed ${maximum} ${servingUnit}`,
+		);
+	}
+}
+
+type ActualFoodNutrientsForValidation = {
+	calories: number | null;
+	proteinG: number | null;
+	carbsG: number | null;
+	fatG: number | null;
+	fiberG: number | null;
+};
+
+/**
+ * Validates the final nutrient totals of either a manual entry or a calculated
+ * library snapshot. Checking the final snapshot prevents a valid library Food
+ * from becoming an impossible entry after its consumed amount is multiplied.
+ */
+export function assertRealisticActualFoodNutrients(
+	food: ActualFoodNutrientsForValidation,
+) {
+	const nutrientLimits = [
+		['calories', food.calories, ACTUAL_FOOD_NUTRIENT_LIMITS.calories, ''],
+		['proteinG', food.proteinG, ACTUAL_FOOD_NUTRIENT_LIMITS.proteinG, ' g'],
+		['carbsG', food.carbsG, ACTUAL_FOOD_NUTRIENT_LIMITS.carbsG, ' g'],
+		['fatG', food.fatG, ACTUAL_FOOD_NUTRIENT_LIMITS.fatG, ' g'],
+		['fiberG', food.fiberG, ACTUAL_FOOD_NUTRIENT_LIMITS.fiberG, ' g'],
+	] as const;
+
+	for (const [field, value, maximum, unit] of nutrientLimits) {
+		if (value !== null && value > maximum) {
+			throw new BadRequestException(
+				`${field} cannot exceed ${maximum}${unit} for one actual Food entry`,
+			);
+		}
 	}
 }
