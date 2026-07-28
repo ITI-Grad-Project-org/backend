@@ -1,14 +1,10 @@
 import {
-	Body,
 	Controller,
-	Delete,
 	Get,
 	HttpCode,
 	HttpStatus,
 	Param,
 	ParseUUIDPipe,
-	Patch,
-	Post,
 	Query,
 	UseGuards,
 } from '@nestjs/common';
@@ -16,7 +12,6 @@ import {
 	ApiBadRequestResponse,
 	ApiBearerAuth,
 	ApiConflictResponse,
-	ApiCreatedResponse,
 	ApiNotFoundResponse,
 	ApiOkResponse,
 	ApiOperation,
@@ -28,13 +23,6 @@ import { ClientFoodLibraryQueryDto } from '../dto/client-food-library-query.dto'
 import { ClientNutritionCalendarQueryDto } from '../dto/client-nutrition-calendar-query.dto';
 import { ClientNutritionPlanListQueryDto } from '../dto/client-nutrition-plan-list-query.dto';
 import {
-	ClientNutritionDayLogDetailResponseDto,
-	CreateActualFoodLogDto,
-	UpdateActualFoodLogDto,
-	UpdateLoggedMealOutcomeDto,
-	UpdateNutritionDayLogDto,
-} from '../dto/nutrition-logging.dto';
-import {
 	ClientCurrentNutritionPlanResponseDto,
 	ClientFoodResponseDto,
 	ClientNutritionApiErrorResponseDto,
@@ -43,10 +31,9 @@ import {
 	ClientNutritionPlanResponseDto,
 	ClientNutritionPlanSummaryResponseDto,
 } from '../dto/client-nutrition-response.dto';
-import { ClientNutritionLoggingService } from '../services/client-nutrition-logging.service';
 import { ClientNutritionScheduleService } from '../services/client-nutrition-schedule.service';
 
-@ApiTags('client/me/nutrition')
+@ApiTags('Client - Nutrition Schedule')
 @ApiBearerAuth()
 @Public()
 @UseGuards(ClientJwtAuthGuard)
@@ -54,7 +41,6 @@ import { ClientNutritionScheduleService } from '../services/client-nutrition-sch
 export class ClientNutritionController {
 	constructor(
 		private readonly clientNutritionScheduleService: ClientNutritionScheduleService,
-		private readonly clientNutritionLoggingService: ClientNutritionLoggingService,
 	) {}
 
 	@Get('plans')
@@ -86,7 +72,11 @@ export class ClientNutritionController {
 
 	@Get('plans/current')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Get my currently active nutrition plan' })
+	@ApiOperation({
+		summary: 'Get my currently active nutrition plan',
+		description:
+			'Returns the one published plan that covers today in the selected tenant timezone, including the full plan tree and currentDay. It does not return a future scheduled plan.',
+	})
 	@ApiOkResponse({
 		description: 'Current plan retrieved',
 		type: ClientCurrentNutritionPlanResponseDto,
@@ -112,10 +102,18 @@ export class ClientNutritionController {
 
 	@Get('plans/:planId')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Get my complete published nutrition plan' })
+	@ApiOperation({
+		summary: 'Get my complete published nutrition plan',
+		description:
+			'Returns one published plan owned by the active client membership, including dated days, prescribed Meals, dietary warnings, targets, totals, and current log state.',
+	})
 	@ApiOkResponse({
 		description: 'Published plan retrieved',
 		type: ClientNutritionPlanResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId is not a valid UUID.',
+		type: ClientNutritionApiErrorResponseDto,
 	})
 	@ApiNotFoundResponse({
 		description: 'Published plan not found for the active client membership',
@@ -165,10 +163,18 @@ export class ClientNutritionController {
 
 	@Get('days/:dayId')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Get one published nutrition day prescription' })
+	@ApiOperation({
+		summary: 'Get one published nutrition day prescription',
+		description:
+			'Returns one dated day from a published plan owned by the active membership. It includes its plan context, targets, prescribed Meals, warnings, and current log state.',
+	})
 	@ApiOkResponse({
 		description: 'Nutrition day retrieved',
 		type: ClientNutritionDayDetailResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'dayId is not a valid UUID.',
+		type: ClientNutritionApiErrorResponseDto,
 	})
 	@ApiNotFoundResponse({
 		description:
@@ -187,286 +193,6 @@ export class ClientNutritionController {
 		);
 	}
 
-	@Post('days/:dayId/log')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Start or resume my nutrition log for one day' })
-	@ApiOkResponse({
-		description: 'Nutrition day log started or resumed',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description: 'Published nutrition day not found for the active membership',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description:
-			'The day is in the future, its deadline passed, its plan was cancelled, or its log is finalized',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	startOrResumeLog(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('dayId', ParseUUIDPipe) dayId: string,
-	) {
-		return this.clientNutritionLoggingService.startOrResumeLog(
-			clientId,
-			tenantId,
-			dayId,
-		);
-	}
-
-	@Post('days/:dayId/skip')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Skip and finalize one prescribed nutrition day' })
-	@ApiOkResponse({
-		description: 'Nutrition day skipped',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description: 'Published nutrition day not found for the active membership',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description:
-			'The day is not writable, is fully flexible without planned Meals, or its log is finalized',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	skipDay(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('dayId', ParseUUIDPipe) dayId: string,
-	) {
-		return this.clientNutritionLoggingService.skipDay(
-			clientId,
-			tenantId,
-			dayId,
-		);
-	}
-
-	@Get('logs/:logId')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Get one of my nutrition day logs' })
-	@ApiOkResponse({
-		description: 'Nutrition day log retrieved',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description: 'Nutrition day log not found for the active membership',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	getLog(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('logId', ParseUUIDPipe) logId: string,
-	) {
-		return this.clientNutritionLoggingService.getLog(clientId, tenantId, logId);
-	}
-
-	@Patch('logs/:logId')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Update water or client notes on my nutrition log' })
-	@ApiOkResponse({
-		description: 'Nutrition day log updated',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiBadRequestResponse({
-		description: 'No supported field was supplied or a value is invalid',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description: 'Nutrition day log not found for the active membership',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description: 'The log is finalized or its write deadline passed',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	updateLog(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('logId', ParseUUIDPipe) logId: string,
-		@Body() body: UpdateNutritionDayLogDto,
-	) {
-		return this.clientNutritionLoggingService.updateLog(
-			clientId,
-			tenantId,
-			logId,
-			body,
-		);
-	}
-
-	@Patch('logs/:logId/meals/:loggedMealId')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Report the outcome of one prescribed Meal' })
-	@ApiOkResponse({
-		description: 'Logged Meal outcome updated',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiBadRequestResponse({
-		description: 'The Meal outcome or notes are invalid',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description: 'Nutrition log or Logged Meal not found for this membership',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description: 'The log is finalized or its write deadline passed',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	updateMealOutcome(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('logId', ParseUUIDPipe) logId: string,
-		@Param('loggedMealId', ParseUUIDPipe) loggedMealId: string,
-		@Body() body: UpdateLoggedMealOutcomeDto,
-	) {
-		return this.clientNutritionLoggingService.updateMealOutcome(
-			clientId,
-			tenantId,
-			logId,
-			loggedMealId,
-			body,
-		);
-	}
-
-	@Post('logs/:logId/foods')
-	@HttpCode(HttpStatus.CREATED)
-	@ApiOperation({
-		summary: 'Add a library-backed or manual actual Food entry',
-		description:
-			'Library entries use foodId and amount. Manual entries omit foodId and provide foodName with optional total nutrients.',
-	})
-	@ApiCreatedResponse({
-		description: 'Actual Food entry created and updated log totals returned',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiBadRequestResponse({
-		description:
-			'The library/manual entry shape or a supplied value is invalid',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description:
-			'Nutrition log, active library Food, or linked Logged Meal not found for this membership',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description: 'The log is finalized or its write deadline passed',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	createActualFood(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('logId', ParseUUIDPipe) logId: string,
-		@Body() body: CreateActualFoodLogDto,
-	) {
-		return this.clientNutritionLoggingService.createActualFood(
-			clientId,
-			tenantId,
-			logId,
-			body,
-		);
-	}
-
-	@Patch('logs/:logId/foods/:foodLogId')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({
-		summary: 'Update one actual Food entry while its log is writable',
-	})
-	@ApiOkResponse({
-		description: 'Actual Food entry updated and recalculated log returned',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiBadRequestResponse({
-		description:
-			'No supported field was supplied or the entry shape is invalid',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description:
-			'Nutrition log, actual Food, active library Food, or linked Logged Meal not found',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description: 'The log is finalized or its write deadline passed',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	updateActualFood(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('logId', ParseUUIDPipe) logId: string,
-		@Param('foodLogId', ParseUUIDPipe) foodLogId: string,
-		@Body() body: UpdateActualFoodLogDto,
-	) {
-		return this.clientNutritionLoggingService.updateActualFood(
-			clientId,
-			tenantId,
-			logId,
-			foodLogId,
-			body,
-		);
-	}
-
-	@Delete('logs/:logId/foods/:foodLogId')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({
-		summary: 'Delete one actual Food entry while its log is writable',
-	})
-	@ApiOkResponse({
-		description: 'Actual Food entry deleted and recalculated log returned',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description: 'Nutrition log or actual Food entry not found',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description: 'The log is finalized or its write deadline passed',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	deleteActualFood(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('logId', ParseUUIDPipe) logId: string,
-		@Param('foodLogId', ParseUUIDPipe) foodLogId: string,
-	) {
-		return this.clientNutritionLoggingService.deleteActualFood(
-			clientId,
-			tenantId,
-			logId,
-			foodLogId,
-		);
-	}
-
-	@Post('logs/:logId/complete')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Complete and finalize my nutrition day log' })
-	@ApiOkResponse({
-		description: 'Nutrition day log completed',
-		type: ClientNutritionDayLogDetailResponseDto,
-	})
-	@ApiNotFoundResponse({
-		description: 'Nutrition day log not found for the active membership',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	@ApiConflictResponse({
-		description:
-			'A planned Meal is still pending, the log is finalized, or its deadline passed',
-		type: ClientNutritionApiErrorResponseDto,
-	})
-	completeLog(
-		@CurrentClient('clientId') clientId: string,
-		@CurrentTenant() tenantId: string | null,
-		@Param('logId', ParseUUIDPipe) logId: string,
-	) {
-		return this.clientNutritionLoggingService.completeLog(
-			clientId,
-			tenantId,
-			logId,
-		);
-	}
-
 	@Get('library/foods')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
@@ -478,6 +204,15 @@ export class ClientNutritionController {
 		description: 'Active Foods retrieved',
 		type: ClientFoodResponseDto,
 		isArray: true,
+	})
+	@ApiBadRequestResponse({
+		description: 'A search or filter query value is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description:
+			'The active client membership was not found in the selected tenant.',
+		type: ClientNutritionApiErrorResponseDto,
 	})
 	findFoods(
 		@CurrentClient('clientId') clientId: string,

@@ -5,14 +5,13 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { ClientIntake } from '../../../clients/entities/client-intake.entity';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import {
 	addDaysToDateOnly,
 	getDateOnlyInTimeZone,
 	isValidDateOnly,
-	MembershipStatus,
 	NutritionPlanStatus,
 	NutritionPlanType,
 } from '../../../common';
@@ -25,19 +24,25 @@ import { NutritionDayLog } from '../entities/nutrition-day-log.entity';
 import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
 import { NutritionPlan } from '../entities/nutrition-plan.entity';
 import {
-	deriveNutritionPlanSchedulePhase,
 	mapClientNutritionDay,
 	mapClientNutritionPlanBuilder,
 	mapClientNutritionPlanSummary,
-} from '../utils/client-nutrition-plan.utils';
+	omitCoachPlanFields,
+} from '../mappers/client-nutrition-plan.mapper';
+import { findActiveClientNutritionMembership } from '../persistence/client-nutrition-access.persistence';
+import {
+	clientNutritionPlanBuilderOrder,
+	clientNutritionPlanBuilderRelations,
+	loadClientDietaryProfile,
+	loadNutritionLogStates,
+	publishedClientNutritionPlanScope,
+} from '../persistence/client-nutrition-schedule.persistence';
+import { deriveNutritionPlanSchedulePhase } from '../utils/client-nutrition-plan.utils';
 import {
 	getDietaryAdvisoryNotice,
 	mapClientDietaryProfile,
-} from '../utils/nutrition-builder.utils';
-import {
-	mapNutritionDayLogState,
-	NutritionLogStateSource,
-} from '../utils/nutrition-log-state.utils';
+} from '../utils/nutrition-dietary-advisory.utils';
+import { mapNutritionDayLogState } from '../utils/nutrition-log-state.utils';
 import { FoodLibraryService } from './food-library.service';
 
 @Injectable()
@@ -59,7 +64,10 @@ export class ClientNutritionScheduleService {
 	async listPublishedPlans(clientId: string, tenantId: string | null) {
 		const membership = await this.getActiveMembership(clientId, tenantId);
 		const plans = await this.nutritionPlanRepository.find({
-			where: this.publishedPlanScope(membership.tenant.id, membership.id),
+			where: publishedClientNutritionPlanScope(
+				membership.tenant.id,
+				membership.id,
+			),
 			order: { startDate: 'DESC', createdAt: 'DESC' },
 		});
 
@@ -75,12 +83,15 @@ export class ClientNutritionScheduleService {
 		const today = getDateOnlyInTimeZone(new Date(), membership.tenant.timezone);
 		const plans = await this.nutritionPlanRepository.find({
 			where: {
-				...this.publishedPlanScope(membership.tenant.id, membership.id),
+				...publishedClientNutritionPlanScope(
+					membership.tenant.id,
+					membership.id,
+				),
 				startDate: LessThanOrEqual(today),
 				endDate: MoreThanOrEqual(today),
 			},
-			relations: this.builderRelations(),
-			order: this.builderOrder(),
+			relations: clientNutritionPlanBuilderRelations(),
+			order: clientNutritionPlanBuilderOrder(),
 		});
 
 		if (plans.length === 0) {
@@ -112,11 +123,14 @@ export class ClientNutritionScheduleService {
 		const membership = await this.getActiveMembership(clientId, tenantId);
 		const plan = await this.nutritionPlanRepository.findOne({
 			where: {
-				...this.publishedPlanScope(membership.tenant.id, membership.id),
+				...publishedClientNutritionPlanScope(
+					membership.tenant.id,
+					membership.id,
+				),
 				id: planId,
 			},
-			relations: this.builderRelations(),
-			order: this.builderOrder(),
+			relations: clientNutritionPlanBuilderRelations(),
+			order: clientNutritionPlanBuilderOrder(),
 		});
 		if (!plan) {
 			throw new NotFoundException('Published client nutrition plan not found');
@@ -136,19 +150,23 @@ export class ClientNutritionScheduleService {
 		const membership = await this.getActiveMembership(clientId, tenantId);
 		const plans = await this.nutritionPlanRepository.find({
 			where: {
-				...this.publishedPlanScope(membership.tenant.id, membership.id),
+				...publishedClientNutritionPlanScope(
+					membership.tenant.id,
+					membership.id,
+				),
 				startDate: LessThanOrEqual(query.to),
 				endDate: MoreThanOrEqual(query.from),
 			},
-			relations: this.builderRelations(),
+			relations: clientNutritionPlanBuilderRelations(),
 			order: {
 				startDate: 'ASC',
-				...this.builderOrder(),
+				...clientNutritionPlanBuilderOrder(),
 			},
 		});
 		const [dietaryProfile, logsByDayId] = await Promise.all([
-			this.loadDietaryProfile(membership),
-			this.loadLogState(
+			loadClientDietaryProfile(this.clientIntakeRepository, membership),
+			loadNutritionLogStates(
+				this.nutritionDayLogRepository,
 				membership,
 				plans.map((plan) => plan.id),
 			),
@@ -226,8 +244,10 @@ export class ClientNutritionScheduleService {
 		const week = day.nutritionPlanWeek;
 		const plan = week.nutritionPlan;
 		const [dietaryProfile, logsByDayId] = await Promise.all([
-			this.loadDietaryProfile(membership),
-			this.loadLogState(membership, [plan.id]),
+			loadClientDietaryProfile(this.clientIntakeRepository, membership),
+			loadNutritionLogStates(this.nutritionDayLogRepository, membership, [
+				plan.id,
+			]),
 		]);
 		const mappedDay = mapClientNutritionDay(
 			plan,
@@ -255,12 +275,6 @@ export class ClientNutritionScheduleService {
 		};
 	}
 
-	//**
-	// ==================================================
-	// =            HELPERS                             =
-	// =                                                =
-	// ====================================================
-	//   */
 	async findActiveFoods(
 		clientId: string,
 		tenantId: string | null,
@@ -295,56 +309,11 @@ export class ClientNutritionScheduleService {
 		if (!tenantId) {
 			throw new BadRequestException('No active tenant selected');
 		}
-
-		const membership = await this.membershipRepository.findOne({
-			where: {
-				tenant: { id: tenantId },
-				client: { id: clientId },
-				status: MembershipStatus.ACTIVE,
-			},
-			relations: { tenant: true },
-		});
-		if (!membership) {
-			throw new NotFoundException('Active client membership not found');
-		}
-		return membership;
-	}
-
-	private publishedPlanScope(tenantId: string, membershipId: string) {
-		return {
+		return findActiveClientNutritionMembership(
+			this.membershipRepository,
+			clientId,
 			tenantId,
-			membershipId,
-			planType: NutritionPlanType.CLIENT,
-			status: NutritionPlanStatus.PUBLISHED,
-		};
-	}
-
-	private builderRelations() {
-		return { weeks: { days: { meals: { foods: true } } } } as const;
-	}
-
-	private builderOrder() {
-		return {
-			weeks: {
-				weekNumber: 'ASC' as const,
-				days: {
-					dayNumber: 'ASC' as const,
-					meals: {
-						position: 'ASC' as const,
-						foods: { position: 'ASC' as const },
-					},
-				},
-			},
-		};
-	}
-
-	private async loadDietaryProfile(membership: ClientMembership) {
-		return this.clientIntakeRepository.findOne({
-			where: {
-				membership: { id: membership.id },
-				tenant: { id: membership.tenant.id },
-			},
-		});
+		);
 	}
 
 	private async mapPlanWithLogState(
@@ -352,8 +321,10 @@ export class ClientNutritionScheduleService {
 		membership: ClientMembership,
 	) {
 		const [dietaryProfile, logsByDayId] = await Promise.all([
-			this.loadDietaryProfile(membership),
-			this.loadLogState(membership, [plan.id]),
+			loadClientDietaryProfile(this.clientIntakeRepository, membership),
+			loadNutritionLogStates(this.nutritionDayLogRepository, membership, [
+				plan.id,
+			]),
 		]);
 		const mapped = mapClientNutritionPlanBuilder(
 			plan,
@@ -377,31 +348,6 @@ export class ClientNutritionScheduleService {
 		};
 	}
 
-	// IDON'T Understand this fucntion, so explain it line by line
-	private async loadLogState(membership: ClientMembership, planIds: string[]) {
-		const byDayId = new Map<string, NutritionLogStateSource>();
-		if (planIds.length === 0) return byDayId;
-
-		const logs = await this.nutritionDayLogRepository.find({
-			where: {
-				tenantId: membership.tenant.id,
-				membershipId: membership.id,
-				nutritionPlanId: In(planIds),
-			},
-		});
-		for (const log of logs) {
-			byDayId.set(log.nutritionPlanDayId, {
-				id: log.id,
-				status: log.status,
-				adherenceOutcome: log.adherenceOutcome,
-				startedAt: log.startedAt,
-				completedAt: log.completedAt,
-				updatedAt: log.updatedAt,
-			});
-		}
-		return byDayId;
-	}
-
 	private assertCalendarRange(query: ClientNutritionCalendarQueryDto) {
 		if (!isValidDateOnly(query.from) || !isValidDateOnly(query.to)) {
 			throw new BadRequestException('Calendar range dates must be valid');
@@ -421,11 +367,4 @@ export class ClientNutritionScheduleService {
 			);
 		}
 	}
-}
-
-function omitCoachPlanFields<T extends { isArchived: boolean }>(
-	plan: T,
-): Omit<T, 'isArchived'> {
-	const { isArchived: _isArchived, ...clientPlan } = plan;
-	return clientPlan;
 }

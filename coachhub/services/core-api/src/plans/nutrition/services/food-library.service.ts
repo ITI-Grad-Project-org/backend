@@ -9,7 +9,7 @@ import {
 	assertFoodIdentityAvailable,
 	findTenantFoodOrFail,
 	throwFoodConflictForUniqueViolation,
-} from '../helpers/food-library.persistence';
+} from '../persistence/food-library.persistence';
 import {
 	assertActiveTenant,
 	escapePostgresLikePattern,

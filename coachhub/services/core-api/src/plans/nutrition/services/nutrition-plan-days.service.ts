@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UpdateNutritionPlanDayDto } from '../dto/nutrition-builder.dto';
 import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
-import { lockEditableNutritionDay } from '../helpers/nutrition-builder.persistence';
+import { lockEditableNutritionDay } from '../persistence/nutrition-builder.persistence';
 import {
 	assertNutritionTenant,
 	normalizeNutritionPlanText,

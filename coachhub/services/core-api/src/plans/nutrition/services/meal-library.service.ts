@@ -13,7 +13,7 @@ import {
 	lockTenantMealOrFail,
 	throwMealConflictForUniqueViolation,
 	writeMealIngredients,
-} from '../helpers/meal-library.persistence';
+} from '../persistence/meal-library.persistence';
 import {
 	assertActiveTenant,
 	normalizeFoodLookupText,

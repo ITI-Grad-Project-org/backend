@@ -1,20 +1,18 @@
-import {
-	ConflictException,
-	Injectable,
-	NotFoundException,
-} from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
-import { ClientMembership } from '../../../clients/entities/client-membership.entity';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import {
 	deriveInclusiveEndDate,
 	getDateOnlyInTimeZone,
-	MembershipStatus,
 	NutritionPlanStatus,
-	NutritionPlanType,
 } from '../../../common';
 import { RescheduleClientNutritionPlanDto } from '../dto/nutrition-plan-lifecycle.dto';
-import { NutritionPlanWeek } from '../entities/nutrition-plan-week.entity';
 import { NutritionPlan } from '../entities/nutrition-plan.entity';
+import {
+	assertNoPublishedNutritionOverlap,
+	loadNutritionPlanTree,
+	lockActiveNutritionMembership,
+	lockClientNutritionPlan,
+} from '../persistence/nutrition-plan-lifecycle.persistence';
 import {
 	assertNutritionStartDate,
 	assertNutritionTenant,
@@ -22,9 +20,11 @@ import {
 import {
 	assertNutritionPlanCanBeCancelled,
 	assertNutritionPlanStartDateIsPublishable,
+} from '../utils/nutrition-lifecycle.utils';
+import {
 	NutritionVarianceWarning,
 	validateNutritionPlanForPublishing,
-} from '../utils/nutrition-lifecycle.utils';
+} from '../utils/nutrition-publish-validation.utils';
 import { ClientNutritionPlansService } from './client-nutrition-plans.service';
 
 @Injectable()
@@ -54,7 +54,7 @@ export class NutritionPlanLifecycleService {
 				plan.startDate as string,
 				plan.tenant.timezone,
 			);
-			await lockActiveMembership(
+			await lockActiveNutritionMembership(
 				manager,
 				activeTenantId,
 				plan.membershipId as string,
@@ -102,7 +102,7 @@ export class NutritionPlanLifecycleService {
 			}
 			assertNutritionStartDate(body.startDate, plan.tenant.timezone);
 
-			await lockActiveMembership(
+			await lockActiveNutritionMembership(
 				manager,
 				activeTenantId,
 				plan.membershipId as string,
@@ -141,136 +141,25 @@ export class NutritionPlanLifecycleService {
 
 	async archiveClientPlan(tenantId: string | null, planId: string) {
 		const activeTenantId = assertNutritionTenant(tenantId);
-		await this.dataSource.transaction(async (manager) => {
-			const plan = await lockClientNutritionPlan(
-				manager,
-				activeTenantId,
-				planId,
-			);
-			plan.isArchived = true;
-			await manager.getRepository(NutritionPlan).save(plan);
-		});
-
+		await this.setArchived(activeTenantId, planId, true);
 		return { message: 'Client nutrition plan archived' };
 	}
 
 	async unarchiveClientPlan(tenantId: string | null, planId: string) {
 		const activeTenantId = assertNutritionTenant(tenantId);
-		await this.dataSource.transaction(async (manager) => {
-			const plan = await lockClientNutritionPlan(
-				manager,
-				activeTenantId,
-				planId,
-			);
-			plan.isArchived = false;
-			await manager.getRepository(NutritionPlan).save(plan);
-		});
-
+		await this.setArchived(activeTenantId, planId, false);
 		return { message: 'Client nutrition plan unarchived' };
 	}
-}
 
-/** Locks one tenant-owned client plan for a lifecycle transition. */
-async function lockClientNutritionPlan(
-	manager: EntityManager,
-	tenantId: string,
-	planId: string,
-) {
-	const plan = await manager
-		.getRepository(NutritionPlan)
-		.createQueryBuilder('plan')
-		.innerJoinAndSelect('plan.tenant', 'tenant')
-		.where('plan.id = :planId', { planId })
-		.andWhere('plan.tenant_id = :tenantId', { tenantId })
-		.andWhere('plan.plan_type = :planType', {
-			planType: NutritionPlanType.CLIENT,
-		})
-		.setLock('pessimistic_write')
-		.getOne();
-	if (!plan) {
-		throw new NotFoundException('Client nutrition plan not found');
-	}
-	return plan;
-}
-
-/**
- * Locks the shared owning membership so concurrent publication/rescheduling of
- * different plans for the same client cannot both pass the overlap query.
- */
-async function lockActiveMembership(
-	manager: EntityManager,
-	tenantId: string,
-	membershipId: string,
-) {
-	const membership = await manager
-		.getRepository(ClientMembership)
-		.createQueryBuilder('membership')
-		.innerJoin('membership.tenant', 'tenant')
-		.innerJoin('membership.client', 'client')
-		.where('membership.id = :membershipId', { membershipId })
-		.andWhere('tenant.id = :tenantId', { tenantId })
-		.andWhere('membership.status = :status', {
-			status: MembershipStatus.ACTIVE,
-		})
-		.setLock('pessimistic_write')
-		.getOne();
-	if (!membership) {
-		throw new NotFoundException('Active client membership not found');
-	}
-	return membership;
-}
-
-/** Loads the complete immutable prescription tree used by publish validation. */
-async function loadNutritionPlanTree(
-	manager: EntityManager,
-	plan: NutritionPlan,
-) {
-	return manager.getRepository(NutritionPlanWeek).find({
-		where: {
-			nutritionPlanId: plan.id,
-			tenantId: plan.tenantId,
-		},
-		relations: { days: { meals: { foods: true } } },
-		order: {
-			weekNumber: 'ASC',
-			days: {
-				dayNumber: 'ASC',
-				meals: { position: 'ASC', foods: { position: 'ASC' } },
-			},
-		},
-	});
-}
-
-/** Uses inclusive comparisons, so adjacent non-overlapping ranges are valid. */
-async function assertNoPublishedNutritionOverlap(
-	manager: EntityManager,
-	plan: NutritionPlan,
-) {
-	const overlap = await manager
-		.getRepository(NutritionPlan)
-		.createQueryBuilder('overlap')
-		.where('overlap.tenant_id = :tenantId', { tenantId: plan.tenantId })
-		.andWhere('overlap.membership_id = :membershipId', {
-			membershipId: plan.membershipId,
-		})
-		.andWhere('overlap.plan_type = :planType', {
-			planType: NutritionPlanType.CLIENT,
-		})
-		.andWhere('overlap.status = :status', {
-			status: NutritionPlanStatus.PUBLISHED,
-		})
-		// what does this : "<>" mean here
-		.andWhere('overlap.id <> :planId', { planId: plan.id })
-		.andWhere('overlap.start_date <= :endDate', {
-			endDate: plan.endDate,
-		})
-		.andWhere('overlap.end_date >= :startDate', {
-			startDate: plan.startDate,
-		})
-		.getOne();
-	if (overlap) {
-		throw new ConflictException(
-			'Published client nutrition plan dates overlap another plan for this membership',
-		);
+	private async setArchived(
+		tenantId: string,
+		planId: string,
+		isArchived: boolean,
+	) {
+		await this.dataSource.transaction(async (manager) => {
+			const plan = await lockClientNutritionPlan(manager, tenantId, planId);
+			plan.isArchived = isArchived;
+			await manager.getRepository(NutritionPlan).save(plan);
+		});
 	}
 }

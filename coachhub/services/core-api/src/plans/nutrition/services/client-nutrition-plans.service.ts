@@ -23,10 +23,12 @@ import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
 import { NutritionPlanWeek } from '../entities/nutrition-plan-week.entity';
 import { NutritionPlan } from '../entities/nutrition-plan.entity';
 import {
-	assertNutritionStartDate,
-	assertNutritionTenant,
 	mapClientNutritionPlanBuilder,
 	mapClientNutritionPlanSummary,
+} from '../mappers/client-nutrition-plan.mapper';
+import {
+	assertNutritionStartDate,
+	assertNutritionTenant,
 	normalizeNutritionPlanText,
 } from '../utils/client-nutrition-plan.utils';
 

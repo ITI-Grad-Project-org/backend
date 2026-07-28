@@ -9,6 +9,7 @@ import {
 	normalizeFoodDietaryTags,
 	normalizeFoodDisplayText,
 } from './food-library.utils';
+import { roundNutrient } from './nutrition-number.utils';
 
 export interface CalculatedNutrients {
 	calories: number;
@@ -54,10 +55,6 @@ export function assertUniqueMealFoods(items: MealItemDto[]) {
 		}
 		foodIds.add(item.foodId);
 	}
-}
-
-function roundNutrient(value: number) {
-	return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function calculateRawFoodNutrients(food: Food, amount: number): RawNutrients {

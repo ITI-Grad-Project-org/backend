@@ -13,12 +13,28 @@ import {
 	Query,
 } from '@nestjs/common';
 import {
+	ApiBadRequestResponse,
 	ApiBearerAuth,
+	ApiConflictResponse,
+	ApiCreatedResponse,
+	ApiNotFoundResponse,
+	ApiOkResponse,
 	ApiOperation,
-	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
 import { CurrentTenant, CurrentUser } from '../../../auth';
+import {
+	ClientNutritionApiErrorResponseDto,
+	ClientPlannedMealResponseDto,
+} from '../dto/client-nutrition-response.dto';
+import {
+	CoachNutritionDayResponseDto,
+	CoachNutritionPlanBuilderResponseDto,
+	CoachNutritionPlanSummaryResponseDto,
+	CreateLibraryMealAndAddResponseDto,
+	NutritionActionMessageResponseDto,
+	PublishClientNutritionPlanResponseDto,
+} from '../dto/coach-nutrition-response.dto';
 import {
 	CreateClientNutritionPlanDto,
 	UpdateClientNutritionPlanDto,
@@ -31,18 +47,13 @@ import {
 	UpdateNutritionPlanDayDto,
 	UpdatePlannedMealDto,
 } from '../dto/nutrition-builder.dto';
-import {
-	CoachNutritionDayReviewResponseDto,
-	CoachNutritionPlanLogsResponseDto,
-} from '../dto/nutrition-log-review.dto';
 import { RescheduleClientNutritionPlanDto } from '../dto/nutrition-plan-lifecycle.dto';
 import { ClientNutritionPlansService } from '../services/client-nutrition-plans.service';
 import { NutritionPlanLifecycleService } from '../services/nutrition-plan-lifecycle.service';
 import { NutritionPlanDaysService } from '../services/nutrition-plan-days.service';
-import { NutritionLogReviewService } from '../services/nutrition-log-review.service';
 import { PlannedMealsService } from '../services/planned-meals.service';
 
-@ApiTags('coach/client-nutrition-plans')
+@ApiTags('Coach - Client Nutrition Plans')
 @ApiBearerAuth()
 @Controller('plans/nutrition/client-plans')
 export class ClientNutritionPlansController {
@@ -51,15 +62,25 @@ export class ClientNutritionPlansController {
 		private readonly nutritionPlanLifecycleService: NutritionPlanLifecycleService,
 		private readonly nutritionPlanDaysService: NutritionPlanDaysService,
 		private readonly plannedMealsService: PlannedMealsService,
-		private readonly nutritionLogReviewService: NutritionLogReviewService,
 	) {}
 
 	@Post()
-	@ApiOperation({ summary: 'Create a dated client nutrition-plan draft' })
-	@ApiResponse({ status: 201, description: 'Client nutrition plan created' })
-	@ApiResponse({
-		status: 404,
+	@ApiOperation({
+		summary: 'Create a dated client nutrition-plan draft',
+		description:
+			'Creates the draft and its complete dated week/day structure for an active client membership in the coach tenant. The plan is not visible to the client until it is published.',
+	})
+	@ApiCreatedResponse({
+		description: 'The draft and its generated builder tree were created.',
+		type: CoachNutritionPlanBuilderResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'The body, start date, duration, or targets are invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
 		description: 'Active same-tenant client membership not found',
+		type: ClientNutritionApiErrorResponseDto,
 	})
 	createClientPlan(
 		@CurrentTenant() tenantId: string | null,
@@ -75,8 +96,20 @@ export class ClientNutritionPlansController {
 
 	@Get()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'List client nutrition plans in my tenant' })
-	@ApiResponse({ status: 200, description: 'Client nutrition plans retrieved' })
+	@ApiOperation({
+		summary: 'List client nutrition plans in my tenant',
+		description:
+			'Returns coach-facing plan summaries filtered by membership, lifecycle status, and archive state. It does not return the large week/day builder tree.',
+	})
+	@ApiOkResponse({
+		description: 'Matching client nutrition-plan summaries were retrieved.',
+		type: CoachNutritionPlanSummaryResponseDto,
+		isArray: true,
+	})
+	@ApiBadRequestResponse({
+		description: 'One or more query values are invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	findClientPlans(
 		@CurrentTenant() tenantId: string | null,
 		@Query() query: QueryClientNutritionPlansDto,
@@ -84,62 +117,25 @@ export class ClientNutritionPlansController {
 		return this.clientNutritionPlansService.findClientPlans(tenantId, query);
 	}
 
-	@Get(':planId/logs')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({
-		summary: 'Review all nutrition logs for one tenant client plan',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Nutrition plan logs retrieved',
-		type: CoachNutritionPlanLogsResponseDto,
-	})
-	@ApiResponse({
-		status: 404,
-		description: 'Client nutrition plan not found in the active tenant',
-	})
-	listPlanLogs(
-		@CurrentTenant() tenantId: string | null,
-		@Param('planId', ParseUUIDPipe) planId: string,
-	) {
-		return this.nutritionLogReviewService.listPlanLogs(tenantId, planId);
-	}
-
-	@Get(':planId/days/:dayId/log')
-	@HttpCode(HttpStatus.OK)
-	@ApiOperation({
-		summary:
-			'Review one nutrition prescription beside reported and actual intake',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Nutrition plan day review retrieved',
-		type: CoachNutritionDayReviewResponseDto,
-	})
-	@ApiResponse({
-		status: 404,
-		description:
-			'Client nutrition plan day not found under this plan and active tenant',
-	})
-	getPlanDayLog(
-		@CurrentTenant() tenantId: string | null,
-		@Param('planId', ParseUUIDPipe) planId: string,
-		@Param('dayId', ParseUUIDPipe) dayId: string,
-	) {
-		return this.nutritionLogReviewService.getPlanDayLog(
-			tenantId,
-			planId,
-			dayId,
-		);
-	}
-
 	@Get(':planId')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
 		summary: 'Get the ordered dated client nutrition-plan builder tree',
+		description:
+			'Returns the full coach builder: plan targets, client dietary profile, warnings, weeks, dated days, planned Meals, planned Foods, totals, and target variance.',
 	})
-	@ApiResponse({ status: 200, description: 'Client nutrition plan retrieved' })
-	@ApiResponse({ status: 404, description: 'Client nutrition plan not found' })
+	@ApiOkResponse({
+		description: 'The complete client nutrition-plan builder was retrieved.',
+		type: CoachNutritionPlanBuilderResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId is not a valid UUID.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The plan does not exist in the active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	getClientPlan(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -151,10 +147,25 @@ export class ClientNutritionPlansController {
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
 		summary: 'Update client nutrition-plan draft metadata, date, or targets',
+		description:
+			'Updates only supplied fields on a draft. Changing startDate or durationWeeks rebuilds the dated structure while preserving days that still fit where the service permits it.',
 	})
-	@ApiResponse({ status: 200, description: 'Client nutrition plan updated' })
-	@ApiResponse({ status: 404, description: 'Client nutrition plan not found' })
-	@ApiResponse({ status: 409, description: 'Plan is no longer a draft' })
+	@ApiOkResponse({
+		description: 'The updated complete builder tree was returned.',
+		type: CoachNutritionPlanBuilderResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId or the update body is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The plan does not exist in the active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The plan is no longer an editable draft.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	updateClientPlan(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -169,10 +180,30 @@ export class ClientNutritionPlansController {
 
 	@Post(':planId/publish')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Publish a complete client nutrition-plan draft' })
-	@ApiResponse({ status: 200, description: 'Client nutrition plan published' })
-	@ApiResponse({ status: 400, description: 'Plan is incomplete' })
-	@ApiResponse({ status: 409, description: 'Lifecycle or overlap conflict' })
+	@ApiOperation({
+		summary: 'Publish a complete client nutrition-plan draft',
+		description:
+			'Validates the full structure, required daily targets, planned Meals, and Foods, then makes the plan available on the client schedule. Target variance is advisory and is returned as warnings; incomplete structure blocks publishing.',
+	})
+	@ApiOkResponse({
+		description:
+			'The published builder tree and any non-blocking target-variance warnings were returned.',
+		type: PublishClientNutritionPlanResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description:
+			'planId is invalid or the draft has missing targets, missing Meals, or empty Meals.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The plan does not exist in the active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description:
+			'The lifecycle state is invalid or the plan overlaps another published nutrition plan for this membership.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	publishClientPlan(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -190,15 +221,23 @@ export class ClientNutritionPlansController {
 		description:
 			'Only a currently scheduled plan can be rescheduled. The new startDate may be today in the tenant timezone; when today is selected, the plan becomes active immediately and cannot be rescheduled again because active plans are immutable to rescheduling.',
 	})
-	@ApiResponse({
-		status: 200,
+	@ApiOkResponse({
 		description:
 			'Client nutrition plan rescheduled; selecting today makes its schedule phase active immediately',
+		type: CoachNutritionPlanBuilderResponseDto,
 	})
-	@ApiResponse({
-		status: 409,
+	@ApiBadRequestResponse({
+		description: 'planId or the new startDate is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The plan does not exist in the active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
 		description:
 			'Plan is not currently scheduled, or the requested dates overlap another published plan',
+		type: ClientNutritionApiErrorResponseDto,
 	})
 	rescheduleClientPlan(
 		@CurrentTenant() tenantId: string | null,
@@ -219,10 +258,21 @@ export class ClientNutritionPlansController {
 		description:
 			'Drafts should be archived instead of cancelled. Ended plans are historical and cannot be cancelled.',
 	})
-	@ApiResponse({ status: 200, description: 'Client nutrition plan cancelled' })
-	@ApiResponse({
-		status: 409,
+	@ApiOkResponse({
+		description: 'The cancelled complete plan builder was returned.',
+		type: CoachNutritionPlanBuilderResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId is not a valid UUID.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The plan does not exist in the active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
 		description: 'Plan is a draft, already cancelled, or has already ended',
+		type: ClientNutritionApiErrorResponseDto,
 	})
 	cancelClientPlan(
 		@CurrentTenant() tenantId: string | null,
@@ -238,9 +288,21 @@ export class ClientNutritionPlansController {
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
 		summary: 'Restore an archived client nutrition plan to coach lists',
+		description:
+			'Clears the coach-only archive flag. It does not change the plan lifecycle status or make a draft visible to the client.',
 	})
-	@ApiResponse({ status: 200, description: 'Client nutrition plan unarchived' })
-	@ApiResponse({ status: 404, description: 'Client nutrition plan not found' })
+	@ApiOkResponse({
+		description: 'The plan was restored to normal coach list results.',
+		type: NutritionActionMessageResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId is not a valid UUID.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The plan does not exist in the active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	unarchiveClientPlan(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -253,8 +315,23 @@ export class ClientNutritionPlansController {
 
 	@Delete(':planId')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Archive a client nutrition plan from coach lists' })
-	@ApiResponse({ status: 200, description: 'Client nutrition plan archived' })
+	@ApiOperation({
+		summary: 'Archive a client nutrition plan from coach lists',
+		description:
+			'Sets the coach-only archive flag and hides the plan from normal coach list results. Historical data is preserved, and this action does not replace lifecycle cancellation.',
+	})
+	@ApiOkResponse({
+		description: 'The plan was hidden from normal coach list results.',
+		type: NutritionActionMessageResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId is not a valid UUID.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The plan does not exist in the active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	archiveClientPlan(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -269,10 +346,28 @@ export class ClientNutritionPlansController {
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
 		summary: 'Update a nutrition day, target overrides, or flexible status',
+		description:
+			'Updates notes, flexible-day state, or daily target overrides on an editable draft day. A null override means use the plan-level target. Making a day flexible removes its planned Meals.',
 	})
-	@ApiResponse({ status: 200, description: 'Nutrition plan day updated' })
-	@ApiResponse({ status: 404, description: 'Editable plan day not found' })
-	@ApiResponse({ status: 409, description: 'Flexible-day conflict' })
+	@ApiOkResponse({
+		description:
+			'The updated day was returned with effective targets, totals, variance, warnings, and planned Meals.',
+		type: CoachNutritionDayResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId, dayId, or the update body is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description:
+			'The draft plan day does not exist under this plan and active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description:
+			'The operation conflicts with the plan lifecycle or flexible-day rules.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	updatePlanDay(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -288,13 +383,28 @@ export class ClientNutritionPlansController {
 	}
 
 	@Post(':planId/days/:dayId/meals/from-library')
-	@ApiOperation({ summary: 'Snapshot a reusable Meal into a nutrition day' })
-	@ApiResponse({ status: 201, description: 'Planned Meal added' })
-	@ApiResponse({
-		status: 404,
-		description: 'Plan day or active Meal not found',
+	@ApiOperation({
+		summary: 'Snapshot a reusable Meal into a nutrition day',
+		description:
+			'Copies an active reusable Meal and its current Food values into an editable draft day. Later library edits do not silently change this prescription snapshot.',
 	})
-	@ApiResponse({ status: 409, description: 'Flexible-day conflict' })
+	@ApiCreatedResponse({
+		description: 'The new planned Meal snapshot was returned.',
+		type: ClientPlannedMealResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'A path identifier, position, slot, or suggested time is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'Plan day or active Meal not found',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description:
+			'The plan is not editable or the target day is a flexible day.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	addMealFromLibrary(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -312,10 +422,27 @@ export class ClientNutritionPlansController {
 	@Post(':planId/days/:dayId/meals/create-in-library')
 	@ApiOperation({
 		summary: 'Create a reusable Meal and snapshot it into a nutrition day',
+		description:
+			'Creates a new tenant Meal from active Foods and immediately copies it into the selected editable draft day. The response returns both the reusable Meal and the independent planned snapshot.',
 	})
-	@ApiResponse({ status: 201, description: 'Meal created and planned' })
-	@ApiResponse({ status: 404, description: 'Plan day or Food not found' })
-	@ApiResponse({ status: 409, description: 'Flexible-day or name conflict' })
+	@ApiCreatedResponse({
+		description: 'The reusable Meal and planned Meal snapshot were returned.',
+		type: CreateLibraryMealAndAddResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description:
+			'A path identifier, Meal definition, ingredient amount, position, or slot is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description: 'The draft day or at least one active Food was not found.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description:
+			'The day is flexible, the plan is not editable, or the Meal name already exists.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	createLibraryMealAndAdd(
 		@CurrentTenant() tenantId: string | null,
 		@CurrentUser('userId') coachId: string,
@@ -334,9 +461,28 @@ export class ClientNutritionPlansController {
 
 	@Patch(':planId/meals/:plannedMealId')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Edit or reorder a planned Meal' })
-	@ApiResponse({ status: 200, description: 'Planned Meal updated' })
-	@ApiResponse({ status: 404, description: 'Planned Meal not found' })
+	@ApiOperation({
+		summary: 'Edit or reorder a planned Meal',
+		description:
+			'Updates supplied prescription metadata such as slot, position, suggested time, and coach notes. It does not edit the reusable library Meal.',
+	})
+	@ApiOkResponse({
+		description: 'The updated planned Meal snapshot was returned.',
+		type: ClientPlannedMealResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'A path identifier or update value is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description:
+			'The planned Meal does not exist under this plan and active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The plan is not an editable draft.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	updatePlannedMeal(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -355,9 +501,27 @@ export class ClientNutritionPlansController {
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
 		summary: 'Replace the amounts and order of planned Meal Foods',
+		description:
+			'Replaces the complete planned-Food list using Foods already captured in this planned Meal snapshot. The supplied array defines the new order and amounts, and totals are recalculated.',
 	})
-	@ApiResponse({ status: 200, description: 'Planned Meal Foods replaced' })
-	@ApiResponse({ status: 404, description: 'Planned Meal not found' })
+	@ApiOkResponse({
+		description: 'The planned Meal was returned with replaced Foods and totals.',
+		type: ClientPlannedMealResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description:
+			'A path identifier, Food identifier, amount, or item list is invalid.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description:
+			'The planned Meal or a referenced planned Food was not found under this plan.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The plan is not an editable draft.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	replacePlannedMealItems(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,
@@ -374,9 +538,28 @@ export class ClientNutritionPlansController {
 
 	@Delete(':planId/meals/:plannedMealId')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Delete a planned Meal and compact day positions' })
-	@ApiResponse({ status: 200, description: 'Planned Meal deleted' })
-	@ApiResponse({ status: 404, description: 'Planned Meal not found' })
+	@ApiOperation({
+		summary: 'Delete a planned Meal and compact day positions',
+		description:
+			'Deletes the prescription snapshot from an editable draft day and closes position gaps for the remaining planned Meals. The reusable library Meal is not deleted.',
+	})
+	@ApiOkResponse({
+		description: 'The planned Meal was deleted.',
+		type: NutritionActionMessageResponseDto,
+	})
+	@ApiBadRequestResponse({
+		description: 'planId or plannedMealId is not a valid UUID.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiNotFoundResponse({
+		description:
+			'The planned Meal does not exist under this plan and active tenant.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
+	@ApiConflictResponse({
+		description: 'The plan is not an editable draft.',
+		type: ClientNutritionApiErrorResponseDto,
+	})
 	deletePlannedMeal(
 		@CurrentTenant() tenantId: string | null,
 		@Param('planId', ParseUUIDPipe) planId: string,

@@ -14,7 +14,7 @@ import {
 	findActiveTenantFoodsOrFail,
 	throwMealConflictForUniqueViolation,
 	writeMealIngredients,
-} from '../helpers/meal-library.persistence';
+} from '../persistence/meal-library.persistence';
 import {
 	findActiveTenantMealForSnapshot,
 	findPlannedMealDetailsOrFail,
@@ -22,7 +22,7 @@ import {
 	insertPlannedMealSnapshot,
 	lockEditableNutritionDay,
 	rewritePlannedMealPositions,
-} from '../helpers/nutrition-builder.persistence';
+} from '../persistence/nutrition-builder.persistence';
 import { assertNutritionTenant } from '../utils/client-nutrition-plan.utils';
 import {
 	assertUniqueMealFoods,

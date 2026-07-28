@@ -1,5 +1,6 @@
 import { Food } from '../entities/food.entity';
 import { FoodLog } from '../entities/food-log.entity';
+import { roundNutrient } from './nutrition-number.utils';
 
 export interface ActualNutritionTotals {
 	calories: number | null;
@@ -233,10 +234,17 @@ function calculateDifference(actual: number | null, baseline: number | null) {
 	};
 }
 
-function roundNutrient(value: number) {
-	return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
 function multiplyNullableNutrient(value: number | null, multiplier: number) {
 	return value === null ? null : roundNutrient(value * multiplier);
+}
+
+export function compareActualFoodLogs(left: FoodLog, right: FoodLog) {
+	const loggedAtDifference =
+		new Date(left.loggedAt).getTime() - new Date(right.loggedAt).getTime();
+	if (loggedAtDifference !== 0) return loggedAtDifference;
+
+	const createdAtDifference =
+		new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+	if (createdAtDifference !== 0) return createdAtDifference;
+	return left.id.localeCompare(right.id);
 }

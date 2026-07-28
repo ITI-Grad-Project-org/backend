@@ -10,7 +10,7 @@ import {
 	ClientNutritionMembershipResponseDto,
 	ClientNutritionTargetsResponseDto,
 } from './client-nutrition-response.dto';
-import { ActualNutritionTotalsResponseDto } from './nutrition-logging.dto';
+import { ActualNutritionTotalsResponseDto } from './nutrition-logging-response.dto';
 
 export class CoachNutritionReviewPlanResponseDto {
 	@ApiProperty({ format: 'uuid' })
