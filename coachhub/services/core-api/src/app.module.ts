@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AiModule } from './ai/ai.module';
 import { JwtAuthGuard } from './auth';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 import { ClientModule } from './clients/client.module';
 import { CoachesModule } from './coaches/coaches.module';
 import { ProxyThrottlerGuard } from './common/guards/proxy-throttler.guard';
@@ -44,6 +45,7 @@ import { ExercisesModule } from './exercises/exercises.module';
 		OnboardingModule,
 		ReviewsModule,
 		ExercisesModule,
+		ChatModule,
 	],
 
 	providers: [

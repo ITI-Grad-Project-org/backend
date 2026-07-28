@@ -17,5 +17,9 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  // docs/ holds frontend-facing reference files (e.g. chat.types.ts, which imports
+  // socket.io-client — a frontend dep, not a backend one). They are not backend
+  // source and must stay out of the compile.
+  "exclude": ["node_modules", "dist", "docs"]
 }
