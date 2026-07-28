@@ -13,8 +13,8 @@ async function bootstrap() {
 	app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
 	const config = new DocumentBuilder()
-		.setTitle('3Keys API')
-		.setDescription('3Keys Backend API Documentation')
+		.setTitle('UPLY')
+		.setDescription('UPLY Backend API Documentation')
 		.setVersion('1.0')
 		.addBearerAuth()
 		.build();
@@ -25,6 +25,7 @@ async function bootstrap() {
 
 	app.enableCors({
 		origin: allowedOrigins(),
+
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 		credentials: true,
 	});
