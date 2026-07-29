@@ -1,0 +1,4 @@
+/** Rounds persisted and calculated nutrient values to the database scale. */
+export function roundNutrient(value: number) {
+	return Math.round((value + Number.EPSILON) * 100) / 100;
+}
