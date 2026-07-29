@@ -15,3 +15,26 @@ export enum ServingUnit {
 	TBSP = 'tbsp',
 	SCOOP = 'scoop',
 }
+
+export enum NutritionPlanType {
+	CLIENT = 'client',
+	TEMPLATE = 'template',
+}
+
+export enum NutritionPlanStatus {
+	DRAFT = 'draft',
+	PUBLISHED = 'published',
+	CANCELLED = 'cancelled',
+}
+
+export enum NutritionLogStatus {
+	IN_PROGRESS = 'in_progress',
+	FINALIZED = 'finalized',
+}
+
+export enum NutritionAdherenceOutcome {
+	PENDING = 'pending',
+	COMPLETED = 'completed',
+	PARTIAL = 'partial',
+	SKIPPED = 'skipped',
+}
