@@ -11,7 +11,12 @@ import {
 	Post,
 	Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+	ApiBearerAuth,
+	ApiOperation,
+	ApiResponse,
+	ApiTags,
+} from '@nestjs/swagger';
 import { CurrentTenant, CurrentUser } from 'src/auth';
 import { CreateExerciseDto } from './dto/create-exercise.dto';
 import { QueryExercisesDto } from './dto/query-exercises.dto';
@@ -73,5 +78,17 @@ export class ExercisesController {
 		@Param('exerciseId', ParseUUIDPipe) exerciseId: string,
 	) {
 		return this.exerciseService.archiveLibraryExercise(tenantId, exerciseId);
+	}
+
+	@Post(':exerciseId/unarchive')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Restore an archived library exercise' })
+	@ApiResponse({ status: 200, description: 'Exercise unarchived' })
+	@ApiResponse({ status: 404, description: 'Exercise not found' })
+	unarchiveLibraryExercise(
+		@CurrentTenant() tenantId: string,
+		@Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+	) {
+		return this.exerciseService.unarchiveLibraryExercise(tenantId, exerciseId);
 	}
 }

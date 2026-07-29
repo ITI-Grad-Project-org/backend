@@ -207,6 +207,13 @@ export class ExercisesService {
 		return { message: 'Exercise archived' };
 	}
 
+	async unarchiveLibraryExercise(tenantId: string, exerciseId: string) {
+		this.assertTenantContext(tenantId);
+		const exercise = await this.findTenantExerciseOrFail(tenantId, exerciseId);
+		exercise.isActive = true;
+		return this.exerciseRepo.save(exercise);
+	}
+
 	private assertTenantContext(tenantId: string) {
 		if (!tenantId) {
 			throw new BadRequestException(
