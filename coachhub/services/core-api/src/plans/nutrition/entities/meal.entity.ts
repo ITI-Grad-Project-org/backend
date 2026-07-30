@@ -2,20 +2,21 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	Index,
 	JoinColumn,
 	ManyToOne,
 	OneToMany,
 	PrimaryGeneratedColumn,
-	Unique,
 	UpdateDateColumn,
 } from 'typeorm';
-import { Tenant } from '../../../tenant/entities/tenant.entity';
+import { DietaryPreference } from '../../../common';
 import { Coach } from '../../../coaches/entities/coach.entity';
-import { Food } from './food.entity';
-import { numericTransformer } from '../../../common';
+import { Tenant } from '../../../tenant/entities/tenant.entity';
+import { MealIngredient } from './meal-ingredient.entity';
 
 @Entity('meals')
-@Unique(['tenant', 'name'])
+@Index('ux_meals_tenant_name', ['tenantId', 'name'], { unique: true })
+@Index('ix_meals_tenant_active', ['tenantId', 'isActive'])
 export class Meal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
@@ -27,7 +28,7 @@ export class Meal {
 	@JoinColumn({ name: 'tenant_id' })
 	tenant: Tenant;
 
-	@ManyToOne(() => Coach, { nullable: false })
+	@ManyToOne(() => Coach, { nullable: false, onDelete: 'RESTRICT' })
 	@JoinColumn({ name: 'created_by' })
 	createdBy: Coach;
 
@@ -43,6 +44,19 @@ export class Meal {
 	@Column({ name: 'prep_notes', type: 'text', nullable: true })
 	prepNotes: string | null;
 
+	@Column({
+		name: 'dietary_tags',
+		type: 'enum',
+		enum: DietaryPreference,
+		enumName: 'dietary_preference',
+		array: true,
+		default: '{}',
+	})
+	dietaryTags: DietaryPreference[];
+
+	@Column({ type: 'text', array: true, default: '{}' })
+	allergens: string[];
+
 	@Column({ name: 'is_active', default: true })
 	isActive: boolean;
 
@@ -56,38 +70,4 @@ export class Meal {
 
 	@UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
 	updatedAt: Date;
-}
-
-@Entity('meal_ingredients')
-export class MealIngredient {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
-
-	@Column({ name: 'meal_id', type: 'uuid' })
-	mealId: string;
-
-	@ManyToOne(() => Meal, (meal) => meal.ingredients, {
-		nullable: false,
-		onDelete: 'CASCADE',
-	})
-	@JoinColumn({ name: 'meal_id' })
-	meal: Meal;
-
-	@Column({ name: 'food_id', type: 'uuid' })
-	foodId: string;
-
-	@ManyToOne(() => Food, { nullable: false })
-	@JoinColumn({ name: 'food_id' })
-	food: Food;
-
-	@Column({
-		type: 'numeric',
-		precision: 7,
-		scale: 2,
-		transformer: numericTransformer,
-	})
-	quantity: number;
-
-	@Column({ type: 'smallint' })
-	position: number;
 }

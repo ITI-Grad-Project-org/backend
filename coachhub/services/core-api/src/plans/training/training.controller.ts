@@ -203,6 +203,21 @@ export class TrainingController {
 		);
 	}
 
+	@Post(':programId/unarchive')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Restore an archived client program to coach lists' })
+	@ApiResponse({ status: 200, description: 'Client program unarchived' })
+	@ApiResponse({ status: 404, description: 'Client program not found' })
+	unarchiveClientProgram(
+		@CurrentTenant() tenantId: string | null,
+		@Param('programId', ParseUUIDPipe) programId: string,
+	) {
+		return this.programLifecycleService.unarchiveClientProgram(
+			tenantId,
+			programId,
+		);
+	}
+
 	@Patch(':programId/days/:programDayId')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({

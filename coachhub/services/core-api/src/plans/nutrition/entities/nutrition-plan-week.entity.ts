@@ -9,13 +9,13 @@ import {
 	Unique,
 } from 'typeorm';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
-import { MealPlan } from './meal-plan.entity';
-import { MealPlanDay } from './meal-plan-day.entity';
+import { NutritionPlanDay } from './nutrition-plan-day.entity';
+import { NutritionPlan } from './nutrition-plan.entity';
 
-@Entity('meal_plan_weeks')
-@Unique(['mealPlan', 'weekNumber'])
-@Check(`"week_number" >= 1`)
-export class MealPlanWeek {
+@Entity('nutrition_plan_weeks')
+@Unique(['nutritionPlanId', 'weekNumber'])
+@Check('ck_nutrition_plan_weeks_number', `"week_number" >= 1`)
+export class NutritionPlanWeek {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -26,15 +26,15 @@ export class MealPlanWeek {
 	@JoinColumn({ name: 'tenant_id' })
 	tenant: Tenant;
 
-	@Column({ name: 'meal_plan_id', type: 'uuid' })
-	mealPlanId: string;
+	@Column({ name: 'nutrition_plan_id', type: 'uuid' })
+	nutritionPlanId: string;
 
-	@ManyToOne(() => MealPlan, (plan) => plan.weeks, {
+	@ManyToOne(() => NutritionPlan, (plan) => plan.weeks, {
 		nullable: false,
 		onDelete: 'CASCADE',
 	})
-	@JoinColumn({ name: 'meal_plan_id' })
-	mealPlan: MealPlan;
+	@JoinColumn({ name: 'nutrition_plan_id' })
+	nutritionPlan: NutritionPlan;
 
 	@Column({ name: 'week_number', type: 'smallint' })
 	weekNumber: number;
@@ -42,8 +42,8 @@ export class MealPlanWeek {
 	@Column({ type: 'text', nullable: true })
 	notes: string | null;
 
-	@OneToMany(() => MealPlanDay, (day) => day.mealPlanWeek, {
+	@OneToMany(() => NutritionPlanDay, (day) => day.nutritionPlanWeek, {
 		cascade: ['insert'],
 	})
-	days: MealPlanDay[];
+	days: NutritionPlanDay[];
 }

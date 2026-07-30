@@ -1,4 +1,5 @@
 import {
+	Check,
 	Column,
 	Entity,
 	Index,
@@ -8,15 +9,16 @@ import {
 	PrimaryGeneratedColumn,
 	Unique,
 } from 'typeorm';
+import { DietaryPreference, MealSlot } from '../../../common';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
-import { MealPlanDay } from './meal-plan-day.entity';
 import { Meal } from './meal.entity';
-import { Food } from './food.entity';
-import { MealSlot, numericTransformer } from '../../../common';
+import { NutritionPlanDay } from './nutrition-plan-day.entity';
+import { PlannedMealFood } from './planned-meal-food.entity';
 
 @Entity('planned_meals')
-@Unique(['mealPlanDay', 'slot', 'position'])
-@Index('ix_planned_meals_day', ['mealPlanDayId', 'slot'])
+@Unique(['nutritionPlanDayId', 'position'])
+@Index('ix_planned_meals_day_slot', ['nutritionPlanDayId', 'slot'])
+@Check('ck_planned_meals_position', `"position" >= 1`)
 export class PlannedMeal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
@@ -28,15 +30,47 @@ export class PlannedMeal {
 	@JoinColumn({ name: 'tenant_id' })
 	tenant: Tenant;
 
-	@Column({ name: 'meal_plan_day_id', type: 'uuid' })
-	mealPlanDayId: string;
+	@Column({ name: 'nutrition_plan_day_id', type: 'uuid' })
+	nutritionPlanDayId: string;
 
-	@ManyToOne(() => MealPlanDay, (day) => day.meals, {
+	@ManyToOne(() => NutritionPlanDay, (day) => day.meals, {
 		nullable: false,
 		onDelete: 'CASCADE',
 	})
-	@JoinColumn({ name: 'meal_plan_day_id' })
-	mealPlanDay: MealPlanDay;
+	@JoinColumn({ name: 'nutrition_plan_day_id' })
+	nutritionPlanDay: NutritionPlanDay;
+
+	@Column({ name: 'source_meal_id', type: 'uuid' })
+	sourceMealId: string;
+
+	@ManyToOne(() => Meal, { nullable: false, onDelete: 'RESTRICT' })
+	@JoinColumn({ name: 'source_meal_id' })
+	sourceMeal: Meal;
+
+	@Column({ name: 'meal_name', length: 150 })
+	mealName: string;
+
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
+	@Column({ name: 'photo_url', type: 'text', nullable: true })
+	photoUrl: string | null;
+
+	@Column({ name: 'prep_notes', type: 'text', nullable: true })
+	prepNotes: string | null;
+
+	@Column({
+		name: 'dietary_tags',
+		type: 'enum',
+		enum: DietaryPreference,
+		enumName: 'dietary_preference',
+		array: true,
+		default: '{}',
+	})
+	dietaryTags: DietaryPreference[];
+
+	@Column({ type: 'text', array: true, default: '{}' })
+	allergens: string[];
 
 	@Column({
 		type: 'enum',
@@ -45,64 +79,17 @@ export class PlannedMeal {
 	})
 	slot: MealSlot;
 
-	@Column({ type: 'smallint', default: 1 })
+	@Column({ type: 'smallint' })
 	position: number;
 
-	@ManyToOne(() => Meal, { nullable: true, onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'source_meal_id' })
-	sourceMeal: Meal | null;
-
-	@Column({ length: 150 })
-	name: string;
-
-	@Column({
-		type: 'numeric',
-		precision: 4,
-		scale: 2,
-		default: 1,
-		transformer: numericTransformer,
-	})
-	servings: number;
+	@Column({ name: 'suggested_time', type: 'time', nullable: true })
+	suggestedTime: string | null;
 
 	@Column({ name: 'coach_notes', type: 'text', nullable: true })
 	coachNotes: string | null;
 
-	@OneToMany(() => PlannedMealFood, (item) => item.plannedMeal, {
+	@OneToMany(() => PlannedMealFood, (food) => food.plannedMeal, {
 		cascade: ['insert'],
 	})
-	items: PlannedMealFood[];
-}
-
-@Entity('planned_meal_foods')
-export class PlannedMealFood {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
-
-	@Column({ name: 'planned_meal_id', type: 'uuid' })
-	plannedMealId: string;
-
-	@ManyToOne(() => PlannedMeal, (plannedMeal) => plannedMeal.items, {
-		nullable: false,
-		onDelete: 'CASCADE',
-	})
-	@JoinColumn({ name: 'planned_meal_id' })
-	plannedMeal: PlannedMeal;
-
-	@Column({ name: 'food_id', type: 'uuid' })
-	foodId: string;
-
-	@ManyToOne(() => Food, { nullable: false })
-	@JoinColumn({ name: 'food_id' })
-	food: Food;
-
-	@Column({
-		type: 'numeric',
-		precision: 7,
-		scale: 2,
-		transformer: numericTransformer,
-	})
-	quantity: number;
-
-	@Column({ type: 'smallint' })
-	position: number;
+	foods: PlannedMealFood[];
 }

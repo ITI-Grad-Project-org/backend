@@ -18,6 +18,7 @@ import {
 	Min,
 } from 'class-validator';
 import { DifficultyLevel, FitnessGoal } from '../../../common';
+import { TRAINING_VALIDATION_LIMITS } from '../utils/training-validation.constants';
 
 export class CreateClientProgramDto {
 	@ApiProperty({ format: 'uuid' })
@@ -31,9 +32,13 @@ export class CreateClientProgramDto {
 	@MaxLength(150)
 	name: string;
 
-	@ApiPropertyOptional({ example: 'Eight-week strength phase' })
+	@ApiPropertyOptional({
+		example: 'Eight-week strength phase',
+		maxLength: TRAINING_VALIDATION_LIMITS.programDescriptionLength,
+	})
 	@IsOptional()
 	@IsString()
+	@MaxLength(TRAINING_VALIDATION_LIMITS.programDescriptionLength)
 	description?: string | null;
 
 	@ApiPropertyOptional({ enum: FitnessGoal })
