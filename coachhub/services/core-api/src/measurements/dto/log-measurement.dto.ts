@@ -1,15 +1,16 @@
 import {
-	IsArray,
 	IsDateString,
 	IsNumber,
 	IsOptional,
-	IsUrl,
 	IsUUID,
 	Max,
 	Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+// Sent as multipart form-data (progress photos ride along as files), so every
+// numeric field is coerced from its string form before validation.
 export class LogMeasurementDto {
 	@ApiProperty({ format: 'uuid' })
 	@IsUUID()
@@ -22,6 +23,7 @@ export class LogMeasurementDto {
 
 	@ApiPropertyOptional({ example: 82.5 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(20)
 	@Max(500)
@@ -29,6 +31,7 @@ export class LogMeasurementDto {
 
 	@ApiPropertyOptional({ example: 18.5 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(1)
 	@Max(80)
@@ -36,37 +39,39 @@ export class LogMeasurementDto {
 
 	@ApiPropertyOptional({ example: 102 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(0)
 	chestCm?: number;
 
 	@ApiPropertyOptional({ example: 84 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(0)
 	waistCm?: number;
 
 	@ApiPropertyOptional({ example: 98 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(0)
 	hipsCm?: number;
 
 	@ApiPropertyOptional({ example: 36 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(0)
 	armCm?: number;
 
 	@ApiPropertyOptional({ example: 58 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(0)
 	thighCm?: number;
 
-	@ApiPropertyOptional({ type: [String], description: 'Progress photo URLs' })
-	@IsOptional()
-	@IsArray()
-	@IsUrl({}, { each: true })
-	photos?: string[];
+	// Progress photos are uploaded as `photos` file parts, not URLs. Sending any
+	// on update replaces the stored set.
 }

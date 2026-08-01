@@ -3,7 +3,12 @@ import {
 	Injectable,
 	InternalServerErrorException,
 } from '@nestjs/common';
-import { ConfigService, ImageDimensions } from '../config';
+import {
+	ConfigService,
+	DocumentSpec,
+	ImageCategory,
+	ImageDimensions,
+} from '../config';
 
 import * as AWS from 'aws-sdk';
 import { v4 as uuid } from 'uuid';
@@ -22,7 +27,10 @@ const MIME_TO_EXT: Record<string, string> = {
 	'application/pdf': 'pdf',
 	'image/jpeg': 'jpg',
 	'image/png': 'png',
+	'image/webp': 'webp',
 };
+
+export type DocumentType = 'certificate';
 
 @Injectable()
 export class S3UploadService {
@@ -36,8 +44,12 @@ export class S3UploadService {
 
 	async uploadImage(
 		file: Express.Multer.File,
-		type: 'coach' | 'client',
+		type: ImageCategory,
 	): Promise<UploadResult> {
+		if (!file) {
+			throw new BadRequestException('No file provided');
+		}
+
 		const imageConfig = this.configService.imageTypes[type];
 
 		this.validateMimeType(file, imageConfig);
@@ -55,9 +67,40 @@ export class S3UploadService {
 
 	async uploadImages(
 		files: Express.Multer.File[],
-		type: 'coach' | 'client',
+		type: ImageCategory,
 	): Promise<UploadResult[]> {
 		return Promise.all(files.map((file) => this.uploadImage(file, type)));
+	}
+
+	/**
+	 * Uploads a document (PDF or image scan) verbatim — no `sharp` pass, so a PDF
+	 * survives intact. Images sent through here keep their original bytes too,
+	 * unlike {@link uploadImage} which re-encodes to WebP.
+	 */
+	async uploadDocument(
+		file: Express.Multer.File,
+		type: DocumentType,
+	): Promise<UploadResult> {
+		const spec = this.configService.documentTypes[type];
+
+		this.validateDocument(file, spec);
+
+		const ext = MIME_TO_EXT[file.mimetype] ?? 'bin';
+		const key = this.generateDocumentKey(spec.path, file.originalname, ext);
+
+		await this.uploadToS3(key, file.buffer, file.mimetype);
+
+		return {
+			url: `${this.configService.awsConfig.s3.baseUrl}/${key}`,
+			key,
+		};
+	}
+
+	async uploadDocuments(
+		files: Express.Multer.File[],
+		type: DocumentType,
+	): Promise<UploadResult[]> {
+		return Promise.all(files.map((file) => this.uploadDocument(file, type)));
 	}
 
 	async deleteImage(key: string): Promise<void> {
@@ -114,6 +157,23 @@ export class S3UploadService {
 			throw new BadRequestException(
 				`Invalid file type. Allowed: ${config.allowedMimeTypes.join(', ')}`,
 			);
+		}
+	}
+
+	private validateDocument(
+		file: Express.Multer.File,
+		spec: DocumentSpec,
+	): void {
+		if (!file) {
+			throw new BadRequestException('No file provided');
+		}
+		if (!spec.allowedMimeTypes.includes(file.mimetype)) {
+			throw new BadRequestException(
+				`Invalid file type. Allowed: ${spec.allowedMimeTypes.join(', ')}`,
+			);
+		}
+		if (file.size > spec.maxSizeMB * 1024 * 1024) {
+			throw new BadRequestException(`File too large. Max ${spec.maxSizeMB} MB`);
 		}
 	}
 

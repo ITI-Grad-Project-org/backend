@@ -12,3 +12,15 @@ export class UploadImageDto {
 	@IsIn(['coach', 'client'])
 	type: 'coach' | 'client';
 }
+
+export class UploadDocumentDto {
+	@ApiProperty({
+		description: 'Document type category',
+		enum: ['certificate'],
+		example: 'certificate',
+	})
+	@IsString()
+	@IsNotEmpty()
+	@IsIn(['certificate'])
+	type: 'certificate';
+}

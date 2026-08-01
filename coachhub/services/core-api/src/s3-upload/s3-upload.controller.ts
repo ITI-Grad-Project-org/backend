@@ -19,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { S3UploadService, UploadResult } from './s3-upload.service';
-import { UploadImageDto } from './dto/upload.dto';
+import { UploadDocumentDto, UploadImageDto } from './dto/upload.dto';
 import { Public } from '../auth';
 
 // TODO(security): uploads are currently open to preserve the existing
@@ -84,6 +84,31 @@ export class S3UploadController {
 	): Promise<{ success: boolean; data: UploadResult[] }> {
 		const results = await this.s3UploadService.uploadImages(files, dto.type);
 		return { success: true, data: results };
+	}
+
+	@Post('document')
+	@ApiOperation({ summary: 'Upload a single document (PDF or image scan)' })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				file: { type: 'string', format: 'binary' },
+				type: { type: 'string', enum: ['certificate'] },
+			},
+			required: ['file', 'type'],
+		},
+	})
+	@ApiResponse({ status: 201, description: 'Document uploaded successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid file or type' })
+	@HttpCode(HttpStatus.CREATED)
+	@UseInterceptors(FileInterceptor('file'))
+	async uploadDocument(
+		@UploadedFile() file: Express.Multer.File,
+		@Body() dto: UploadDocumentDto,
+	): Promise<{ success: boolean; data: UploadResult }> {
+		const result = await this.s3UploadService.uploadDocument(file, dto.type);
+		return { success: true, data: result };
 	}
 
 	@Delete(':key(*)')

@@ -68,11 +68,7 @@ export class UpdateCoachDto {
 	lastName?: string;
 
 	// ── Step 1: About you ────────────────────────────────────────────────────
-	@ApiPropertyOptional({ example: 'https://cdn.example.com/avatars/jane.jpg' })
-	@IsOptional()
-	@IsUrl()
-	avatarUrl?: string;
-
+	// The profile photo is uploaded as the `avatar` file part, not a URL.
 	@ApiPropertyOptional({ example: '+201000000000' })
 	@IsOptional()
 	@IsPhoneNumber()
@@ -131,14 +127,8 @@ export class UpdateCoachDto {
 	@IsUrl()
 	portfolioUrl?: string;
 
-	@ApiPropertyOptional({
-		type: [String],
-		example: ['https://cdn.example.com/transformations/1.jpg'],
-	})
-	@IsOptional()
-	@IsArray()
-	@IsUrl({}, { each: true })
-	transformationPhotos?: string[];
+	// Transformation photos are uploaded as `transformationPhotos` file parts.
+	// Sending any replaces the stored set; sending none leaves it unchanged.
 
 	@ApiPropertyOptional({ example: '"Lost 12kg in 5 months" — Sara A.' })
 	@IsOptional()

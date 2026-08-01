@@ -12,6 +12,7 @@ import { CreateMeasurementDto } from './dto/create-measurement.dto';
 import { QueryMeasurementsDto } from './dto/query-measurements.dto';
 import { UpdateMeasurementDto } from './dto/update-measurement.dto';
 import { Measurement } from './entities/measurement.entity';
+import { S3UploadService } from '../s3-upload/s3-upload.service';
 
 @Injectable()
 export class MeasurementsService {
@@ -20,12 +21,20 @@ export class MeasurementsService {
 		private readonly measurementRepository: Repository<Measurement>,
 		@InjectRepository(ClientMembership)
 		private readonly membershipRepository: Repository<ClientMembership>,
+		private readonly s3UploadService: S3UploadService,
 	) {}
+
+	private async uploadPhotos(photos: Express.Multer.File[]): Promise<string[]> {
+		if (photos.length === 0) return [];
+		const results = await this.s3UploadService.uploadImages(photos, 'client');
+		return results.map((r) => r.url);
+	}
 
 	async createClientMeasurement(
 		clientId: string,
 		tenantId: string | null,
 		dto: CreateMeasurementDto,
+		photos: Express.Multer.File[] = [],
 	) {
 		const membership = await this.resolveActiveMembership(clientId, tenantId);
 		const measuredAt = dto.measuredAt ?? new Date().toISOString().slice(0, 10);
@@ -40,8 +49,11 @@ export class MeasurementsService {
 			throw new ConflictException('Measurement already exists for this date');
 		}
 
+		const photoUrls = await this.uploadPhotos(photos);
+
 		const measurement = this.measurementRepository.create({
 			...dto,
+			...(photoUrls.length > 0 ? { photos: photoUrls } : {}),
 			measuredAt,
 			membershipId: membership.id,
 			membership: { id: membership.id },
@@ -52,6 +64,10 @@ export class MeasurementsService {
 		try {
 			return await this.measurementRepository.save(measurement);
 		} catch (error) {
+			// Don't leak the just-uploaded objects if the row can't be written.
+			await Promise.all(
+				photoUrls.map((url) => this.s3UploadService.deleteByUrl(url)),
+			);
 			this.throwConflictForUniqueViolation(
 				error,
 				'Measurement already exists for this date',
@@ -118,6 +134,7 @@ export class MeasurementsService {
 		tenantId: string | null,
 		measurementId: string,
 		dto: UpdateMeasurementDto,
+		photos: Express.Multer.File[] = [],
 	) {
 		const membership = await this.resolveActiveMembership(clientId, tenantId);
 		const measurement = await this.getOwnedMeasurementOrThrow(
@@ -125,11 +142,24 @@ export class MeasurementsService {
 			measurementId,
 		);
 
+		const replacedPhotos = photos.length > 0 ? (measurement.photos ?? []) : [];
+		const photoUrls = await this.uploadPhotos(photos);
+
 		Object.assign(measurement, dto);
+		if (photoUrls.length > 0) {
+			measurement.photos = photoUrls;
+		}
 
 		try {
-			return await this.measurementRepository.save(measurement);
+			const saved = await this.measurementRepository.save(measurement);
+			await Promise.all(
+				replacedPhotos.map((url) => this.s3UploadService.deleteByUrl(url)),
+			);
+			return saved;
 		} catch (error) {
+			await Promise.all(
+				photoUrls.map((url) => this.s3UploadService.deleteByUrl(url)),
+			);
 			this.throwConflictForUniqueViolation(
 				error,
 				'Measurement already exists for this date',
