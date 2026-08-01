@@ -9,9 +9,13 @@ import { ClientService } from './client.service';
 import { ClientIntake } from './entities/client-intake.entity';
 import { ClientMembership } from './entities/client-membership.entity';
 import { Client } from './entities/client.entity';
+import { S3UploadModule } from '../s3-upload/s3-upload.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([Client, ClientMembership, ClientIntake])],
+	imports: [
+		TypeOrmModule.forFeature([Client, ClientMembership, ClientIntake]),
+		S3UploadModule,
+	],
 	controllers: [
 		ClientController,
 		ClientProfileController,

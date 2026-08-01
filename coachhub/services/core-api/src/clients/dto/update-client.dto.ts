@@ -3,10 +3,10 @@ import {
 	IsEnum,
 	IsNumber,
 	IsOptional,
-	IsUrl,
 	Max,
 	Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Gender } from 'src/common';
 import { CreateClientDto } from './create-client.dto';
@@ -26,8 +26,11 @@ export class UpdateClientDto extends PartialType(
 	@IsEnum(Gender)
 	gender?: Gender;
 
+	// Sent as multipart form fields, so numerics arrive as strings — coerce
+	// them before validation.
 	@ApiPropertyOptional({ example: 168.5 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(50)
 	@Max(300)
@@ -35,14 +38,12 @@ export class UpdateClientDto extends PartialType(
 
 	@ApiPropertyOptional({ example: 72.5 })
 	@IsOptional()
+	@Type(() => Number)
 	@IsNumber()
 	@Min(20)
 	@Max(500)
 	weightKg?: number;
 
-	// The client uploads through POST /upload/image first and sends back the URL.
-	@ApiPropertyOptional({ example: 'https://cdn.example.com/avatars/sara.jpg' })
-	@IsOptional()
-	@IsUrl()
-	avatarUrl?: string;
+	// The profile photo is uploaded as the `avatar` file part of this
+	// multipart request — there is no URL field.
 }

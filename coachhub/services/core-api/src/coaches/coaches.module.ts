@@ -8,6 +8,7 @@ import { Coach } from './entities/coach.entity';
 import { ClientMembership } from '../clients/entities/client-membership.entity';
 import { ExercisesModule } from '../exercises/exercises.module';
 import { TenantModule } from '../tenant/tenant.module';
+import { S3UploadModule } from '../s3-upload/s3-upload.module';
 
 @Module({
 	// Directory first: CoachesController owns `@Get(':id')` on the same `coaches`
@@ -20,6 +21,7 @@ import { TenantModule } from '../tenant/tenant.module';
 		TypeOrmModule.forFeature([Coach, ClientMembership]),
 		TenantModule,
 		ExercisesModule,
+		S3UploadModule,
 	],
 	exports: [CoachesService],
 })

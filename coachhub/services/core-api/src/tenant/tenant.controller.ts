@@ -7,10 +7,16 @@ import {
 	HttpStatus,
 	Param,
 	ParseUUIDPipe,
+	Patch,
 	Post,
+	UploadedFile,
+	UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
 	ApiBearerAuth,
+	ApiBody,
+	ApiConsumes,
 	ApiOperation,
 	ApiParam,
 	ApiResponse,
@@ -19,6 +25,7 @@ import {
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { CurrentTenant } from '../auth/decorators/current-tenant.decorator';
+import { fileUploadMulterOptions } from '../s3-upload/multer.config';
 
 @ApiTags('Tenants')
 @Controller('tenant')
@@ -33,6 +40,28 @@ export class TenantController {
 	@HttpCode(HttpStatus.CREATED)
 	create(@Body() createTenantDto: CreateTenantDto) {
 		return this.tenantService.create(createTenantDto);
+	}
+
+	@Patch('me/logo')
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Upload/replace my tenant's brand logo" })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: { logo: { type: 'string', format: 'binary' } },
+			required: ['logo'],
+		},
+	})
+	@ApiResponse({ status: 200, description: 'Logo updated' })
+	@ApiResponse({ status: 400, description: 'Invalid file' })
+	@HttpCode(HttpStatus.OK)
+	@UseInterceptors(FileInterceptor('logo', fileUploadMulterOptions))
+	updateLogo(
+		@CurrentTenant() tenantId: string,
+		@UploadedFile() logo: Express.Multer.File,
+	) {
+		return this.tenantService.updateLogo(tenantId, logo);
 	}
 
 	@Get('me')

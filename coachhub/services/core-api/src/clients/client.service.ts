@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { Client } from './entities/client.entity';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { S3UploadService } from '../s3-upload/s3-upload.service';
 
 @Injectable()
 export class ClientService {
 	constructor(
 		@InjectRepository(Client)
 		private readonly clientRepository: Repository<Client>,
+		private readonly s3UploadService: S3UploadService,
 	) {}
 
 	async create(createClientDto: CreateClientDto): Promise<Client> {
@@ -171,8 +173,40 @@ export class ClientService {
 		return this.clientRepository.update(id, { hashedRefreshToken: null });
 	}
 
-	update(id: string, updateClientDto: UpdateClientDto) {
-		return this.clientRepository.update(id, updateClientDto);
+	/**
+	 * Updates the profile, uploading the avatar in the same request when a file
+	 * is attached. The new image is uploaded before the row is written so a
+	 * failed upload aborts the update; the previous avatar is removed afterwards,
+	 * best-effort, to avoid orphaned objects.
+	 */
+	async update(
+		id: string,
+		updateClientDto: UpdateClientDto,
+		avatar?: Express.Multer.File,
+	) {
+		let newAvatarUrl: string | undefined;
+		let previousAvatarUrl: string | null = null;
+
+		if (avatar) {
+			const existing = await this.clientRepository.findOne({
+				where: { id },
+				select: { id: true, avatarUrl: true },
+			});
+			previousAvatarUrl = existing?.avatarUrl ?? null;
+			newAvatarUrl = (await this.s3UploadService.uploadImage(avatar, 'client'))
+				.url;
+		}
+
+		await this.clientRepository.update(id, {
+			...updateClientDto,
+			...(newAvatarUrl ? { avatarUrl: newAvatarUrl } : {}),
+		});
+
+		if (newAvatarUrl && previousAvatarUrl) {
+			await this.s3UploadService.deleteByUrl(previousAvatarUrl);
+		}
+
+		return this.findProfileById(id);
 	}
 
 	remove(id: string) {
