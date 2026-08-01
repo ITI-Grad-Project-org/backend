@@ -79,5 +79,22 @@ export default () => ({
 			path: 'clients',
 			allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
 		},
+		tenant: {
+			width: 512,
+			height: 512,
+			maxSizeKB: 512,
+			path: 'tenants',
+			allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+		},
+	},
+
+	documentTypes: {
+		// Coach certificates — accepted as a PDF or a photo scan. Stored as-is
+		// (no image optimization), so a PDF stays a PDF.
+		certificate: {
+			path: 'certificates',
+			maxSizeMB: 10,
+			allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png'],
+		},
 	},
 });

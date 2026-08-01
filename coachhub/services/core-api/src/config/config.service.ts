@@ -30,6 +30,12 @@ export class ConfigService {
 		return this.configService.getOrThrow<Config['imageTypes']>('imageTypes');
 	}
 
+	get documentTypes(): Config['documentTypes'] {
+		return this.configService.getOrThrow<Config['documentTypes']>(
+			'documentTypes',
+		);
+	}
+
 	get googleOauthConfig(): Config['googleOauth'] {
 		return this.configService.getOrThrow<Config['googleOauth']>('googleOauth');
 	}

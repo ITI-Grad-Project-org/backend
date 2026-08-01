@@ -57,5 +57,19 @@ export const ConfigSchema = z.object({
 			path: z.string(),
 			allowedMimeTypes: z.array(z.string()),
 		}),
+		tenant: z.object({
+			width: z.number(),
+			height: z.number(),
+			maxSizeKB: z.number(),
+			path: z.string(),
+			allowedMimeTypes: z.array(z.string()),
+		}),
+	}),
+	documentTypes: z.object({
+		certificate: z.object({
+			path: z.string(),
+			maxSizeMB: z.number(),
+			allowedMimeTypes: z.array(z.string()),
+		}),
 	}),
 });

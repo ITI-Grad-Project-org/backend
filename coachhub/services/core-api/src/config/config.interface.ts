@@ -47,6 +47,19 @@ export interface ImageDimensions {
 export interface ImageTypes {
 	coach: ImageDimensions;
 	client: ImageDimensions;
+	tenant: ImageDimensions;
+}
+
+export type ImageCategory = keyof ImageTypes;
+
+export interface DocumentSpec {
+	path: string;
+	maxSizeMB: number;
+	allowedMimeTypes: string[];
+}
+
+export interface DocumentTypes {
+	certificate: DocumentSpec;
 }
 
 export interface GoogleOAuthConfig {
@@ -65,6 +78,7 @@ export interface Config {
 	jwt: JwtConfig;
 	aws: AwsConfig;
 	imageTypes: ImageTypes;
+	documentTypes: DocumentTypes;
 	googleOauth: GoogleOAuthConfig;
 	ai: AiConfig;
 }

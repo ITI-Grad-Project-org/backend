@@ -3,7 +3,6 @@ import {
 	IsOptional,
 	IsString,
 	IsTimeZone,
-	IsUrl,
 	Length,
 	Matches,
 	MaxLength,
@@ -26,12 +25,7 @@ export class CreateTenantDto {
 	})
 	slug: string;
 
-	@ApiPropertyOptional({
-		example: 'https://cdn.coachhub.app/logos/iron-temple.png',
-	})
-	@IsOptional()
-	@IsUrl()
-	logoUrl?: string;
+	// The logo is uploaded through PATCH /tenant/me/logo, not set here.
 
 	@ApiPropertyOptional({ example: 'Africa/Cairo' })
 	@IsOptional()

@@ -1,12 +1,25 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+	BadRequestException,
+	ConflictException,
+	Injectable,
+	Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ExercisesService } from '../exercises/exercises.service';
-import { Coach } from './entities/coach.entity';
+import { Coach, CoachCertification } from './entities/coach.entity';
 import { Tenant } from '../tenant/entities/tenant.entity';
 import { TenantService } from '../tenant/tenant.service';
 import { RegisterCoachDto } from './dto/register-coach.dto';
 import { UpdateCoachDto } from './dto/update-coach.dto';
+import { S3UploadService } from '../s3-upload/s3-upload.service';
+
+/** Files pulled off the multipart profile-update request. */
+export interface CoachProfileFiles {
+	avatar?: Express.Multer.File;
+	transformationPhotos: Express.Multer.File[];
+	certificateFiles: Express.Multer.File[];
+}
 
 @Injectable()
 export class CoachesService {
@@ -18,6 +31,7 @@ export class CoachesService {
 		private readonly tenantService: TenantService,
 		private readonly dataSource: DataSource,
 		private readonly exercisesService: ExercisesService,
+		private readonly s3UploadService: S3UploadService,
 	) {}
 
 	async create(registerDto: RegisterCoachDto): Promise<Coach> {
@@ -184,11 +198,22 @@ export class CoachesService {
 	}
 
 	/**
-	 * Phone is set during profile setup rather than sign-up, so the uniqueness
-	 * check lives here — the column is unique and would otherwise surface as a
-	 * raw driver error.
+	 * Updates the profile and uploads any attached media in the same request.
+	 * Uploads run before the row is written; if the DB write fails, freshly
+	 * uploaded objects are removed so nothing is orphaned. Replaced avatar and
+	 * transformation photos are deleted best-effort after a successful write.
+	 *
+	 * Phone is set here (not at sign-up), so its uniqueness check lives here too
+	 * — the column is unique and would otherwise surface as a raw driver error.
 	 */
-	async update(id: string, updateCoachDto: UpdateCoachDto) {
+	async update(
+		id: string,
+		updateCoachDto: UpdateCoachDto,
+		files: CoachProfileFiles = {
+			transformationPhotos: [],
+			certificateFiles: [],
+		},
+	) {
 		if (updateCoachDto.phone) {
 			const existingPhone = await this.findOneByPhone(updateCoachDto.phone);
 			if (existingPhone && existingPhone.id !== id) {
@@ -196,11 +221,127 @@ export class CoachesService {
 			}
 		}
 
-		return this.coachRepository.update(id, updateCoachDto);
+		const { certifications, ...profile } = updateCoachDto;
+		this.assertCertificateFilesMatch(certifications, files.certificateFiles);
+
+		// URLs uploaded in this request, so we can roll them back on a later error.
+		const uploadedUrls: string[] = [];
+		try {
+			const patch: Record<string, unknown> = { ...profile };
+			let replacedAvatar: string | null = null;
+			let replacedPhotos: string[] = [];
+
+			if (files.avatar) {
+				replacedAvatar = await this.currentAvatarUrl(id);
+				const { url } = await this.s3UploadService.uploadImage(
+					files.avatar,
+					'coach',
+				);
+				uploadedUrls.push(url);
+				patch.avatarUrl = url;
+			}
+
+			if (files.transformationPhotos.length > 0) {
+				replacedPhotos = await this.currentTransformationPhotos(id);
+				const results = await this.s3UploadService.uploadImages(
+					files.transformationPhotos,
+					'coach',
+				);
+				const urls = results.map((r) => r.url);
+				uploadedUrls.push(...urls);
+				patch.transformationPhotos = urls;
+			}
+
+			if (certifications) {
+				patch.certifications = await this.attachCertificateFiles(
+					certifications,
+					files.certificateFiles,
+					uploadedUrls,
+				);
+			}
+
+			await this.coachRepository.update(id, patch);
+
+			// Row saved — safe to drop what the new media replaced.
+			if (patch.avatarUrl && replacedAvatar) {
+				await this.s3UploadService.deleteByUrl(replacedAvatar);
+			}
+			if (patch.transformationPhotos) {
+				await Promise.all(
+					replacedPhotos.map((url) => this.s3UploadService.deleteByUrl(url)),
+				);
+			}
+
+			return this.findProfileById(id);
+		} catch (error) {
+			await Promise.all(
+				uploadedUrls.map((url) => this.s3UploadService.deleteByUrl(url)),
+			);
+			throw error;
+		}
+	}
+
+	private assertCertificateFilesMatch(
+		certifications: CoachCertification[] | undefined,
+		certificateFiles: Express.Multer.File[],
+	) {
+		if (certificateFiles.length === 0) return;
+		if (!certifications || certifications.length === 0) {
+			throw new BadRequestException(
+				'Certificate files must be accompanied by a `certifications` array ' +
+					'in the `data` field — one entry per file, in the same order ' +
+					'(e.g. data = {"certifications":[{"name":"NASM CPT"}]}).',
+			);
+		}
+		if (certificateFiles.length > certifications.length) {
+			throw new BadRequestException(
+				`Received ${certificateFiles.length} certificate files but only ` +
+					`${certifications.length} certification entries in \`data\` — ` +
+					'each file needs a matching entry, in order.',
+			);
+		}
+	}
+
+	/**
+	 * Attaches uploaded PDFs to certification entries by position — the i-th
+	 * file fills the i-th entry's `fileUrl`. Entries without a matching file keep
+	 * any `fileUrl` already supplied (e.g. a previously uploaded certificate kept
+	 * during an edit).
+	 */
+	private async attachCertificateFiles(
+		certifications: CoachCertification[],
+		certificateFiles: Express.Multer.File[],
+		uploadedUrls: string[],
+	): Promise<CoachCertification[]> {
+		const results = await this.s3UploadService.uploadDocuments(
+			certificateFiles,
+			'certificate',
+		);
+		uploadedUrls.push(...results.map((r) => r.url));
+
+		return certifications.map((cert, index) => {
+			const uploaded = results[index];
+			return uploaded ? { ...cert, fileUrl: uploaded.url } : cert;
+		});
+	}
+
+	private async currentAvatarUrl(id: string): Promise<string | null> {
+		const coach = await this.coachRepository.findOne({
+			where: { id },
+			select: { id: true, avatarUrl: true },
+		});
+		return coach?.avatarUrl ?? null;
+	}
+
+	private async currentTransformationPhotos(id: string): Promise<string[]> {
+		const coach = await this.coachRepository.findOne({
+			where: { id },
+			select: { id: true, transformationPhotos: true },
+		});
+		return coach?.transformationPhotos ?? [];
 	}
 
 	remove(id: string) {
 		return this.coachRepository.softDelete(id);
 	}
-
 }
