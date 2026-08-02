@@ -4,12 +4,19 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
+import { ActivityType } from '../../../activity/enums/activity-type.enum';
+import { ActivityRecorderService } from '../../../activity/services/activity-recorder.service';
+import { buildFlexibleMealActivitySourceKey } from '../../../activity/utils/activity-source-key.utils';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
+import { MealSlot } from '../../../common';
 import {
 	CreateActualFoodLogDto,
 	UpdateActualFoodLogDto,
 } from '../dto/nutrition-logging.dto';
 import { FoodLog } from '../entities/food-log.entity';
+import { LoggedMeal } from '../entities/logged-meal.entity';
+import { NutritionDayLog } from '../entities/nutrition-day-log.entity';
+import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
 import { mapClientNutritionLog } from '../mappers/client-nutrition-log.mapper';
 import {
 	applyActualFoodDefinition,
@@ -26,7 +33,10 @@ import { normalizeClientNotes } from '../utils/nutrition-logging.utils';
 
 @Injectable()
 export class ClientNutritionActualFoodService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly activityRecorder: ActivityRecorderService,
+	) {}
 
 	async createActualFood(
 		clientId: string,
@@ -79,7 +89,14 @@ export class ClientNutritionActualFoodService {
 				loggedAt: now,
 			});
 			await applyActualFoodDefinition(manager, foodLog, activeTenantId, body);
-			await repository.save(foodLog);
+			const savedFoodLog = await repository.save(foodLog);
+			await this.reconcileFlexibleMealSlots(
+				manager,
+				clientId,
+				log,
+				[savedFoodLog.mealSlot],
+				now,
+			);
 			await touchNutritionLog(manager, log, now);
 
 			return this.reloadAndMapLog(
@@ -133,6 +150,7 @@ export class ClientNutritionActualFoodService {
 			if (!foodLog) {
 				throw new NotFoundException('Actual Food entry not found');
 			}
+			const oldMealSlot = foodLog.mealSlot;
 
 			if (body.loggedMealId !== undefined) {
 				await assertLoggedMealBelongsToLog(manager, log.id, body.loggedMealId);
@@ -143,7 +161,14 @@ export class ClientNutritionActualFoodService {
 				foodLog.clientNotes = normalizeClientNotes(body.clientNotes);
 			}
 			await applyActualFoodDefinition(manager, foodLog, activeTenantId, body);
-			await repository.save(foodLog);
+			const savedFoodLog = await repository.save(foodLog);
+			await this.reconcileFlexibleMealSlots(
+				manager,
+				clientId,
+				log,
+				[oldMealSlot, savedFoodLog.mealSlot],
+				now,
+			);
 			await touchNutritionLog(manager, log, now);
 
 			return this.reloadAndMapLog(
@@ -191,8 +216,16 @@ export class ClientNutritionActualFoodService {
 			if (!foodLog) {
 				throw new NotFoundException('Actual Food entry not found');
 			}
+			const oldMealSlot = foodLog.mealSlot;
 
 			await repository.remove(foodLog);
+			await this.reconcileFlexibleMealSlots(
+				manager,
+				clientId,
+				log,
+				[oldMealSlot],
+				now,
+			);
 			await touchNutritionLog(manager, log, now);
 
 			return this.reloadAndMapLog(
@@ -215,6 +248,50 @@ export class ClientNutritionActualFoodService {
 			clientId,
 			tenantId,
 		);
+	}
+
+	private async reconcileFlexibleMealSlots(
+		manager: EntityManager,
+		clientId: string,
+		log: NutritionDayLog,
+		mealSlots: MealSlot[],
+		occurredAt: Date,
+	) {
+		const planDay = await manager.getRepository(NutritionPlanDay).findOne({
+			where: { id: log.nutritionPlanDayId, tenantId: log.tenantId },
+			select: { isFlexibleDay: true },
+		});
+		if (!planDay?.isFlexibleDay) return;
+
+		const plannedMealCount = await manager.getRepository(LoggedMeal).count({
+			where: { nutritionDayLogId: log.id },
+		});
+		if (plannedMealCount > 0) return;
+
+		const foodLogRepository = manager.getRepository(FoodLog);
+		for (const mealSlot of new Set(mealSlots)) {
+			const foodCount = await foodLogRepository.count({
+				where: { nutritionDayLogId: log.id, mealSlot },
+			});
+			const sourceKey = buildFlexibleMealActivitySourceKey(log.id, mealSlot);
+			if (foodCount > 0) {
+				await this.activityRecorder.record(manager, {
+					clientId,
+					tenantId: log.tenantId,
+					membershipId: log.membershipId,
+					activityType: ActivityType.NUTRITION_FLEXIBLE_MEAL_LOGGED,
+					sourceKey,
+					occurredAt,
+				});
+			} else {
+				await this.activityRecorder.remove(
+					manager,
+					clientId,
+					ActivityType.NUTRITION_FLEXIBLE_MEAL_LOGGED,
+					sourceKey,
+				);
+			}
+		}
 	}
 
 	private async reloadAndMapLog(
