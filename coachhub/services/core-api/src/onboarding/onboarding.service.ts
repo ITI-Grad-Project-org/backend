@@ -57,8 +57,8 @@ export class OnboardingService {
 	}
 
 	/** Consume the code: join the tenant (activate the membership) and, if the
-	 *  onboarding screen sent it, persist intake in the same call. Returns a fresh
-	 *  token pair scoped to the joined tenant. */
+	 *  onboarding screen sent it, persist intake in the same call. Returns a
+	 * fresh token pair scoped to the joined tenant. */
 	async confirm(clientId: string, dto: ConfirmOnboardingDto) {
 		const resolved = await this.resolveOrThrow(clientId, dto.code);
 
@@ -98,8 +98,9 @@ export class OnboardingService {
 		);
 
 		// The client just joined a new tenant — re-issue their tokens so the JWT
-		// carries that tenant (CurrentTenant reads the tenantId claim). switchTenant
-		// re-checks the now-active membership and marks the tenant active.
+		// carries that tenant (CurrentTenant reads the tenantId claim).
+		// switchTenant re-checks the now-active membership and marks the tenant
+		// active.
 		return this.clientAuthService.switchTenant(clientId, tenantId);
 	}
 

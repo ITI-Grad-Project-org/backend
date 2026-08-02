@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { ActivityType } from '../../../activity/enums/activity-type.enum';
+import { ActivityRecorderService } from '../../../activity/services/activity-recorder.service';
+import { buildLoggedSetActivitySourceKey } from '../../../activity/utils/activity-source-key.utils';
 import {
 	CreateExtraLoggedSetDto,
 	UpdatePrescribedLoggedSetDto,
@@ -13,13 +16,17 @@ import {
 import { assertActiveTenant } from '../utils/training-service.utils';
 import {
 	EXTRA_SET_OUTCOMES,
+	isReportedSet,
 	resolveActualValues,
 	SUBMITTED_SET_OUTCOMES,
 } from '../utils/workout-log.utils';
 
 @Injectable()
 export class ClientWorkoutSetLoggingService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly activityRecorder: ActivityRecorderService,
+	) {}
 
 	async updatePrescribedSet(
 		clientId: string,
@@ -29,6 +36,7 @@ export class ClientWorkoutSetLoggingService {
 		body: UpdatePrescribedLoggedSetDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
+		const occurredAt = new Date();
 
 		return this.dataSource.transaction(async (manager) => {
 			const membership = await getActiveMembership(
@@ -60,7 +68,28 @@ export class ClientWorkoutSetLoggingService {
 				SUBMITTED_SET_OUTCOMES,
 			);
 			Object.assign(loggedSet, actuals, { outcome: body.outcome });
-			return repository.save(loggedSet);
+			const savedSet = await repository.save(loggedSet);
+			const sourceKey = buildLoggedSetActivitySourceKey(savedSet.id);
+
+			if (isReportedSet(savedSet.outcome)) {
+				await this.activityRecorder.record(manager, {
+					clientId,
+					tenantId: log.tenantId,
+					membershipId: log.membershipId,
+					activityType: ActivityType.WORKOUT_SET_REPORTED,
+					sourceKey,
+					occurredAt,
+				});
+			} else {
+				await this.activityRecorder.remove(
+					manager,
+					clientId,
+					ActivityType.WORKOUT_SET_REPORTED,
+					sourceKey,
+				);
+			}
+
+			return savedSet;
 		});
 	}
 
@@ -75,6 +104,7 @@ export class ClientWorkoutSetLoggingService {
 		body: CreateExtraLoggedSetDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
+		const occurredAt = new Date();
 
 		return this.dataSource.transaction(async (manager) => {
 			const membership = await getActiveMembership(
@@ -107,7 +137,7 @@ export class ClientWorkoutSetLoggingService {
 				order: { setNumber: 'DESC' },
 			});
 
-			return repository.save(
+			const savedSet = await repository.save(
 				repository.create({
 					loggedExerciseId: loggedExercise.id,
 					plannedSetId: null,
@@ -124,6 +154,17 @@ export class ClientWorkoutSetLoggingService {
 					outcome: body.outcome,
 				}),
 			);
+
+			await this.activityRecorder.record(manager, {
+				clientId,
+				tenantId: log.tenantId,
+				membershipId: log.membershipId,
+				activityType: ActivityType.WORKOUT_SET_REPORTED,
+				sourceKey: buildLoggedSetActivitySourceKey(savedSet.id),
+				occurredAt,
+			});
+
+			return savedSet;
 		});
 	}
 
@@ -159,6 +200,12 @@ export class ClientWorkoutSetLoggingService {
 				throw new NotFoundException('Extra logged set not found');
 			}
 
+			await this.activityRecorder.remove(
+				manager,
+				clientId,
+				ActivityType.WORKOUT_SET_REPORTED,
+				buildLoggedSetActivitySourceKey(extraSet.id),
+			);
 			await repository.remove(extraSet);
 			return { id: loggedSetId, message: 'Extra set removed' };
 		});

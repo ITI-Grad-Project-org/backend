@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ActivityModule } from '../../activity/activity.module';
 import { ClientIntake } from '../../clients/entities/client-intake.entity';
 import { ClientMembership } from '../../clients/entities/client-membership.entity';
 import { ClientNutritionPlansController } from './controllers/client-nutrition-plans.controller';
@@ -32,6 +33,7 @@ import { PlannedMealsService } from './services/planned-meals.service';
 
 @Module({
 	imports: [
+		ActivityModule,
 		TypeOrmModule.forFeature([
 			ClientIntake,
 			ClientMembership,

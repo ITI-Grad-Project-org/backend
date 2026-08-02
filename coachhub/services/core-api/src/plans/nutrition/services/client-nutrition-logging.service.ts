@@ -5,6 +5,9 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
+import { ActivityType } from '../../../activity/enums/activity-type.enum';
+import { ActivityRecorderService } from '../../../activity/services/activity-recorder.service';
+import { buildLoggedMealActivitySourceKey } from '../../../activity/utils/activity-source-key.utils';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import { NutritionAdherenceOutcome, NutritionLogStatus } from '../../../common';
 import {
@@ -23,12 +26,18 @@ import {
 	touchNutritionLog,
 } from '../persistence/client-nutrition-logging.persistence';
 import { assertNutritionTenant } from '../utils/client-nutrition-plan.utils';
-import { normalizeClientNotes } from '../utils/nutrition-logging.utils';
+import {
+	isReportedMeal,
+	normalizeClientNotes,
+} from '../utils/nutrition-logging.utils';
 import { deriveNutritionAdherenceOutcome } from '../utils/nutrition-log-state.utils';
 
 @Injectable()
 export class ClientNutritionLoggingService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly activityRecorder: ActivityRecorderService,
+	) {}
 
 	async startOrResumeLog(
 		clientId: string,
@@ -173,7 +182,25 @@ export class ClientNutritionLoggingService {
 			if (body.clientNotes !== undefined) {
 				loggedMeal.clientNotes = normalizeClientNotes(body.clientNotes);
 			}
-			await repository.save(loggedMeal);
+			const savedMeal = await repository.save(loggedMeal);
+			const sourceKey = buildLoggedMealActivitySourceKey(savedMeal.id);
+			if (isReportedMeal(savedMeal.outcome)) {
+				await this.activityRecorder.record(manager, {
+					clientId,
+					tenantId: log.tenantId,
+					membershipId: log.membershipId,
+					activityType: ActivityType.NUTRITION_MEAL_REPORTED,
+					sourceKey,
+					occurredAt: now,
+				});
+			} else {
+				await this.activityRecorder.remove(
+					manager,
+					clientId,
+					ActivityType.NUTRITION_MEAL_REPORTED,
+					sourceKey,
+				);
+			}
 			await touchNutritionLog(manager, log, now);
 
 			return this.reloadAndMapLog(
@@ -283,6 +310,12 @@ export class ClientNutritionLoggingService {
 				meal.outcome = NutritionAdherenceOutcome.SKIPPED;
 			}
 			await manager.getRepository(LoggedMeal).save(log.meals);
+			await this.activityRecorder.removeMany(
+				manager,
+				clientId,
+				ActivityType.NUTRITION_MEAL_REPORTED,
+				log.meals.map((meal) => buildLoggedMealActivitySourceKey(meal.id)),
+			);
 
 			log.status = NutritionLogStatus.FINALIZED;
 			log.adherenceOutcome = NutritionAdherenceOutcome.SKIPPED;

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AiModule } from './ai/ai.module';
+import { ActivityModule } from './activity/activity.module';
 import { JwtAuthGuard } from './auth';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
@@ -31,6 +32,7 @@ import { ExercisesModule } from './exercises/exercises.module';
 			},
 		]),
 		DatabaseModule,
+		ActivityModule,
 		AuthModule,
 		ClientModule,
 		PlansModule,

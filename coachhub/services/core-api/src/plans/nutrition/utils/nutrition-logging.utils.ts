@@ -1,5 +1,9 @@
 import { ConflictException } from '@nestjs/common';
-import { getDateOnlyInTimeZone, NutritionLogStatus } from '../../../common';
+import {
+	getDateOnlyInTimeZone,
+	NutritionAdherenceOutcome,
+	NutritionLogStatus,
+} from '../../../common';
 import { NutritionDayLog } from '../entities/nutrition-day-log.entity';
 import { isNutritionLogPastDeadline } from './nutrition-log-state.utils';
 
@@ -35,4 +39,11 @@ export function normalizeClientNotes(value: string | null) {
 	if (value === null) return null;
 	const normalized = value.trim();
 	return normalized.length === 0 ? null : normalized;
+}
+
+export function isReportedMeal(outcome: NutritionAdherenceOutcome) {
+	return (
+		outcome === NutritionAdherenceOutcome.COMPLETED ||
+		outcome === NutritionAdherenceOutcome.PARTIAL
+	);
 }

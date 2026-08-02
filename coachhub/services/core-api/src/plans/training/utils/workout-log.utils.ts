@@ -12,6 +12,10 @@ export const SUBMITTED_SET_OUTCOMES = [
 ];
 export const EXTRA_SET_OUTCOMES = [SetOutcome.COMPLETED, SetOutcome.PARTIAL];
 
+export function isReportedSet(outcome: SetOutcome) {
+	return outcome === SetOutcome.COMPLETED || outcome === SetOutcome.PARTIAL;
+}
+
 export type ActualSetInput = {
 	outcome: SetOutcome;
 	reps?: number | null;

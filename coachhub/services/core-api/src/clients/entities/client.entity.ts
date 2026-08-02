@@ -35,6 +35,9 @@ export class Client {
 	@Column({ name: 'last_name', length: 100, default: '' })
 	lastName: string;
 
+	@Column({ length: 64, default: 'UTC' })
+	timezone: string;
+
 	@Column({ name: 'avatar_url', type: 'text', nullable: true })
 	avatarUrl: string | null;
 
