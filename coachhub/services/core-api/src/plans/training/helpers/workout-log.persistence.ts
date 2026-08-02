@@ -75,6 +75,18 @@ export function loadPrescribedLoggedSets(
 	});
 }
 
+/** Returns every prescribed and extra set id belonging to one workout log. */
+export async function loadWorkoutLoggedSetIds(
+	manager: EntityManager,
+	logId: string,
+) {
+	const sets = await manager.getRepository(LoggedSet).find({
+		select: { id: true },
+		where: { loggedExercise: { loggedWorkoutId: logId } },
+	});
+	return sets.map((set) => set.id);
+}
+
 /**
  * Loads a workout only when it belongs to the active tenant membership, then
  * hydrates its exercises and sets in display order. The ownership predicates

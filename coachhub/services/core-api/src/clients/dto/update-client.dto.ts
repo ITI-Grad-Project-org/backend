@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
-import { Gender } from 'src/common';
+import { Gender } from '../../common';
 import { CreateClientDto } from './create-client.dto';
 
 // Email changes need a verification flow and passwords go through the
