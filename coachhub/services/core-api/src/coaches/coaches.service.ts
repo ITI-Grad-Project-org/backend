@@ -3,15 +3,18 @@ import {
 	ConflictException,
 	Injectable,
 	Logger,
+	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { randomUUID } from 'node:crypto';
 import { ExercisesService } from '../exercises/exercises.service';
 import { Coach, CoachCertification } from './entities/coach.entity';
 import { Tenant } from '../tenant/entities/tenant.entity';
 import { TenantService } from '../tenant/tenant.service';
 import { RegisterCoachDto } from './dto/register-coach.dto';
 import { UpdateCoachDto } from './dto/update-coach.dto';
+import { AddCertificationDto } from './dto/add-certification.dto';
 import { S3UploadService } from '../s3-upload/s3-upload.service';
 
 /** Files pulled off the multipart profile-update request. */
@@ -339,6 +342,129 @@ export class CoachesService {
 			select: { id: true, transformationPhotos: true },
 		});
 		return coach?.transformationPhotos ?? [];
+	}
+
+	// ── Granular media management (separate from the bulk PATCH /coaches/me) ───
+
+	/** Sets or replaces the avatar; the previous image is removed afterwards. */
+	async setAvatar(id: string, avatar: Express.Multer.File) {
+		if (!avatar) {
+			throw new BadRequestException('No avatar file provided');
+		}
+		const previous = await this.currentAvatarUrl(id);
+		const { url } = await this.s3UploadService.uploadImage(avatar, 'coach');
+
+		try {
+			await this.coachRepository.update(id, { avatarUrl: url });
+		} catch (error) {
+			await this.s3UploadService.deleteByUrl(url);
+			throw error;
+		}
+
+		if (previous) await this.s3UploadService.deleteByUrl(previous);
+		return this.findProfileById(id);
+	}
+
+	async removeAvatar(id: string) {
+		const previous = await this.currentAvatarUrl(id);
+		await this.coachRepository.update(id, { avatarUrl: null });
+		if (previous) await this.s3UploadService.deleteByUrl(previous);
+		return this.findProfileById(id);
+	}
+
+	/** Appends to the gallery — existing photos are kept. */
+	async addTransformationPhotos(id: string, files: Express.Multer.File[]) {
+		if (!files || files.length === 0) {
+			throw new BadRequestException('No photos provided');
+		}
+		const existing = await this.currentTransformationPhotos(id);
+		const results = await this.s3UploadService.uploadImages(files, 'coach');
+		const urls = results.map((r) => r.url);
+
+		try {
+			await this.coachRepository.update(id, {
+				transformationPhotos: [...existing, ...urls],
+			});
+		} catch (error) {
+			await Promise.all(
+				urls.map((url) => this.s3UploadService.deleteByUrl(url)),
+			);
+			throw error;
+		}
+
+		return this.findProfileById(id);
+	}
+
+	async removeTransformationPhoto(id: string, url: string) {
+		const existing = await this.currentTransformationPhotos(id);
+		if (!existing.includes(url)) {
+			throw new NotFoundException('Photo not found on this profile');
+		}
+
+		await this.coachRepository.update(id, {
+			transformationPhotos: existing.filter((u) => u !== url),
+		});
+		await this.s3UploadService.deleteByUrl(url);
+		return this.findProfileById(id);
+	}
+
+	/** Adds one certificate (metadata + file) with a generated id. */
+	async addCertification(
+		id: string,
+		dto: AddCertificationDto,
+		file: Express.Multer.File,
+	) {
+		if (!file) {
+			throw new BadRequestException('A certificate file is required');
+		}
+		const certifications = await this.currentCertifications(id);
+		const { url } = await this.s3UploadService.uploadDocument(
+			file,
+			'certificate',
+		);
+		const certification: CoachCertification = {
+			id: randomUUID(),
+			...dto,
+			fileUrl: url,
+		};
+
+		try {
+			await this.coachRepository.update(id, {
+				certifications: [...certifications, certification],
+			});
+		} catch (error) {
+			await this.s3UploadService.deleteByUrl(url);
+			throw error;
+		}
+
+		return this.findProfileById(id);
+	}
+
+	async removeCertification(id: string, certificationId: string) {
+		const certifications = await this.currentCertifications(id);
+		const target = certifications.find((c) => c.id === certificationId);
+		if (!target) {
+			throw new NotFoundException('Certification not found');
+		}
+
+		await this.coachRepository.update(id, {
+			certifications: certifications.filter((c) => c.id !== certificationId),
+		});
+		if (target.fileUrl) await this.s3UploadService.deleteByUrl(target.fileUrl);
+		return this.findProfileById(id);
+	}
+
+	private async currentCertifications(
+		id: string,
+	): Promise<CoachCertification[]> {
+		const coach = await this.coachRepository.findOne({
+			where: { id },
+			select: { id: true, certifications: true },
+		});
+		if (!coach) {
+			throw new NotFoundException('Coach not found');
+		}
+		return coach.certifications ?? [];
 	}
 
 	remove(id: string) {
