@@ -12,11 +12,6 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MatchConstraint } from 'src/common';
 
-/**
- * Sign-up only asks who they are and what to call their business — everything
- * shown on the public profile is filled in afterwards through
- * `PATCH /coaches/me`, which backs the five-step setup wizard.
- */
 export class RegisterCoachDto {
 	@ApiProperty({ example: 'Jane' })
 	@IsString()
