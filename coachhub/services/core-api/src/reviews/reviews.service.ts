@@ -221,6 +221,8 @@ export class ReviewsService {
 		};
 	}
 
+	// Public projection: the coach's full profile and media, minus contact
+	// details (email/phone) and internal flags — this is served to anyone.
 	private toCoachProfileResponse(tenant: Tenant) {
 		const coach = tenant.ownerCoach;
 		return {
@@ -229,9 +231,21 @@ export class ReviewsService {
 			lastName: coach.lastName,
 			avatarUrl: coach.avatarUrl,
 			bio: coach.bio,
+			age: coach.age,
+			gender: coach.gender,
+			location: coach.location,
 			specialties: coach.specialties,
 			yearsExperience: coach.yearsExperience,
+			careerExperience: coach.careerExperience,
 			certifications: coach.certifications,
+			portfolioUrl: coach.portfolioUrl,
+			transformationPhotos: coach.transformationPhotos,
+			featuredReviews: coach.featuredReviews,
+			offlineAvailability: coach.offlineAvailability,
+			availabilityHours: coach.availabilityHours,
+			priceFrom: coach.priceFrom,
+			priceTo: coach.priceTo,
+			socialLinks: coach.socialLinks,
 			tenant: {
 				id: tenant.id,
 				name: tenant.name,
