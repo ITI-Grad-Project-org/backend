@@ -27,7 +27,7 @@ spec:
         runAsUser: 1000              # 'node' user in node:22-alpine
       containers:
         - name: core-api
-          image: coachhubacr.azurecr.io/core-api:v1   # CI: replace with the release git SHA
+          image: coachhubacrnew123.azurecr.io/core-api:v1   # CI: replace with the release git SHA
           ports:
             - containerPort: 3000
               name: http
