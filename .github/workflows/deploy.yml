@@ -19,7 +19,7 @@ jobs:
       # ACR Tasks (`az acr build`) is blocked on this subscription, so images are
       # built on the runner and pushed.
       - name: ACR login
-        run: az acr login --name coachhubacr
+        run: az acr login --name coachhubacrnew123
 
       # Two tags per image: the immutable git SHA the rollout pins to, and the
       # floating v1 that 40-apps/*.yaml reference, so `kubectl apply` on its own
@@ -27,7 +27,7 @@ jobs:
       - name: Build & push images
         run: |
           for svc in core-api ai-service analytics-service notification-service; do
-            img="coachhubacr.azurecr.io/$svc"
+            img="coachhubacrnew123.azurecr.io/$svc"
             docker build \
               -t "$img:${{ github.sha }}" \
               -t "$img:v1" \
@@ -49,7 +49,7 @@ jobs:
           kubectl apply -f deploy/k8s/40-apps/
           for svc in core-api ai-service analytics-service notification-service; do
             kubectl set image deployment/$svc \
-              $svc=coachhubacr.azurecr.io/$svc:${{ github.sha }} -n coachhub
+              $svc=coachhubacrnew123.azurecr.io/$svc:${{ github.sha }} -n coachhub
           done
           for svc in core-api ai-service analytics-service notification-service; do
             kubectl rollout status deployment/$svc -n coachhub --timeout=5m
