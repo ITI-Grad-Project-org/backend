@@ -22,7 +22,7 @@ spec:
         runAsUser: 1001              # 'spring' user pinned in the Dockerfile
       containers:
         - name: ai-service
-          image: coachhubacr.azurecr.io/ai-service:v1   # CI: replace with the release git SHA
+          image: coachhubacrnew123.azurecr.io/ai-service:v1   # CI: replace with the release git SHA
           ports:
             - containerPort: 8081
               name: http

@@ -22,7 +22,7 @@ spec:
         runAsUser: 1001              # 'spring' user pinned in the Dockerfile
       containers:
         - name: analytics-service
-          image: coachhubacr.azurecr.io/analytics-service:v1   # CI: replace with the release git SHA
+          image: coachhubacrnew123.azurecr.io/analytics-service:v1   # CI: replace with the release git SHA
           ports:
             - containerPort: 8082
               name: http
