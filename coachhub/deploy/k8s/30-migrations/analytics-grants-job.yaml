@@ -1,0 +1,102 @@
+# Grants analytics_user read-only access to core_db.
+#
+# WHY THIS EXISTS SEPARATELY FROM THE INIT SCRIPT
+# deploy/k8s/10-config/postgres-init-script.yaml carries the same statements,
+# but the postgres image only runs /docker-entrypoint-initdb.d on the FIRST
+# init of an empty PVC. Any cluster whose database predates the analytics
+# read-path change will never execute it, and analytics-service would come up
+# with `permission denied for database "core_db"`. This Job closes that gap and
+# doubles as the record of what the running database should look like.
+#
+# Every statement is idempotent — GRANT and ALTER DEFAULT PRIVILEGES both
+# converge rather than accumulate — so re-running it on an already-correct
+# database is a no-op. Safe to apply on every release.
+#
+# Must complete BEFORE analytics-service rolls out. Jobs are immutable, so:
+#   kubectl -n coachhub delete job analytics-grants --ignore-not-found
+#   kubectl apply -f deploy/k8s/30-migrations/
+#   kubectl -n coachhub wait --for=condition=complete job/analytics-grants --timeout=120s
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: analytics-grants
+  namespace: coachhub
+  labels:
+    app: analytics-grants
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 180
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: analytics-grants
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70                # 'postgres' user in postgres:*-alpine
+      containers:
+        - name: grant
+          image: postgres:16.4-alpine
+          env:
+            - name: PGHOST
+              value: postgres
+            - name: PGUSER
+              valueFrom: { secretKeyRef: { name: app-secrets, key: POSTGRES_SUPERUSER } }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: POSTGRES_SUPERUSER_PASSWORD } }
+            - name: ANALYTICS_DB_USER
+              valueFrom: { secretKeyRef: { name: app-secrets, key: ANALYTICS_DB_USER } }
+          command:
+            - sh
+            - -ceu
+            - |
+              until pg_isready -q; do
+                echo "waiting for postgres..."
+                sleep 2
+              done
+
+              # Fail loudly rather than silently granting nothing: a missing role
+              # means the init script never ran and the database is not what the
+              # manifests assume.
+              psql -v ON_ERROR_STOP=1 -d postgres -tAc \
+                "SELECT 1 FROM pg_roles WHERE rolname = '${ANALYTICS_DB_USER}'" \
+                | grep -q 1 || {
+                  echo "FATAL: role ${ANALYTICS_DB_USER} does not exist" >&2
+                  exit 1
+                }
+
+              psql -v ON_ERROR_STOP=1 -d postgres \
+                -c "GRANT CONNECT ON DATABASE core_db TO ${ANALYTICS_DB_USER};"
+
+              # ALTER DEFAULT PRIVILEGES is the load-bearing part: core-api
+              # creates tables at runtime (synchronize / the migrations Job, both
+              # as core_user), so granting only on today's tables would leave
+              # every future table unreadable.
+              psql -v ON_ERROR_STOP=1 -d core_db <<SQL
+              GRANT USAGE  ON SCHEMA public TO ${ANALYTICS_DB_USER};
+              GRANT SELECT ON ALL TABLES    IN SCHEMA public TO ${ANALYTICS_DB_USER};
+              GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO ${ANALYTICS_DB_USER};
+              ALTER DEFAULT PRIVILEGES FOR ROLE core_user IN SCHEMA public
+                  GRANT SELECT ON TABLES TO ${ANALYTICS_DB_USER};
+              ALTER DEFAULT PRIVILEGES FOR ROLE core_user IN SCHEMA public
+                  GRANT SELECT ON SEQUENCES TO ${ANALYTICS_DB_USER};
+              SQL
+
+              # Assert the outcome instead of trusting the exit codes above.
+              # Anything other than exactly SELECT means the privilege set drifted.
+              GRANTED=$(psql -v ON_ERROR_STOP=1 -d core_db -tAc \
+                "SELECT DISTINCT privilege_type
+                   FROM information_schema.table_privileges
+                  WHERE grantee = '${ANALYTICS_DB_USER}'
+                  ORDER BY 1" | paste -sd, -)
+              echo "analytics privileges on core_db: [${GRANTED}]"
+              if [ -n "${GRANTED}" ] && [ "${GRANTED}" != "SELECT" ]; then
+                echo "FATAL: expected SELECT only, got ${GRANTED}" >&2
+                exit 1
+              fi
+              echo "grants applied."
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 250m, memory: 256Mi }
