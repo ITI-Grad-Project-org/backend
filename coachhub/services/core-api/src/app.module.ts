@@ -6,6 +6,7 @@ import { ActivityModule } from './activity/activity.module';
 import { JwtAuthGuard } from './auth';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
+import { CheckinsModule } from './checkins/checkins.module';
 import { ClientModule } from './clients/client.module';
 import { CoachesModule } from './coaches/coaches.module';
 import { ProxyThrottlerGuard } from './common/guards/proxy-throttler.guard';
@@ -34,6 +35,7 @@ import { ExercisesModule } from './exercises/exercises.module';
 		DatabaseModule,
 		ActivityModule,
 		AuthModule,
+		CheckinsModule,
 		ClientModule,
 		PlansModule,
 		MeasurementsModule,
