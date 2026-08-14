@@ -98,7 +98,14 @@ flowchart LR
 Key properties:
 
 - All inter-service communication is **async via `app.events`** — no service
-  calls another over HTTP.
+  calls another over HTTP, with one recorded exception: core-api proxies the
+  coach-facing analytics routes to `analytics-service` over ClusterIP HTTP
+  (`GET /analytics/*`). The rule exists so domain **writes** cannot fan out into
+  synchronous chains; a read-only report fetched for an already-authenticated
+  coach creates no such coupling, and analytics being down degrades one
+  dashboard rather than breaking a write path. The alternative — exposing
+  `analytics-service` through the ingress — would have meant duplicating JWT
+  validation into a service that currently has none.
 - Only `core-api` touches Redis. `core-api` and `analytics-service` both connect
   to `core_db`, through **separate users with different privileges** — `core_user`
   read/write, `analytics_user` SELECT only.
@@ -182,6 +189,13 @@ flowchart TB
 
     ANLYT -. "reserved for<br/>future rollups" .- ANDB
 ```
+
+The browser never reaches `analytics-service`. It is ClusterIP-only and performs
+no authorisation of its own — it trusts the tenant in its path — so core-api is
+the security boundary: `GET /analytics/*` takes the tenant from the caller's JWT
+and never from anything the client can set. Adding a route that accepted a tenant
+id from the client would make every coach's revenue readable by any logged-in
+user, which is why no such route exists.
 
 | Store          | Owner    | Access rule                                                                                  |
 |----------------|----------|----------------------------------------------------------------------------------------------|
