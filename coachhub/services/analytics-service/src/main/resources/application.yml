@@ -2,6 +2,12 @@ server:
   port: ${SERVER_PORT:8082}
   # Finish in-flight MQ messages / HTTP requests on SIGTERM (K8s rolling updates).
   shutdown: graceful
+  error:
+    # Safe here and worth a lot when diagnosing: this service is ClusterIP-only
+    # and only core-api calls it, and core-api logs the upstream body but returns
+    # a generic 502 to the client. Without this a schema mismatch surfaces as a
+    # bare {"status":500} and the cause is only findable in the pod's stack trace.
+    include-message: always
 
 spring:
   application:

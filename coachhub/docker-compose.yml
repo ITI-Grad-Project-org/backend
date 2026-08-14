@@ -162,6 +162,10 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      # Analytics reads tables that core-api owns and creates on boot via
+      # DB_SYNCHRONIZE. Starting before core-api has synchronised means querying
+      # columns that do not exist yet, which surfaces as an opaque 500.
+      core-api: { condition: service_healthy }
     networks: [coachhub-net]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health/readiness"]

@@ -14,15 +14,6 @@ import {
 	AnalyticsWindowDto,
 } from './dto/analytics-query.dto';
 
-/**
- * Coach-facing analytics. Every route reads the tenant from the caller's token
- * and forwards to analytics-service in-cluster; there is deliberately no route
- * that accepts a tenant id from the client.
- *
- * Response bodies are analytics-service's own DTOs, documented in full at that
- * service's /swagger-ui. They are passed through unchanged rather than
- * re-declared here, so the two cannot drift.
- */
 @ApiTags('Analytics')
 @ApiBearerAuth()
 @Controller('analytics')
