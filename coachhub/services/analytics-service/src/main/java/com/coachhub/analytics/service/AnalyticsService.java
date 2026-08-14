@@ -2,9 +2,14 @@ package com.coachhub.analytics.service;
 
 import com.coachhub.analytics.dto.AdherenceSummary;
 import com.coachhub.analytics.dto.RosterReport;
+import com.coachhub.analytics.dto.TemplateEffectiveness;
+import com.coachhub.analytics.dto.TemplateSurvival;
 import com.coachhub.analytics.repository.AdherenceQueryRepository;
+import com.coachhub.analytics.repository.ProgramEffectivenessQueryRepository;
 import com.coachhub.analytics.repository.RosterQueryRepository;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +22,15 @@ public class AnalyticsService {
 
     private final RosterQueryRepository rosterQueries;
     private final AdherenceQueryRepository adherenceQueries;
+    private final ProgramEffectivenessQueryRepository programQueries;
 
     public AnalyticsService(
-            RosterQueryRepository rosterQueries, AdherenceQueryRepository adherenceQueries) {
+            RosterQueryRepository rosterQueries,
+            AdherenceQueryRepository adherenceQueries,
+            ProgramEffectivenessQueryRepository programQueries) {
         this.rosterQueries = rosterQueries;
         this.adherenceQueries = adherenceQueries;
+        this.programQueries = programQueries;
     }
 
     @Transactional(readOnly = true)
@@ -39,6 +48,33 @@ public class AnalyticsService {
             UUID tenantId, UUID membershipId, LocalDate from, LocalDate to) {
         Window window = Window.resolve(from, to);
         return adherenceQueries.summary(tenantId, membershipId, window.from(), window.to());
+    }
+
+    /**
+     * Deliberately not date-windowed: a template's track record is its whole
+     * history. Clipping it to a window would rank templates by how recently
+     * they happened to be assigned.
+     */
+    @Transactional(readOnly = true)
+    public List<TemplateEffectiveness> programEffectiveness(UUID tenantId) {
+        return programQueries.effectiveness(tenantId);
+    }
+
+    @Transactional(readOnly = true)
+    public TemplateSurvival programSurvival(UUID tenantId, UUID templateId) {
+        String name = programQueries.templateName(tenantId, templateId);
+        if (name == null) {
+            throw new NoSuchElementException("No such template for this tenant");
+        }
+        // Week 1 counts programmes with at least one completed session, which is
+        // not the same as every derived programme — a client who never started
+        // belongs in the denominator. So the total is counted separately rather
+        // than read off the head of the curve.
+        return new TemplateSurvival(
+                templateId.toString(),
+                name,
+                programQueries.derivedCount(tenantId, templateId),
+                programQueries.survival(tenantId, templateId));
     }
 
     private record Window(LocalDate from, LocalDate to) {

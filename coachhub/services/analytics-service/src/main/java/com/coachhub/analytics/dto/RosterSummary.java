@@ -1,21 +1,23 @@
 package com.coachhub.analytics.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.Map;
 
-/**
- * Portfolio-level view of a coach's roster.
- *
- * @param mrrByCurrency monthly recurring revenue keyed by ISO 4217 code. A map
- *                      rather than a single total because memberships carry their own currency
- *                      and there is no FX conversion — summing across them would invent a number.
- */
+@Schema(name = "RosterSummary", description = "Portfolio-level view of a coach's roster.")
 public record RosterSummary(
-				long active,
-				long paused,
-				long invited,
-				long requested,
-				long archived,
-				Map<String, BigDecimal> mrrByCurrency) {}
-
-
+        @Schema(example = "24") long active,
+        @Schema(example = "3") long paused,
+        @Schema(description = "Coach invited them; not yet accepted", example = "2") long invited,
+        @Schema(description = "Client asked to join; awaiting the coach's decision", example = "1")
+                long requested,
+        @Schema(example = "7") long archived,
+        @Schema(
+                        description =
+                                "Monthly recurring revenue keyed by ISO 4217 code, counting active"
+                                    + " memberships with a price set. A map rather than one total"
+                                    + " because memberships carry their own currency and there is"
+                                    + " no FX conversion — summing across them would invent a"
+                                    + " number.",
+                        example = "{\"USD\": 8400.00}")
+                Map<String, BigDecimal> mrrByCurrency) {}
