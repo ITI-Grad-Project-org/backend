@@ -71,6 +71,11 @@ export interface AiConfig {
 	aiRequestTimeoutMs: number;
 }
 
+export interface AnalyticsConfig {
+	baseUrl: string;
+	timeoutMs: number;
+}
+
 export interface Config {
 	app: AppConfig;
 	database: DatabaseConfig;
@@ -81,4 +86,5 @@ export interface Config {
 	documentTypes: DocumentTypes;
 	googleOauth: GoogleOAuthConfig;
 	ai: AiConfig;
+	analytics: AnalyticsConfig;
 }
