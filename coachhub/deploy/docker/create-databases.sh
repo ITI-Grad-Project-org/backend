@@ -18,11 +18,16 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     CREATE DATABASE core_db      OWNER core_user;
     CREATE DATABASE analytics_db OWNER analytics_user;
 
-    -- No cross-database access: each user may connect only to its own DB.
     REVOKE CONNECT ON DATABASE core_db      FROM PUBLIC;
     REVOKE CONNECT ON DATABASE analytics_db FROM PUBLIC;
     GRANT  CONNECT ON DATABASE core_db      TO core_user;
     GRANT  CONNECT ON DATABASE analytics_db TO analytics_user;
+
+    -- analytics-service reports on core-api's live data. Postgres cannot join
+    -- across databases, so it connects to core_db directly rather than copying
+    -- rows into analytics_db. Read-only: the SELECT grants are applied below,
+    -- and analytics_user never receives INSERT/UPDATE/DELETE on core_db.
+    GRANT  CONNECT ON DATABASE core_db      TO analytics_user;
 EOSQL
 
 # Postgres 15+: the public schema is no longer world-writable; hand each one
@@ -31,3 +36,20 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname core_db \
     -c 'ALTER SCHEMA public OWNER TO core_user;'
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname analytics_db \
     -c 'ALTER SCHEMA public OWNER TO analytics_user;'
+
+# Read-only grants for analytics_user inside core_db.
+#
+# ALTER DEFAULT PRIVILEGES is the load-bearing statement: core-api creates its
+# tables at runtime (TypeORM synchronize in dev, the migration Job in K8s), all
+# as core_user. Granting SELECT only on the tables that exist right now would
+# leave every table created afterwards invisible to analytics — which, on a
+# first init against an empty database, is all of them.
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname core_db <<-EOSQL
+    GRANT USAGE ON SCHEMA public TO analytics_user;
+    GRANT SELECT ON ALL TABLES    IN SCHEMA public TO analytics_user;
+    GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO analytics_user;
+    ALTER DEFAULT PRIVILEGES FOR ROLE core_user IN SCHEMA public
+        GRANT SELECT ON TABLES TO analytics_user;
+    ALTER DEFAULT PRIVILEGES FOR ROLE core_user IN SCHEMA public
+        GRANT SELECT ON SEQUENCES TO analytics_user;
+EOSQL

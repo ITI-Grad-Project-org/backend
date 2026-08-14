@@ -30,20 +30,22 @@ point; the three Spring services are never reachable by clients.
 | core-api             | NestJS (TS), TypeORM  | 3000  | PostgreSQL `core_db`, Redis       | Client-facing REST API, publishes domain events  |
 | ai-service           | Spring Boot (Java 21) | 8081  | MongoDB Atlas (managed, URI only) | RAG pipeline, Gemini calls, MQ consumer/producer |
 | notification-service | Spring Boot (Java 21) | 8083  | none (stateless)                  | Email (MailHog dev / Resend prod), MQ consumer   |
-| analytics-service    | Spring Boot (Java 21) | 8082  | PostgreSQL `analytics_db`         | Event aggregation & reporting, MQ consumer       |
+| analytics-service    | Spring Boot (Java 21) | 8082  | PostgreSQL `core_db` (read-only)  | Reporting over core-api's live data, MQ consumer |
 
 Ports follow the repo convention: 8081 ai / 8082 analytics / 8083 notification —
 compose, K8s manifests, and each service's `application.yml` all agree.
 
 ### Locked architectural decisions
 
-1. **One PostgreSQL instance, two logical databases** — `core_db` (owner
-   `core_user`) and
-   `analytics_db` (owner `analytics_user`). Separate credentials, **no
-   cross-database queries**.
-   Analytics builds its own read model from events. Splitting into two instances
-   later is a
-   connection-string-only change.
+1. **Analytics reports on core-api's live data** — `analytics-service` connects
+   to `core_db` as `analytics_user` with **SELECT and nothing else**. Postgres
+   cannot join across databases, so reporting on core-api's data means
+   connecting to that database, not copying rows into another one. Consequences:
+   Hibernate runs `ddl-auto=none` (TypeORM owns every table it reads), the
+   Hikari pool is capped and marked read-only, and analytics has no schema of
+   its own to keep in sync. `analytics_db` stays provisioned but unused —
+   available if precomputed rollups are ever needed, at which point the service
+   takes a second datasource rather than moving its source of truth.
 2. **MongoDB Atlas is fully managed** — never deployed in-cluster; only a URI
    secret is injected.
 3. **RabbitMQ**: single topic exchange `app.events`, one durable queue per
@@ -97,9 +99,9 @@ Key properties:
 
 - All inter-service communication is **async via `app.events`** — no service
   calls another over HTTP.
-- Only `core-api` touches Redis; only `core-api` and `analytics-service` touch
-  PostgreSQL, each
-  through **its own database and its own user**.
+- Only `core-api` touches Redis. `core-api` and `analytics-service` both connect
+  to `core_db`, through **separate users with different privileges** — `core_user`
+  read/write, `analytics_user` SELECT only.
 
 ## 3. RabbitMQ topology
 
@@ -137,7 +139,7 @@ flowchart LR
 |------------------------------|---------------------------------------------------------------------|----------------------|-----------------------------------------------------------------------------------------------------|
 | `ai-service.queue`           | `ai.chat.requested`                                                 | ai-service           | Never bind `ai.#` — the service also *publishes* `ai.chat.completed`, a wildcard would loop it back |
 | `notification-service.queue` | `user.registered`, `user.password-reset.requested`, `plan.assigned` | notification-service | Extend per notification type                                                                        |
-| `analytics-service.queue`    | `#`                                                                 | analytics-service    | Consumes everything to build its read model                                                         |
+| `analytics-service.queue`    | `#`                                                                 | analytics-service    | No longer builds state — analytics reads `core_db` directly. Retained for cache invalidation / live dashboard push |
 | `core-api.queue`             | `ai.chat.completed`, `ai.chat.failed`                               | core-api             | Reply channel for async AI work                                                                     |
 
 All queues: `durable: true`, `x-dead-letter-exchange: app.events.dlx`,
@@ -168,31 +170,37 @@ fields — add new ones).
 
 ```mermaid
 flowchart TB
-    subgraph pg [PostgreSQL - one instance, two logical DBs]
+    subgraph pg [PostgreSQL - one instance]
         COREDB[(core_db<br/>owner: core_user)]
-        ANDB[(analytics_db<br/>owner: analytics_user)]
+        ANDB[(analytics_db<br/>provisioned, unused)]
     end
 
-    CORE[core-api] -->|read/write<br/>TypeORM migrations| COREDB
-    ANLYT[analytics-service] -->|read/write<br/>own read model| ANDB
+    CORE[core-api] -->|read/write<br/>TypeORM owns the schema| COREDB
+    ANLYT[analytics-service] -->|SELECT only<br/>analytics_user| COREDB
     AI[ai-service] -->|vectors + chat context| ATLAS[(MongoDB Atlas)]
     CORE -->|cache / sessions<br/>disposable| REDIS[(Redis)]
 
-    CORE -. "NO direct access" .- ANDB
-    ANLYT -. "NO direct access" .- COREDB
+    ANLYT -. "reserved for<br/>future rollups" .- ANDB
 ```
 
-| Store          | Owner             | Access rule                                                                               |
-|----------------|-------------------|-------------------------------------------------------------------------------------------|
-| `core_db`      | core-api          | Only `core_user`. Schema via TypeORM **migrations** (`synchronize: false` in prod)        |
-| `analytics_db` | analytics-service | Only `analytics_user`. Read model rebuilt from the event stream — **no cross-DB queries** |
-| MongoDB Atlas  | ai-service        | Managed; connection string only                                                           |
-| Redis          | core-api          | Cache/sessions; losing it must never lose business data                                   |
+| Store          | Owner    | Access rule                                                                                  |
+|----------------|----------|----------------------------------------------------------------------------------------------|
+| `core_db`      | core-api | `core_user` read/write, schema via TypeORM. `analytics_user` holds **SELECT only**            |
+| `analytics_db` | —        | Provisioned but unused. Reserved for precomputed rollups if on-the-fly aggregation gets slow  |
+| MongoDB Atlas  | ai-service | Managed; connection string only                                                             |
+| Redis          | core-api | Cache/sessions; losing it must never lose business data                                       |
 
-Because the two databases share nothing (no FDW, no dblink, no shared schemas),
-moving
-`analytics_db` to its own instance is exactly one change:
-`SPRING_DATASOURCE_URL`.
+Two properties keep this safe. `analytics_user` is never granted
+INSERT/UPDATE/DELETE on `core_db`, and the Hikari pool is marked `read-only`, so
+a bug in analytics cannot corrupt business data. And `ALTER DEFAULT PRIVILEGES
+FOR ROLE core_user` in the init script means tables core-api creates later are
+readable automatically — without it, a schema change would silently break
+reporting.
+
+The cost is that analytical queries share an instance with the latency-sensitive
+OLTP workload, which is why the analytics pool is capped well below core-api's.
+If that contention ever bites, the fix is a streaming read replica and a
+connection-string change — not a return to copying rows.
 
 ## 5. Example event flows
 
@@ -217,7 +225,7 @@ sequenceDiagram
         N->>N: send welcome email (Resend / MailHog)
     and
         MQ->>A: user.registered → analytics-service.queue (# binding)
-        A->>A: upsert read model in analytics_db (idempotent on eventId)
+        A->>A: invalidate cached aggregates (row already visible in core_db)
     end
     Note over N,A: On repeated failure → message dead-letters to the service DLQ
 ```

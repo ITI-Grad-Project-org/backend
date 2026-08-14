@@ -144,9 +144,12 @@ services:
     image: ${REGISTRY:-coachhub.azurecr.io}/analytics-service:${IMAGE_TAG:-dev}
     environment:
       SERVER_PORT: 8082
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/analytics_db
+      # Reads core-api's data in place (SELECT-only role). Not analytics_db —
+      # Postgres cannot join across databases.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/core_db
       SPRING_DATASOURCE_USERNAME: analytics_user
       SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+      JPA_DDL_AUTO: none
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
