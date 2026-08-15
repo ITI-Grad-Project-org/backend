@@ -17,8 +17,7 @@ import java.util.UUID;
 @Repository
 public class AdherenceQueryRepository {
 
-	private static final String SCHEDULED_DATE =
-					"(p.start_date + ((w.week_number - 1) * 7 + (d.day_number - 1)))";
+	private static final String SCHEDULED_DATE = SqlFragments.SCHEDULED_DATE;
 
 	private static final String SCHEDULED_SQL =
 					"""
@@ -98,6 +97,34 @@ public class AdherenceQueryRepository {
 		return numerator
 						.multiply(BigDecimal.valueOf(100))
 						.divide(denominator, 1, RoundingMode.HALF_UP);
+	}
+
+	/**
+	 * The session half of {@link #summary} alone, for callers that need the headline rate and not
+	 * the set-level breakdown.
+	 *
+	 * <p>Worth its own method rather than reading {@code summary().sessionCompletionPct()}: the
+	 * volume query walks logged_sets through two joins and is by far the heaviest statement in this
+	 * service, and the coach home screen loads this number on every open.
+	 */
+	public BigDecimal sessionCompletionPct(UUID tenantId, LocalDate from, LocalDate to) {
+		MapSqlParameterSource params =
+						new MapSqlParameterSource()
+										.addValue("tenantId", tenantId)
+										.addValue("membershipId", null)
+										.addValue("fromDate", from)
+										.addValue("toDate", to);
+
+		long scheduled =
+						Optional.ofNullable(jdbc.queryForObject(SCHEDULED_SQL, params, Long.class))
+						        .orElse(0L);
+		Long completed =
+						jdbc.queryForObject(
+										SESSIONS_SQL, params, (rs, rowNum) -> rs.getLong("completed"));
+
+		return percentage(
+						BigDecimal.valueOf(completed == null ? 0L : completed),
+						BigDecimal.valueOf(scheduled));
 	}
 
 	public AdherenceSummary summary(

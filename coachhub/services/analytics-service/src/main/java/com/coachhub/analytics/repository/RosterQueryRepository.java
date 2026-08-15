@@ -17,8 +17,7 @@ import java.util.UUID;
 @Repository
 public class RosterQueryRepository {
 
-	private static final String SCHEDULED_DATE =
-					"(p.start_date + ((w.week_number - 1) * 7 + (d.day_number - 1)))";
+	private static final String SCHEDULED_DATE = SqlFragments.SCHEDULED_DATE;
 
 	private static final String SUMMARY_SQL =
 					"""

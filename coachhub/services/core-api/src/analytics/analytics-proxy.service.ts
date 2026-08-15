@@ -21,7 +21,7 @@ export class AnalyticsProxyService {
 	async get<T>(
 		path: string,
 		tenantId: string,
-		query: Record<string, string | undefined> = {},
+		query: Record<string, string | number | undefined> = {},
 	): Promise<T> {
 		if (!tenantId) {
 			throw new InternalServerErrorException(
@@ -36,7 +36,7 @@ export class AnalyticsProxyService {
 		);
 		for (const [key, value] of Object.entries(query)) {
 			if (value !== undefined && value !== null && value !== '') {
-				url.searchParams.set(key, value);
+				url.searchParams.set(key, String(value));
 			}
 		}
 

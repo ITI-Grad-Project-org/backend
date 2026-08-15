@@ -1,6 +1,10 @@
 package com.coachhub.analytics.web;
 
+import com.coachhub.analytics.dto.ActivityEvent;
 import com.coachhub.analytics.dto.AdherenceSummary;
+import com.coachhub.analytics.dto.AttentionQueue;
+import com.coachhub.analytics.dto.ClientProgress;
+import com.coachhub.analytics.dto.CoachOverview;
 import com.coachhub.analytics.dto.RosterReport;
 import com.coachhub.analytics.dto.TemplateEffectiveness;
 import com.coachhub.analytics.dto.TemplateSurvival;
@@ -22,13 +26,143 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/analytics")
-@Tag(name = "Analytics", description = "Roster health, adherence, and programme effectiveness")
+@Tag(
+				name = "Analytics",
+				description =
+								"Read-only reporting over core-api's live data. Every route is scoped by the "
+												+ "tenant in the path; core-api takes that from the coach's token and this "
+												+ "service is never reachable from a browser.")
 public class AnalyticsController {
 
 	private final AnalyticsService analytics;
 
 	public AnalyticsController(AnalyticsService analytics) {
 		this.analytics = analytics;
+	}
+
+	@GetMapping("/tenants/{tenantId}/overview")
+	@Operation(
+					summary = "Coach home screen",
+					description =
+									"The whole above-the-fold dashboard in one call: roster counters and MRR, "
+													+ "headline session adherence, this week's volume against last week's, and "
+													+ "the size of each attention queue. The three counts are badges — call "
+													+ "/attention for the rows behind them, which are computed at the same "
+													+ "default thresholds so a badge and its list always agree.")
+	@ApiResponses({
+					@ApiResponse(responseCode = "200", description = "Overview for the window"),
+					@ApiResponse(responseCode = "400", description = "'to' is before 'from'", content =
+					@io.swagger.v3.oas.annotations.media.Content)
+	})
+	public CoachOverview overview(
+					@Parameter(description = "Tenant (coaching practice) id", required = true)
+					@PathVariable
+					UUID tenantId,
+					@Parameter(description = "Inclusive start. Defaults to 29 days before `to`.")
+					@RequestParam(required = false)
+					@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+					LocalDate from,
+					@Parameter(
+									description =
+													"Inclusive end, and the date 'this week' is derived from. Defaults to today.")
+					@RequestParam(required = false)
+					@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+					LocalDate to) {
+		return analytics.overview(tenantId, from, to);
+	}
+
+	@GetMapping("/tenants/{tenantId}/attention")
+	@Operation(
+					summary = "Needs you now",
+					description =
+									"The three queues that decay without a coach: clients who have gone quiet, "
+													+ "check-ins submitted and unanswered, and programmes about to run out. "
+													+ "Each is sorted most-urgent-first. Silence is measured from the last "
+													+ "activity of any kind and falls back to the join date, so a client who "
+													+ "signed up yesterday is not reported as abandoned.")
+	@ApiResponses({
+					@ApiResponse(responseCode = "200", description = "The attention queues"),
+					@ApiResponse(
+									responseCode = "400",
+									description = "A threshold was below 1",
+									content = @io.swagger.v3.oas.annotations.media.Content)
+	})
+	public AttentionQueue attention(
+					@Parameter(required = true) @PathVariable UUID tenantId,
+					@Parameter(description = "Measure urgency from this date. Defaults to today.")
+					@RequestParam(required = false)
+					@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+					LocalDate asOf,
+					@Parameter(description = "Days of silence before a client is listed. Default 7.")
+					@RequestParam(required = false)
+					Integer riskThresholdDays,
+					@Parameter(description = "How far ahead to report programme endings. Default 14.")
+					@RequestParam(required = false)
+					Integer endingHorizonDays) {
+		return analytics.attention(tenantId, asOf, riskThresholdDays, endingHorizonDays);
+	}
+
+	@GetMapping("/tenants/{tenantId}/activity")
+	@Operation(
+					summary = "Activity feed",
+					description =
+									"What clients logged, newest first. Ordered by the instant each thing "
+													+ "happened rather than by its training date, because the training date is "
+													+ "the client's own local day and cannot order a feed within it. Rows "
+													+ "disappear when a client un-logs something: this is the current claim, "
+													+ "not an audit trail.")
+	@ApiResponses({
+					@ApiResponse(responseCode = "200", description = "Feed rows"),
+					@ApiResponse(
+									responseCode = "400",
+									description = "'to' is before 'from', or limit below 1",
+									content = @io.swagger.v3.oas.annotations.media.Content)
+	})
+	public List<ActivityEvent> activity(
+					@Parameter(required = true) @PathVariable UUID tenantId,
+					@Parameter(description = "Inclusive start. Defaults to 29 days before `to`.")
+					@RequestParam(required = false)
+					@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+					LocalDate from,
+					@Parameter(description = "Inclusive end. Defaults to today.")
+					@RequestParam(required = false)
+					@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+					LocalDate to,
+					@Parameter(description = "Max rows. Default 50, capped at 200.")
+					@RequestParam(required = false)
+					Integer limit) {
+		return analytics.activity(tenantId, from, to, limit);
+	}
+
+	@GetMapping("/tenants/{tenantId}/clients/{membershipId}/progress")
+	@Operation(
+					summary = "Client outcomes",
+					description =
+									"Body measurements and estimated strength for one client. Everything else "
+													+ "on this API measures whether the work got done; this measures whether it "
+													+ "worked. Strength uses the Epley estimate from each logged set and is "
+													+ "capped at 12 reps, above which the formula inflates enough to invent "
+													+ "personal bests. Measurements are returned exactly as recorded, with gaps "
+													+ "left as nulls rather than carried forward.")
+	@ApiResponses({
+					@ApiResponse(responseCode = "200", description = "Progress report"),
+					@ApiResponse(responseCode = "404", description = "No such client for this tenant", content =
+					@io.swagger.v3.oas.annotations.media.Content)
+	})
+	public ClientProgress clientProgress(
+					@Parameter(required = true) @PathVariable UUID tenantId,
+					@Parameter(description = "The client's membership id", required = true)
+					@PathVariable
+					UUID membershipId,
+					@Parameter(description = "Inclusive start. Defaults to 29 days before `to`.")
+					@RequestParam(required = false)
+					@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+					LocalDate from,
+					@Parameter(description = "Inclusive end. Defaults to today.")
+					@RequestParam(required = false)
+					@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+					LocalDate to) {
+		return analytics.clientProgress(tenantId, membershipId, from, to);
 	}
 
 	@GetMapping("/tenants/{tenantId}/roster")
