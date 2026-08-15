@@ -4,6 +4,9 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { ActivityRecorderService } from '../../../activity/services/activity-recorder.service';
+import { ActivityType } from '../../../activity/enums/activity-type.enum';
+import { buildLoggedSetActivitySourceKey } from '../../../activity/utils/activity-source-key.utils';
 import { SessionStatus, SetOutcome } from '../../../common';
 import { CompleteWorkoutDto } from '../dto/workout-logging.dto';
 import { LoggedSet } from '../entities/logged-set.entity';
@@ -12,6 +15,7 @@ import {
 	getActiveMembership,
 	loadOwnedWorkoutLog,
 	loadPrescribedLoggedSets,
+	loadWorkoutLoggedSetIds,
 	lockOwnedInProgressLog,
 } from '../helpers/workout-log.persistence';
 import { getOrCreateInProgressWorkout } from '../helpers/workout-log-snapshot.persistence';
@@ -26,7 +30,10 @@ import {
 
 @Injectable()
 export class ClientWorkoutFinalizationService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly activityRecorder: ActivityRecorderService,
+	) {}
 
 	async completeWorkout(
 		clientId: string,
@@ -102,6 +109,7 @@ export class ClientWorkoutFinalizationService {
 				manager,
 				lockedLog.id,
 			);
+			const loggedSetIds = await loadWorkoutLoggedSetIds(manager, lockedLog.id);
 			if (prescribedSets.length === 0) {
 				throw new ConflictException('Workout log has no prescribed sets');
 			}
@@ -111,6 +119,12 @@ export class ClientWorkoutFinalizationService {
 				});
 			}
 			await manager.getRepository(LoggedSet).save(prescribedSets);
+			await this.activityRecorder.removeMany(
+				manager,
+				clientId,
+				ActivityType.WORKOUT_SET_REPORTED,
+				loggedSetIds.map(buildLoggedSetActivitySourceKey),
+			);
 
 			lockedLog.status = SessionStatus.SKIPPED;
 			lockedLog.completedAt = new Date();

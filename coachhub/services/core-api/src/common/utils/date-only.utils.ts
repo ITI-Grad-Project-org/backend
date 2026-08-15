@@ -35,7 +35,7 @@ export function addDaysToDateOnly(value: string, days: number) {
 	return date.toISOString().slice(0, 10);
 }
 
-/** Converts an instant into the calendar date seen in a tenant's timezone. */
+/** Converts an instant into the calendar date seen in the given timezone. */
 export function getDateOnlyInTimeZone(date: Date, timezone: string) {
 	const parts = new Intl.DateTimeFormat('en-US', {
 		timeZone: timezone,

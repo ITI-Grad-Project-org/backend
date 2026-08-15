@@ -4,12 +4,13 @@ import {
 	IsOptional,
 	IsPhoneNumber,
 	IsString,
+	IsTimeZone,
 	MaxLength,
 	MinLength,
 	Validate,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MatchConstraint } from 'src/common';
+import { MatchConstraint } from '../../common';
 
 /**
  * Standalone client registration (design §7.2, minus the invitation code —
@@ -28,6 +29,11 @@ export class CreateClientDto {
 	@IsNotEmpty()
 	@MaxLength(100)
 	lastName: string;
+
+	@ApiPropertyOptional({ example: 'Africa/Cairo' })
+	@IsOptional()
+	@IsTimeZone()
+	timezone?: string;
 
 	@ApiProperty({ example: 'alice@example.com' })
 	@IsEmail()
