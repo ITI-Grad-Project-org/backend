@@ -9,9 +9,11 @@ dist/
 *.local
 # K8s secret files with real values (the committed one is only a template)
 *.local.yaml
-# personal notes stay ignored, but the deployment docs are part of the repo
+# personal notes stay ignored; docs that the code and other docs link to are
+# part of the repo and are allowlisted individually
 docs/*
 !docs/deployment/
+!docs/analytics/
 
 # Java / Maven
 application-local.yml

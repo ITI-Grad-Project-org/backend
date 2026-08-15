@@ -18,12 +18,12 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    # nip.io resolves the embedded IP — 74.162.148.3 is the ingress-nginx LB.
+    # nip.io resolves the embedded IP — 20.54.71.51 is the ingress-nginx LB.
     - hosts:
-        - api.74.162.148.3.nip.io
+        - api.20.54.71.51.nip.io
       secretName: coachhub-api-tls        # created/renewed by cert-manager
   rules:
-    - host: api.74.162.148.3.nip.io
+    - host: api.20.54.71.51.nip.io
       http:
         paths:
           - path: /

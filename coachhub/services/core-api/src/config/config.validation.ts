@@ -19,6 +19,10 @@ export const ConfigSchema = z.object({
 		geminiApiKey: z.string(),
 		aiRequestTimeoutMs: z.coerce.number().default(30000),
 	}),
+	analytics: z.object({
+		baseUrl: z.string().url(),
+		timeoutMs: z.coerce.number().default(10000),
+	}),
 	jwt: z.object({
 		accessToken: z.object({
 			secret: z.string(),

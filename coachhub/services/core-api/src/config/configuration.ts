@@ -47,6 +47,18 @@ export default () => ({
 			parseInt(process.env.AI_REQUEST_TIMEOUT_MS as string, 10) || 30000,
 	},
 
+	analytics: {
+		// In-cluster ClusterIP address. analytics-service is never exposed
+		// through the ingress; core-api is its only caller and the edge that
+		// authenticates the request.
+		baseUrl:
+			process.env.ANALYTICS_SERVICE_URL || 'http://analytics-service:8082',
+		// Aggregations run over core_db with a 5-connection pool. Failing fast
+		// keeps a slow report from tying up a core-api worker.
+		timeoutMs:
+			parseInt(process.env.ANALYTICS_REQUEST_TIMEOUT_MS as string, 10) || 10000,
+	},
+
 	aws: {
 		region: process.env.AWS_REGION || 'us-east-1',
 		accessKeyId: process.env.AWS_ACCESS_KEY_ID,
