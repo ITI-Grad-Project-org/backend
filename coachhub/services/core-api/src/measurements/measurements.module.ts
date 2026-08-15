@@ -5,13 +5,14 @@ import { Measurement } from './entities/measurement.entity';
 import { MeasurementsController } from './measurements.controller';
 import { MeasurementsService } from './measurements.service';
 import { S3UploadModule } from '../s3-upload/s3-upload.module';
+import { CoachMeasurementsController } from './coach-measurements.controller';
 
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([Measurement, ClientMembership]),
 		S3UploadModule,
 	],
-	controllers: [MeasurementsController],
+	controllers: [MeasurementsController, CoachMeasurementsController],
 	providers: [MeasurementsService],
 	exports: [MeasurementsService],
 })
