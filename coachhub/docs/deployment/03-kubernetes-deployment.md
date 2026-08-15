@@ -474,6 +474,18 @@ an already-correct database is a no-op. It asserts the resulting privilege set
 is exactly `SELECT` and exits non-zero if the role is missing, rather than
 silently granting nothing.
 
+**The CD pipeline runs this on every deploy** (`.github/workflows/deploy.yml`,
+between `10-config/` and `40-apps/`), and the deploy fails rather than rolling
+out an analytics-service that cannot read. It was missing from the pipeline
+until 2026-08-15, which is how a production cluster reached the state this Job
+exists to prevent — the manifest was correct and simply never applied.
+
+Note the workflow applies this one file, not the whole `30-migrations/`
+directory: that directory also holds `core-api-migrations`, which is inert until
+`DB_SYNCHRONIZE=false`. Wire it in with that switch, not before.
+
+To run it by hand — on a cluster bootstrapped outside CI, or to repair one now:
+
 ```bash
 kubectl -n coachhub delete job analytics-grants --ignore-not-found
 kubectl -n coachhub apply -f deploy/k8s/30-migrations/analytics-grants-job.yaml
@@ -481,6 +493,10 @@ kubectl -n coachhub wait --for=condition=complete job/analytics-grants --timeout
 # only then:
 kubectl -n coachhub apply -f deploy/k8s/40-apps/analytics-service.yaml
 ```
+
+No restart of `analytics-service` is needed afterwards. Hikari fails fast on a
+rejected connection but rebuilds the pool on the next request, so endpoints
+recover as soon as the grants land.
 
 The `ALTER DEFAULT PRIVILEGES FOR ROLE core_user` statements are the load-bearing
 part: core-api creates tables at runtime, so grants covering only today's tables
