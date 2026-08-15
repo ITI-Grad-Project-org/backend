@@ -1,5 +1,6 @@
-# ClusterIP-only. Owns analytics_db exclusively — never touches core_db
-# (read model is rebuilt from coachhub.events).
+# ClusterIP-only. Reads core_db directly with a SELECT-only role: analytics
+# reports on core-api's live data, and Postgres cannot join across databases.
+# core-api owns every table it reads; Hibernate must stay ddl-auto=none.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,7 +23,7 @@ spec:
         runAsUser: 1001              # 'spring' user pinned in the Dockerfile
       containers:
         - name: analytics-service
-          image: coachhubacr.azurecr.io/analytics-service:v1   # CI: replace with the release git SHA
+          image: coachhubacrnew123.azurecr.io/analytics-service:v1   # CI: replace with the release git SHA
           ports:
             - containerPort: 8082
               name: http
@@ -30,15 +31,15 @@ spec:
             - name: SERVER_PORT
               value: "8082"
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres:5432/analytics_db
+              value: jdbc:postgresql://postgres:5432/core_db
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom: { secretKeyRef: { name: app-secrets, key: ANALYTICS_DB_USER } }
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom: { secretKeyRef: { name: app-secrets, key: ANALYTICS_DB_PASSWORD } }
-            # Hibernate owns the read-model schema until Flyway lands; 'update' is
-            # additive-only. Switch to 'validate' once migrations exist.
+            # MUST stay 'none'. core-api owns this schema via TypeORM; 'update'
+            # would let Hibernate ALTER core-api's tables to match its mappings.
             - name: JPA_DDL_AUTO
-              value: update
+              value: none
             - name: SPRING_RABBITMQ_HOST
               valueFrom: { configMapKeyRef: { name: app-config, key: RABBITMQ_HOST } }
             - name: SPRING_RABBITMQ_USERNAME

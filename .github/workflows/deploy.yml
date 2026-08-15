@@ -19,7 +19,7 @@ jobs:
       # ACR Tasks (`az acr build`) is blocked on this subscription, so images are
       # built on the runner and pushed.
       - name: ACR login
-        run: az acr login --name coachhubacr
+        run: az acr login --name coachhubacrnew123
 
       # Two tags per image: the immutable git SHA the rollout pins to, and the
       # floating v1 that 40-apps/*.yaml reference, so `kubectl apply` on its own
@@ -27,7 +27,7 @@ jobs:
       - name: Build & push images
         run: |
           for svc in core-api ai-service analytics-service notification-service; do
-            img="coachhubacr.azurecr.io/$svc"
+            img="coachhubacrnew123.azurecr.io/$svc"
             docker build \
               -t "$img:${{ github.sha }}" \
               -t "$img:v1" \
@@ -46,10 +46,29 @@ jobs:
           # ConfigMaps first: the rollout below is what makes pods pick up new env.
           # (Secrets are not in the repo and stay under manual control.)
           kubectl apply -f deploy/k8s/10-config/
+
+          # Grants BEFORE the apps roll out. 10-config/postgres-init-script.yaml
+          # only runs on the first init of an empty PVC, so any cluster whose
+          # database predates the analytics read-path change never received the
+          # SELECT grants — analytics-service then answers every request with
+          # `permission denied for database "core_db"`, which core-api surfaces
+          # as a 502. Idempotent, so this is a no-op on an already-correct
+          # database and safe on every release. Jobs are immutable: delete first.
+          #
+          # Deliberately not `-f deploy/k8s/30-migrations/`: that directory also
+          # holds core-api-migrations, which runs `typeorm migration:run`. The
+          # migrations directory is still empty and AKS runs DB_SYNCHRONIZE=true,
+          # so wiring it in now would run an untested step on every deploy for no
+          # gain. Add it here in the same commit that sets DB_SYNCHRONIZE=false.
+          kubectl -n coachhub delete job analytics-grants --ignore-not-found
+          kubectl apply -f deploy/k8s/30-migrations/analytics-grants-job.yaml
+          kubectl -n coachhub wait --for=condition=complete \
+            job/analytics-grants --timeout=180s
+
           kubectl apply -f deploy/k8s/40-apps/
           for svc in core-api ai-service analytics-service notification-service; do
             kubectl set image deployment/$svc \
-              $svc=coachhubacr.azurecr.io/$svc:${{ github.sha }} -n coachhub
+              $svc=coachhubacrnew123.azurecr.io/$svc:${{ github.sha }} -n coachhub
           done
           for svc in core-api ai-service analytics-service notification-service; do
             kubectl rollout status deployment/$svc -n coachhub --timeout=5m

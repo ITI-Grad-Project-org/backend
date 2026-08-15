@@ -39,7 +39,8 @@ deploy/k8s/
 │   ├── rabbitmq.yaml              # StatefulSet + PVC + Svc
 │   └── redis.yaml                 # Deployment + Svc (disposable cache — locked decision)
 ├── 30-migrations/
-│   └── core-api-migrations-job.yaml
+│   ├── core-api-migrations-job.yaml
+│   └── analytics-grants-job.yaml        # analytics_user SELECT on core_db
 ├── 40-apps/
 │   ├── core-api.yaml
 │   ├── ai-service.yaml
@@ -458,6 +459,48 @@ kubectl -n coachhub wait --for=condition=complete job/core-api-migrations --time
 # only then:
 kubectl -n coachhub apply -f deploy/k8s/40-apps/core-api.yaml
 ```
+
+### 5.1 Analytics grants Job — `30-migrations/analytics-grants-job.yaml`
+
+`analytics-service` reads `core_db` as `analytics_user` with SELECT only. Those
+grants live in the Postgres init script, but that script runs **only on the
+first init of an empty PVC** — so any cluster whose database predates the
+analytics read path will never have them, and the service comes up with
+`permission denied for database "core_db"`.
+
+This Job closes that gap and is safe to run on every release: `GRANT` and
+`ALTER DEFAULT PRIVILEGES` converge rather than accumulate, so re-running it on
+an already-correct database is a no-op. It asserts the resulting privilege set
+is exactly `SELECT` and exits non-zero if the role is missing, rather than
+silently granting nothing.
+
+**The CD pipeline runs this on every deploy** (`.github/workflows/deploy.yml`,
+between `10-config/` and `40-apps/`), and the deploy fails rather than rolling
+out an analytics-service that cannot read. It was missing from the pipeline
+until 2026-08-15, which is how a production cluster reached the state this Job
+exists to prevent — the manifest was correct and simply never applied.
+
+Note the workflow applies this one file, not the whole `30-migrations/`
+directory: that directory also holds `core-api-migrations`, which is inert until
+`DB_SYNCHRONIZE=false`. Wire it in with that switch, not before.
+
+To run it by hand — on a cluster bootstrapped outside CI, or to repair one now:
+
+```bash
+kubectl -n coachhub delete job analytics-grants --ignore-not-found
+kubectl -n coachhub apply -f deploy/k8s/30-migrations/analytics-grants-job.yaml
+kubectl -n coachhub wait --for=condition=complete job/analytics-grants --timeout=120s
+# only then:
+kubectl -n coachhub apply -f deploy/k8s/40-apps/analytics-service.yaml
+```
+
+No restart of `analytics-service` is needed afterwards. Hikari fails fast on a
+rejected connection but rebuilds the pool on the next request, so endpoints
+recover as soon as the grants land.
+
+The `ALTER DEFAULT PRIVILEGES FOR ROLE core_user` statements are the load-bearing
+part: core-api creates tables at runtime, so grants covering only today's tables
+would leave every table created later — `checkins` included — unreadable.
 
 **Assumption:** `dist/data-source.js` exports the TypeORM `DataSource`. The repo's
 `package.json` currently has no `migration:run` script — add
@@ -951,6 +994,7 @@ kubectl apply -f deploy/k8s/20-data/
 kubectl -n coachhub rollout status statefulset/postgres statefulset/rabbitmq deployment/redis
 kubectl apply -f deploy/k8s/30-migrations/
 kubectl -n coachhub wait --for=condition=complete job/core-api-migrations --timeout=300s
+kubectl -n coachhub wait --for=condition=complete job/analytics-grants    --timeout=120s
 kubectl apply -f deploy/k8s/40-apps/
 kubectl apply -f deploy/k8s/50-ingress/
 kubectl apply -f deploy/k8s/60-autoscaling/

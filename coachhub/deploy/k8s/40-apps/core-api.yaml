@@ -27,7 +27,7 @@ spec:
         runAsUser: 1000              # 'node' user in node:22-alpine
       containers:
         - name: core-api
-          image: coachhubacr.azurecr.io/core-api:v1   # CI: replace with the release git SHA
+          image: coachhubacrnew123.azurecr.io/core-api:v1   # CI: replace with the release git SHA
           ports:
             - containerPort: 3000
               name: http
@@ -60,6 +60,13 @@ spec:
               valueFrom: { secretKeyRef: { name: app-secrets, key: JWT_REFRESH_SECRET } }
             - name: GEMINI_API_KEY
               valueFrom: { secretKeyRef: { name: app-secrets, key: GEMINI_API_KEY } }
+            # core-api proxies the coach-facing analytics routes. analytics-service
+            # is ClusterIP-only and does no authorisation of its own, so this
+            # address must stay in-cluster and must never be routed via the ingress.
+            - name: ANALYTICS_SERVICE_URL
+              value: http://analytics-service:8082
+            - name: ANALYTICS_REQUEST_TIMEOUT_MS
+              value: "10000"
             - name: GOOGLE_OAUTH_CLIENT_ID
               valueFrom: { secretKeyRef: { name: app-secrets, key: GOOGLE_OAUTH_CLIENT_ID } }
             - name: AWS_ACCESS_KEY_ID

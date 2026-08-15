@@ -16,12 +16,11 @@ import {
 } from '../../common';
 
 export interface CoachCertification {
+	id?: string;
 	name: string;
 	issuer?: string;
-	/** ISO date — clients are shown the issue/expiry pair, not a bare year. */
 	issueDate?: string;
 	expiryDate?: string;
-	/** Scan of the certificate, uploaded through POST /upload/image. */
 	fileUrl?: string;
 	credentialUrl?: string;
 }

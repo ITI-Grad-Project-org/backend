@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Client } from './client.entity';
-import { MembershipStatus } from '../../common';
+import { MembershipStatus, numericTransformer } from '../../common';
 
 @Entity('memberships')
 @Unique(['tenant', 'client'])
@@ -75,6 +75,26 @@ export class ClientMembership {
 		select: false,
 	})
 	inviteOtpAttempts: number;
+
+	/**
+	 * What this client pays the coach per month. Set by the coach — CoachHub
+	 * does not process payments, so this is the agreed rate, not a charge.
+	 * Null means "not commercially tracked" and is excluded from MRR rather
+	 * than counted as zero.
+	 */
+	@Column({
+		name: 'monthly_price',
+		type: 'numeric',
+		precision: 10,
+		scale: 2,
+		nullable: true,
+		transformer: numericTransformer,
+	})
+	monthlyPrice: number | null;
+
+	/** ISO 4217. MRR is reported per currency; there is no FX conversion. */
+	@Column({ type: 'char', length: 3, default: 'USD' })
+	currency: string;
 
 	@Column({ name: 'joined_at', type: 'timestamptz', nullable: true })
 	joinedAt: Date | null;
