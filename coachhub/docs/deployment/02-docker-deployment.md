@@ -78,6 +78,32 @@ EOSQL
 > If the volume already exists the script will NOT re-run. To re-init in dev:
 > `docker compose down -v` (destroys data).
 
+### 2.1 Repairing an existing volume
+
+A volume created before analytics-service was pointed at `core_db` never received
+the `analytics_user` grants, so every analytics request fails with:
+
+```
+FATAL: permission denied for database "core_db"
+DETAIL: User does not have CONNECT privilege.
+```
+
+Note that this reaches the client as `bad SQL grammar`, not as anything
+mentioning permissions: Spring maps SQLState `42501` (insufficient privilege) and
+`42703` (undefined column) to the same `BadSqlGrammarException`, so a missing
+grant and a missing column look nearly identical. Check the grants before
+concluding the schema is out of date.
+
+`docker compose down -v` fixes it by destroying all local data. To keep the data:
+
+```bash
+sh deploy/docker/repair-analytics-grants.sh
+```
+
+This is the dev counterpart to `deploy/k8s/30-migrations/analytics-grants-job.yaml`.
+It brings an existing volume up to what `create-databases.sh` would have produced,
+verifies the result, and is a no-op on a database that is already correct.
+
 ## 3. Dockerfiles
 
 ### 3.1 core-api (NestJS) — `services/core-api/Dockerfile`

@@ -35,7 +35,12 @@ data:
     # line is the load-bearing one: core-api creates tables at runtime (TypeORM
     # synchronize / migrations run as core_user), so a one-shot GRANT on today's
     # tables would leave every future table unreadable.
+    # The REVOKE is not redundant with the SELECT-only table grants: schema-level
+    # CREATE is a separate privilege, and a role holding it can add tables to
+    # core_db no matter how little it may read. A no-op on a fresh Postgres 15+
+    # init; present so the invariant lives in this file, not in a version default.
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname core_db <<-EOSQL
+        REVOKE CREATE ON SCHEMA public FROM PUBLIC;
         GRANT USAGE ON SCHEMA public TO analytics_user;
         GRANT SELECT ON ALL TABLES    IN SCHEMA public TO analytics_user;
         GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO analytics_user;

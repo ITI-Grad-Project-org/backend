@@ -74,7 +74,18 @@ spec:
               # creates tables at runtime (synchronize / the migrations Job, both
               # as core_user), so granting only on today's tables would leave
               # every future table unreadable.
+              # Order matters. core_user is granted CREATE explicitly BEFORE the
+              # revoke: on a database provisioned by the init script it owns the
+              # schema and this is redundant, but on one that was repaired by
+              # hand core_user may be relying on PUBLIC's CREATE, and revoking
+              # first would leave core-api unable to create its own tables.
+              #
+              # The revoke itself closes a hole the SELECT grants do not: CREATE
+              # on the schema is a separate privilege, so a read-only role could
+              # still add tables to core_db.
               psql -v ON_ERROR_STOP=1 -d core_db <<SQL
+              GRANT USAGE, CREATE ON SCHEMA public TO core_user;
+              REVOKE CREATE ON SCHEMA public FROM PUBLIC;
               GRANT USAGE  ON SCHEMA public TO ${ANALYTICS_DB_USER};
               GRANT SELECT ON ALL TABLES    IN SCHEMA public TO ${ANALYTICS_DB_USER};
               GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO ${ANALYTICS_DB_USER};
@@ -96,6 +107,21 @@ spec:
                 echo "FATAL: expected SELECT only, got ${GRANTED}" >&2
                 exit 1
               fi
+
+              # Table privileges being SELECT-only says nothing about the schema
+              # itself, so assert both halves of read-only: reachable, not writable.
+              psql -v ON_ERROR_STOP=1 -d core_db -tAc \
+                "SELECT has_schema_privilege('${ANALYTICS_DB_USER}', 'public', 'CREATE')" \
+                | grep -qx f || {
+                  echo "FATAL: ${ANALYTICS_DB_USER} still holds CREATE on schema public" >&2
+                  exit 1
+                }
+              psql -v ON_ERROR_STOP=1 -d core_db -tAc \
+                "SELECT has_schema_privilege('core_user', 'public', 'CREATE')" \
+                | grep -qx t || {
+                  echo "FATAL: core_user lost CREATE on schema public" >&2
+                  exit 1
+                }
               echo "grants applied."
           resources:
             requests: { cpu: 50m, memory: 64Mi }

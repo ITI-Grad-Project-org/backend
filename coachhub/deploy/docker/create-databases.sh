@@ -44,7 +44,15 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname analytics_db \
 # as core_user. Granting SELECT only on the tables that exist right now would
 # leave every table created afterwards invisible to analytics — which, on a
 # first init against an empty database, is all of them.
+#
+# The REVOKE is not redundant with the SELECT-only table grants: schema-level
+# CREATE is a separate privilege, and a role holding it can add its own tables
+# to core_db regardless of how little it may read. Postgres 15+ already drops
+# CREATE from PUBLIC by default, so this is a no-op on a fresh init — it is here
+# so the invariant is asserted by this file rather than inherited from a version
+# default that an older or hand-repaired database may not match.
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname core_db <<-EOSQL
+    REVOKE CREATE ON SCHEMA public FROM PUBLIC;
     GRANT USAGE ON SCHEMA public TO analytics_user;
     GRANT SELECT ON ALL TABLES    IN SCHEMA public TO analytics_user;
     GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO analytics_user;
