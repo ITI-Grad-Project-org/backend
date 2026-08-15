@@ -82,12 +82,42 @@ export class MeasurementsService {
 		query: QueryMeasurementsDto,
 	): Promise<PaginatedResponse<Measurement>> {
 		const membership = await this.resolveActiveMembership(clientId, tenantId);
+		return this.findMeasurementsForMembership(membership.id, query, 'DESC');
+	}
+
+	async findClientMeasurementsForCoach(
+		tenantId: string,
+		clientId: string,
+		query: QueryMeasurementsDto,
+	): Promise<PaginatedResponse<Measurement>> {
+		const membership = await this.resolveTenantMembership(tenantId, clientId);
+		return this.findMeasurementsForMembership(membership.id, query, 'ASC');
+	}
+
+	async findSingleMeasurementForCoach(
+		tenantId: string,
+		clientId: string,
+		measurementId: string,
+	) {
+		const membership = await this.resolveTenantMembership(tenantId, clientId);
+		return this.getOwnedMeasurementOrThrow(membership.id, measurementId);
+	}
+
+	private async findMeasurementsForMembership(
+		membershipId: string,
+		query: QueryMeasurementsDto,
+		order: 'ASC' | 'DESC',
+	): Promise<PaginatedResponse<Measurement>> {
+		if (query.from && query.to && query.from > query.to) {
+			throw new BadRequestException('from must be on or before to');
+		}
+
 		const page = query.page ?? 1;
 		const limit = query.limit ?? 10;
 		const queryBuilder = this.measurementRepository
 			.createQueryBuilder('measurement')
 			.where('measurement.membership_id = :membershipId', {
-				membershipId: membership.id,
+				membershipId,
 			});
 
 		if (query.from) {
@@ -103,8 +133,8 @@ export class MeasurementsService {
 		}
 
 		const [docs, total] = await queryBuilder
-			.orderBy('measurement.measured_at', 'DESC')
-			.addOrderBy('measurement.id', 'DESC')
+			.orderBy('measurement.measured_at', order)
+			.addOrderBy('measurement.id', order)
 			.skip((page - 1) * limit)
 			.take(limit)
 			.getManyAndCount();
@@ -207,6 +237,21 @@ export class MeasurementsService {
 
 		if (!membership) {
 			throw new NotFoundException('Active client membership not found');
+		}
+
+		return membership;
+	}
+
+	private async resolveTenantMembership(tenantId: string, clientId: string) {
+		const membership = await this.membershipRepository.findOne({
+			where: {
+				client: { id: clientId },
+				tenant: { id: tenantId },
+			},
+		});
+
+		if (!membership) {
+			throw new NotFoundException('Client not found in this tenant');
 		}
 
 		return membership;
