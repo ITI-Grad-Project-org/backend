@@ -14,6 +14,27 @@ spring:
       # (Spring Boot disables index auto-creation by default).
       auto-index-creation: true
 
+  # ── core_db: the knowledge-base source, NOT a request-path dependency ───────
+  # Points at core-api's database because that is where the exercise libraries,
+  # plans and client profiles live, and Postgres cannot join across databases.
+  # Reuses analytics_user deliberately: it already holds SELECT on every table
+  # plus ALTER DEFAULT PRIVILEGES for tables core-api creates later, so this
+  # needs no new grant and no new migration on an existing volume.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/core_db}
+    username: ${SPRING_DATASOURCE_USERNAME:analytics_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:secret}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # Second line of defence behind the SELECT-only grants.
+      read-only: true
+      # The ingest is a background batch job; core-api is the latency-sensitive
+      # workload on this instance and must not lose connections to it.
+      maximum-pool-size: ${DB_POOL_SIZE:3}
+      # Nothing here is user-facing, so failing fast and retrying on the next
+      # scheduled run beats holding a thread while Postgres restarts.
+      connection-timeout: 5000
+
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
@@ -63,22 +84,106 @@ spring:
         collection-name: ${RAG_COLLECTION:rag_knowledge}
         index-name: ${RAG_INDEX:vector_index}
         path-name: embedding
-        metadata-fields-to-filter: source
+        # tenantId and membershipId are load-bearing, not decorative. The store
+        # holds every coach's own library and every client's check-ins;
+        # tenantId keeps one coach away from another's data, and membershipId
+        # keeps one client's notes away from another client of the SAME coach. NOTE: these become filter fields in
+        # the index ONLY when the index is first created — adding one here does
+        # not alter an index that already exists. RagIndexVerifier checks the live
+        # index at startup and says so if it has drifted.
+        metadata-fields-to-filter: source,tenantId,membershipId
 
 # ── CoachHub RAG ────────────────────────────────────────────────────────────
 coachhub:
   rag:
-    # Seed the Atlas vector store at startup (once; needs a valid GEMINI_API_KEY).
-    # Set false in tests / offline runs.
-    seed-on-startup: ${RAG_SEED_ON_STARTUP:true}
+    # Chunks used to ground each prompt. Higher costs prompt tokens and starts
+    # pulling in loosely-related material; lower risks missing the one chunk that
+    # answered the question.
+    top-k: ${RAG_TOP_K:6}
+
+    # Minimum Atlas score a chunk must reach to be used at all.
+    #
+    # CALIBRATE THIS AGAINST YOUR CORPUS. Atlas normalises cosine similarity to
+    # [0,1] as (1 + cos)/2, so 0.5 means "completely unrelated" and the useful
+    # range is roughly 0.55-0.80 — a threshold of 0.3 would let everything
+    # through while looking strict. Turn on DEBUG for
+    # com.coachhub.ai.service.rag to see the scores real questions produce, then
+    # set this just below the ones that should have matched.
+    similarity-threshold: ${RAG_SIMILARITY_THRESHOLD:0.62}
+
+    # One-shot repair for an index created before tenantId was a filter field.
+    # Drops and recreates the vector index at startup; searches return nothing
+    # until Atlas finishes reindexing, so leave it off unless the log asks.
+    rebuild-index: ${RAG_REBUILD_INDEX:false}
+
+    ingest:
+      # Refreshes the knowledge base from core_db and resources/kb. Set false in
+      # tests and offline runs (no Postgres, no Gemini key).
+      enabled: ${RAG_INGEST_ENABLED:true}
+      # Documents per embedding request.
+      batch-size: ${RAG_INGEST_BATCH_SIZE:25}
+      # Safety brake. A sync that wants to delete more than this share of the
+      # collection is refused and logged: that pattern means a fault (core_db
+      # unreachable, or the wrong collection) far more often than it means the
+      # corpus genuinely turned over. Additions still apply.
+      max-prune-ratio: ${RAG_INGEST_MAX_PRUNE_RATIO:0.5}
+      # Runs on the scheduler rather than at startup so a cold first sync — which
+      # embeds the whole library — cannot hold the pod short of its readiness probe.
+      initial-delay: ${RAG_INGEST_INITIAL_DELAY:30s}
+      interval: ${RAG_INGEST_INTERVAL:30m}
 
 # ── Gemini ────────────────────────────────────────────────────────────────────
 gemini:
   base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
   api-key: ${GEMINI_API_KEY:}
-  # gemini-2.0-flash was shut down 2026-06-01. 2.5-flash is a safe default;
-  # bump to gemini-3.5-flash if your key has access.
+  # 2.0-flash was shut down 2026-06-01, and 2.5-flash now 404s for accounts
+  # created after its own cutoff — "no longer available to new users". The model
+  # list still advertises it, so that failure reads like a bad key rather than a
+  # gated one. The default is kept for existing keys; set GEMINI_MODEL to a 3.x
+  # model (gemini-3.5-flash, or gemini-flash-latest) on anything newer.
   model: ${GEMINI_MODEL:gemini-2.5-flash}
+
+  connect-timeout: ${GEMINI_CONNECT_TIMEOUT:10s}
+  # A whole week of programming legitimately takes the model a minute or more, so
+  # this is generous. It is not unbounded, though: a plan generation holds a
+  # RabbitMQ consumer for its whole duration, and the JDK's default is to wait
+  # forever — one hung connection would stop ai.plan.q for good.
+  read-timeout: ${GEMINI_READ_TIMEOUT:3m}
+
+  # Gemini answers 503 "this model is currently experiencing high demand" under
+  # load and 429 when the key is over its per-minute quota. Both clear in
+  # seconds. The RabbitMQ listener does not requeue on failure — that would
+  # publish a second completion for the same suggestion — so if a retry does not
+  # happen here it does not happen at all, and a momentary spike costs a coach a
+  # whole plan.
+  #
+  # Keep max-attempts * read-timeout below core-api's ten-minute pending window,
+  # or an answer can arrive after the request was written off as abandoned.
+  retry:
+    max-attempts: ${GEMINI_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff: ${GEMINI_RETRY_INITIAL_BACKOFF:2s}
+    multiplier: ${GEMINI_RETRY_MULTIPLIER:2.0}
+
+  # Two sampling profiles. Coaching advice is prose and wants a little warmth;
+  # a generated plan is a schema-constrained document where creativity shows up
+  # as invented fields and near-duplicate exercises. One set of numbers cannot
+  # serve both.
+  chat:
+    temperature: ${GEMINI_CHAT_TEMPERATURE:0.7}
+    max-output-tokens: ${GEMINI_CHAT_MAX_OUTPUT_TOKENS:2048}
+
+  json:
+    temperature: ${GEMINI_JSON_TEMPERATURE:0.2}
+    # Sized for a full week of programming plus the model's own reasoning. If
+    # plans come back truncated the client says so by name (finishReason=
+    # MAX_TOKENS) rather than handing you a Jackson parse error — raise this.
+    max-output-tokens: ${GEMINI_JSON_MAX_OUTPUT_TOKENS:32768}
+    # Left unset on purpose: omitting thinkingConfig lets the model pick its own
+    # budget, which is the documented default and better than a number we would
+    # invent. Uncomment (or set GEMINI_JSON_THINKING_BUDGET) to cap it — 0 turns
+    # thinking off entirely on 2.5-series models, freeing the whole output budget
+    # for the plan itself.
+    # thinking-budget: 0
 
 management:
   endpoints:
@@ -96,3 +201,10 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+    # Postgres is where the knowledge base is REFRESHED from, not where requests
+    # are served from. If it is down, retrieval still answers from the vectors
+    # already in Atlas and the ingest simply retries on its next tick. Leaving
+    # this on would make the whole assistant report unready — taking it offline
+    # for a fault it is designed to survive.
+    db:
+      enabled: false

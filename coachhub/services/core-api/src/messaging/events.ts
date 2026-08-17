@@ -1,3 +1,12 @@
+import { PlanSuggestionKind } from '../common';
+import {
+	PlanCandidates,
+	PlanInputSnapshot,
+	PlanModelMeta,
+	PlanSuggestionWarning,
+	SuggestedPlan,
+} from '../ai/types/plan-suggestion.types';
+
 export const EVENTS_EXCHANGE = 'coachhub.events';
 export const SCHEMA_VERSION = '1.0.0';
 
@@ -13,8 +22,19 @@ export const EventType = {
 	MESSAGE_SENT: 'message.sent',
 	AI_REQUESTED: 'ai.requested',
 	AI_COMPLETED: 'ai.completed',
+	/**
+	 * Plan generation, which is a different job from the free-text `ai.requested`
+	 * question: it carries a whole client context and a library to choose from,
+	 * and its answer is stored rather than streamed to a socket and forgotten.
+	 */
+	AI_PLAN_REQUESTED: 'ai.plan.requested',
+	AI_PLAN_COMPLETED: 'ai.plan.completed',
 	AI_ACCEPTED: 'ai.accepted',
 	AI_TIMED_OUT: 'ai.timed_out',
+	/** WebSocket-only: the request was malformed. The socket stays open. */
+	AI_REJECTED: 'ai.rejected',
+	/** WebSocket-only: no valid token. The socket is closed straight after. */
+	AI_UNAUTHORIZED: 'ai.unauthorized',
 	PASSWORD_RESET: 'password.reset',
 } as const;
 
@@ -84,22 +104,72 @@ export interface PlanAssignedPayload {
 	startsAt: string;
 }
 
+/**
+ * Identity fields are nullable because the requester is either a coach or a
+ * client, never both: a coach token carries `coachId`/`coachEmail` and a client
+ * token carries `clientId`. The tenant lives on the envelope, not here, and it
+ * is the field ai-service scopes retrieval by.
+ */
 export interface AiRequestedPayload {
 	requestId: string;
-	clientId: string;
-	coachId: string;
-	coachEmail: string;
+	clientId: string | null;
+	/**
+	 * The client the question is about, when there is one.
+	 *
+	 * This is the retrieval scope, not metadata. Everything private to a client —
+	 * their check-ins and the coach's replies — is filtered on it, so core-api has
+	 * already verified the asker is entitled to this membership before it is set.
+	 * Null retrieves only material tied to no client at all.
+	 */
+	membershipId: string | null;
+	coachId: string | null;
+	coachEmail: string | null;
 	kind: string;
 	prompt: string;
 }
 
 export interface AiCompletedPayload {
 	requestId: string;
-	clientId: string;
-	coachId: string;
-	coachEmail: string;
+	clientId: string | null;
+	coachId: string | null;
+	coachEmail: string | null;
 	status: 'succeeded' | 'failed';
 	summary: string;
+}
+
+/**
+ * Everything ai-service needs to design one plan, so that it never has to call
+ * back into core-api — the two services share no synchronous path.
+ *
+ * `candidates` is the whole point: the model selects ids from these lists, it
+ * does not invent exercises or foods, because the columns that store its answer
+ * are foreign keys.
+ */
+export interface AiPlanRequestedPayload {
+	requestId: string;
+	/** The `ai_plan_suggestions` row this will fill in. */
+	suggestionId: string;
+	membershipId: string;
+	coachId: string;
+	kind: PlanSuggestionKind;
+	context: PlanInputSnapshot;
+	candidates: PlanCandidates;
+}
+
+export interface AiPlanCompletedPayload {
+	requestId: string;
+	suggestionId: string;
+	membershipId: string;
+	coachId: string;
+	kind: PlanSuggestionKind;
+	status: 'succeeded' | 'failed';
+	/** The proposal, or null when `status` is `failed`. */
+	plan: SuggestedPlan | null;
+	/** Anything ai-service already knows is wrong with it. */
+	warnings: PlanSuggestionWarning[];
+	/** Why there is no plan; null on success. */
+	error: string | null;
+	modelMeta: PlanModelMeta | null;
 }
 
 export interface PasswordResetPayload {
