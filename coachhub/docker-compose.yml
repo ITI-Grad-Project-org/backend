@@ -142,12 +142,18 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD}
       RAG_INGEST_ENABLED: ${RAG_INGEST_ENABLED:-true}
       RAG_REBUILD_INDEX: ${RAG_REBUILD_INDEX:-false}
-      # Adding a filter field to the vector index needs BOTH of these: Atlas fixes
-      # filter fields at creation, so Spring AI sees a mismatched index, tries to
-      # create one of the same name, and the context dies on IndexAlreadyExists
-      # before RagIndexVerifier can drop it. Turn initialize-schema off for that
-      # one roll-out and let the verifier rebuild.
-      SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA: ${SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA:-true}
+      # Default false, not true: spring-ai-mongodb-atlas-store 1.1.5's
+      # IndexAlreadyExists catch only matches UncategorizedMongoDbException, but
+      # Spring Data Mongo's exception translator turns that Mongo error into
+      # DataIntegrityViolationException instead, so the catch never fires. With
+      # this left true, the app crashes on every boot once vector_index exists —
+      # not just the first one. Same fix as production (deploy/k8s/40-apps/ai-service.yaml).
+      # First-ever boot against a brand-new Atlas cluster (no index yet): export
+      # SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA=true for that one run only,
+      # or create the index by hand per README §9. To add a filter field to an
+      # existing index, use RAG_REBUILD_INDEX=true instead (README §9) — leave
+      # this false and let RagIndexVerifier do the rebuild.
+      SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA: ${SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA:-false}
     ports:
       - "8081:8081"
     depends_on:
