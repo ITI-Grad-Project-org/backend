@@ -60,6 +60,19 @@ spec:
               value: "gemini-3.5-flash"
             - name: RAG_INGEST_ENABLED
               value: "true"
+            # MUST stay "false" here — this is not the one-shot toggle the
+            # RagIndexVerifier.java comment describes. spring-ai-mongodb-atlas-store
+            # 1.1.5's IndexAlreadyExists swallow only catches
+            # UncategorizedMongoDbException, but Spring Data Mongo's exception
+            # translator turns that Mongo error (code 68) into a
+            # DataIntegrityViolationException instead, so the catch never matches.
+            # With initialize-schema left "true", the vectorStore bean throws on
+            # every single boot once the index exists (verified 2026-08-17: this
+            # broke every ai-service rollout after the first). Leaving schema init
+            # off here means this AKS cluster never (re)creates the index at boot —
+            # only RagIndexVerifier does, and only when RAG_REBUILD_INDEX=true.
+            - name: SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA
+              value: "false"
             # One-shot repair. The vector index only gains filter fields when it
             # is CREATED, so a cluster whose index predates tenant filtering must
             # rebuild it once or every search fails and the assistant silently
