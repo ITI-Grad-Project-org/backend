@@ -13,6 +13,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { ClientJwtStrategy } from './strategies/client-jwt.strategy';
 import { ClientJwtRefreshStrategy } from './strategies/client-jwt-refresh.strategy';
+import { WsAuthService } from './services/ws-auth.service';
 import { TenantModule } from '../tenant/tenant.module';
 
 import { ConfigModule } from 'src/config/config.module';
@@ -59,7 +60,8 @@ import { MessagingModule } from '../messaging/messaging.module';
 		JwtRefreshStrategy,
 		ClientJwtStrategy,
 		ClientJwtRefreshStrategy,
+		WsAuthService,
 	],
-	exports: [AuthService, ClientAuthService, TokenProvider],
+	exports: [AuthService, ClientAuthService, TokenProvider, WsAuthService],
 })
 export class AuthModule {}

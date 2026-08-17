@@ -118,9 +118,10 @@
       ],
       "payload": {
         "requestId": "string (UUID)",
-        "clientId": "string (UUID)",
-        "coachId": "string (UUID)",
-        "coachEmail": "string (email)",
+        "clientId": "string (UUID) | null — set when a client asks, or the client a coach asks about",
+        "membershipId": "string (UUID) | null — the client the question is about. The retrieval scope for anything private to a client (check-ins and the coach's replies); core-api has already verified the asker may ask about this membership. Null retrieves only material tied to no client.",
+        "coachId": "string (UUID) | null — set when a coach asks",
+        "coachEmail": "string (email) | null — set when a coach asks",
         "kind": "string (e.g. plan_suggestion | form_review)",
         "prompt": "string"
       }
@@ -134,11 +135,48 @@
       ],
       "payload": {
         "requestId": "string (UUID)",
-        "clientId": "string (UUID)",
-        "coachId": "string (UUID)",
-        "coachEmail": "string (email)",
+        "clientId": "string (UUID) | null — set when a client asks, or the client a coach asks about",
+        "coachId": "string (UUID) | null — set when a coach asks",
+        "coachEmail": "string (email) | null — set when a coach asks",
         "status": "string (succeeded | failed)",
         "summary": "string"
+      }
+    },
+    {
+      "name": "ai.plan.requested",
+      "routingKey": "ai.plan.requested",
+      "consumers": [
+        "ai-service"
+      ],
+      "_comment": "Full-program generation. Carries the client's context AND the tenant's exercise/meal/food library, because the model selects ids from that library — planned_exercises.exercise_id and planned_meal_foods.source_food_id are NOT NULL foreign keys, so an invented name cannot be saved.",
+      "payload": {
+        "requestId": "string (UUID) — correlationId of this exchange",
+        "suggestionId": "string (UUID) — the ai_plan_suggestions row to fill in",
+        "membershipId": "string (UUID)",
+        "coachId": "string (UUID)",
+        "kind": "string (training | nutrition)",
+        "context": "object — client profile, intake, recent measurements, constraints, library descriptor, coachNotes",
+        "candidates": "object — { exercises[], meals[], foods[] }; only the lists the kind needs are populated"
+      }
+    },
+    {
+      "name": "ai.plan.completed",
+      "routingKey": "ai.plan.completed",
+      "consumers": [
+        "core-api"
+      ],
+      "_comment": "The proposal travels back on this event and core-api stores it: accepting has to build the program tree in Postgres transactionally, which only core-api can do.",
+      "payload": {
+        "requestId": "string (UUID)",
+        "suggestionId": "string (UUID)",
+        "membershipId": "string (UUID)",
+        "coachId": "string (UUID)",
+        "kind": "string (training | nutrition)",
+        "status": "string (succeeded | failed)",
+        "plan": "object | null — the proposal; null when status is failed",
+        "warnings": "array of { code, severity (error | warning), path, message }",
+        "error": "string | null — why there is no plan",
+        "modelMeta": "object | null — { model, finishReason, promptTokens, outputTokens, totalTokens, latencyMs }"
       }
     }
   ]

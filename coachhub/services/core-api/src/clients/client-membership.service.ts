@@ -7,7 +7,16 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ClientMembership } from './entities/client-membership.entity';
-import { MembershipStatus } from '../common';
+import {
+	escapePostgresLikePattern,
+	MembershipStatus,
+	PaginatedResponse,
+} from '../common';
+import { QueryMembershipsDto } from './dto/query-memberships.dto';
+import {
+	MembershipSummary,
+	toMembershipSummary,
+} from './utils/membership.utils';
 
 @Injectable()
 export class ClientMembershipService {
@@ -39,6 +48,91 @@ export class ClientMembershipService {
 			where: { id: membershipId },
 			relations: { tenant: true, client: true },
 		});
+	}
+
+	/**
+	 * The coach-facing roster: who is in this tenant, what state they are in, and
+	 * whether there is enough on file to design for them.
+	 *
+	 * Distinct from {@link findTenantMembers}, which returns whole entities and no
+	 * paging — fine for a dropdown of four, wrong for a coach with two hundred
+	 * clients and a search box.
+	 */
+	async listTenantMemberships(
+		tenantId: string,
+		query: QueryMembershipsDto,
+	): Promise<PaginatedResponse<MembershipSummary>> {
+		const page = query.page ?? 1;
+		const limit = query.limit ?? 20;
+
+		const builder = this.membershipRepository
+			.createQueryBuilder('membership')
+			.innerJoinAndSelect('membership.client', 'client')
+			.where('membership.tenant_id = :tenantId', { tenantId });
+
+		if (query.status) {
+			builder.andWhere('membership.status = :status', { status: query.status });
+		}
+
+		if (query.search?.trim()) {
+			const term = `%${escapePostgresLikePattern(query.search.trim().toLowerCase())}%`;
+			builder.andWhere(
+				`(LOWER(client.first_name) LIKE :term
+				  OR LOWER(client.last_name) LIKE :term
+				  OR LOWER(client.email) LIKE :term
+				  OR LOWER(client.first_name || ' ' || client.last_name) LIKE :term)`,
+				{ term },
+			);
+		}
+
+		// Newest first, with id as the tiebreak so two clients created in the same
+		// millisecond cannot swap places between pages.
+		//
+		// Property names, not column names: skip/take with a join makes TypeORM
+		// rebuild the ORDER BY against a distinct subquery, and it resolves those
+		// through the entity metadata. `created_at` is not a property and fails
+		// there with an unhelpful read of `databaseName` on undefined.
+		const [memberships, total] = await builder
+			.orderBy('membership.createdAt', 'DESC')
+			.addOrderBy('membership.id', 'DESC')
+			.skip((page - 1) * limit)
+			.take(limit)
+			.getManyAndCount();
+
+		const withIntake = await this.findMembershipsWithIntake(
+			memberships.map((membership) => membership.id),
+		);
+
+		return {
+			docs: memberships.map((membership) =>
+				toMembershipSummary(membership, withIntake.has(membership.id)),
+			),
+			meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+		};
+	}
+
+	/**
+	 * Which of these memberships have an intake on file.
+	 *
+	 * A second query rather than a join: `skip`/`take` makes TypeORM paginate
+	 * through a distinct-id subquery, and a raw `addSelect` alias does not survive
+	 * that — it fails at runtime reading `databaseName` off an undefined column.
+	 * One indexed lookup over a single page of ids is cheap and cannot break that
+	 * way.
+	 */
+	private async findMembershipsWithIntake(
+		membershipIds: string[],
+	): Promise<Set<string>> {
+		if (membershipIds.length === 0) {
+			return new Set();
+		}
+
+		const rows: Array<{ membership_id: string }> =
+			await this.membershipRepository.query(
+				`SELECT DISTINCT membership_id FROM client_intakes WHERE membership_id = ANY($1::uuid[])`,
+				[membershipIds],
+			);
+		return new Set(rows.map((row) => row.membership_id));
 	}
 
 	findTenantMembers(tenantId: string): Promise<ClientMembership[]> {

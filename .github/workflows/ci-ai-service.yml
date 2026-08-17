@@ -38,9 +38,13 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      # Atlas vector-index creation and RAG seeding need a real Atlas cluster
-      # and Gemini key — keep both off in CI (application.yml supports this).
-      RAG_SEED_ON_STARTUP: 'false'
+      # Atlas vector-index creation and knowledge-base ingest need a real Atlas
+      # cluster, a Gemini key and core-api's Postgres — keep them off here
+      # (application.yml supports this). The RAG logic itself is still covered:
+      # the retrieval, ingest and rendering tests use stubs and run on every
+      # push, precisely so this workflow's stubbed-out infrastructure does not
+      # mean stubbed-out coverage.
+      RAG_INGEST_ENABLED: 'false'
       SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA: 'false'
       GEMINI_API_KEY: ci-dummy-key
     steps:

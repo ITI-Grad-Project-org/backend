@@ -10,6 +10,9 @@ import { FoodLibraryController } from './controllers/food-library.controller';
 import { MealLibraryController } from './controllers/meal-library.controller';
 import { NutritionLogReviewController } from './controllers/nutrition-log-review.controller';
 import { FoodLog } from './entities/food-log.entity';
+import { DefaultFood } from './entities/default-food.entity';
+import { DefaultMeal } from './entities/default-meal.entity';
+import { DefaultMealIngredient } from './entities/default-meal-ingredient.entity';
 import { Food } from './entities/food.entity';
 import { LoggedMeal } from './entities/logged-meal.entity';
 import { MealIngredient } from './entities/meal-ingredient.entity';
@@ -26,6 +29,7 @@ import { ClientNutritionPlansService } from './services/client-nutrition-plans.s
 import { ClientNutritionScheduleService } from './services/client-nutrition-schedule.service';
 import { FoodLibraryService } from './services/food-library.service';
 import { MealLibraryService } from './services/meal-library.service';
+import { NutritionLibrarySeedService } from './services/nutrition-library-seed.service';
 import { NutritionLogReviewService } from './services/nutrition-log-review.service';
 import { NutritionPlanDaysService } from './services/nutrition-plan-days.service';
 import { NutritionPlanLifecycleService } from './services/nutrition-plan-lifecycle.service';
@@ -37,6 +41,9 @@ import { PlannedMealsService } from './services/planned-meals.service';
 		TypeOrmModule.forFeature([
 			ClientIntake,
 			ClientMembership,
+			DefaultFood,
+			DefaultMeal,
+			DefaultMealIngredient,
 			Food,
 			Meal,
 			MealIngredient,
@@ -61,6 +68,7 @@ import { PlannedMealsService } from './services/planned-meals.service';
 	providers: [
 		FoodLibraryService,
 		MealLibraryService,
+		NutritionLibrarySeedService,
 		ClientNutritionPlansService,
 		ClientNutritionScheduleService,
 		ClientNutritionActualFoodService,
