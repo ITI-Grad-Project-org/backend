@@ -21,6 +21,18 @@ services:
       JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=75.0
         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+      # ─────────────────────────────────────────────────────────────────────
+      # DO NOT REMOVE. .env's MONGODB_ATLAS_URI points at the SAME Atlas
+      # cluster and database as production, so without these a local ingest
+      # writes into the production knowledge base — and, because the ingest
+      # prunes anything core_db no longer produces, a local run against a dev
+      # database would DELETE production's chunks.
+      #
+      # A separate collection gets its own vector index and its own documents,
+      # which is complete isolation for both halves of that.
+      # ─────────────────────────────────────────────────────────────────────
+      RAG_COLLECTION: rag_knowledge_dev
+      RAG_INDEX: vector_index_dev
     ports:
       - "5005:5005"
 

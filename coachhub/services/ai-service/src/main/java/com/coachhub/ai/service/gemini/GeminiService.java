@@ -7,6 +7,7 @@ import com.coachhub.ai.rabbitmq.payload.AiCompletedPayload;
 import com.coachhub.ai.rabbitmq.payload.AiRequestedPayload;
 import com.coachhub.ai.service.client.GeminiClient;
 import com.coachhub.ai.service.rag.RagChunk;
+import com.coachhub.ai.service.rag.RagProperties;
 import com.coachhub.ai.service.rag.RagService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,20 +19,20 @@ import java.util.List;
 public class GeminiService {
 	private static final Logger log = LoggerFactory.getLogger(GeminiService.class);
 
-	/** How many knowledge-base chunks to ground each prompt with. */
-	private static final int RAG_TOP_K = 4;
-
 	private final GeminiClient gemini;
 	private final RagService rag;
+	private final RagProperties ragProperties;
 	private final AiRequestRepository repository;
 	private final EventPublisher publisher;
 
 	public GeminiService(GeminiClient gemini,
 	                     RagService rag,
+	                     RagProperties ragProperties,
 	                     AiRequestRepository repository,
 	                     EventPublisher publisher) {
 		this.gemini = gemini;
 		this.rag = rag;
+		this.ragProperties = ragProperties;
 		this.repository = repository;
 		this.publisher = publisher;
 	}
@@ -49,7 +50,7 @@ public class GeminiService {
 		}
 
 		try {
-			String prompt = buildGroundedPrompt(payload);
+			String prompt = buildGroundedPrompt(payload, tenantId);
 			String summary = gemini.generate(prompt);
 
 			record.markSucceeded(summary);
@@ -69,8 +70,8 @@ public class GeminiService {
 	}
 
 	/** Builds a prompt grounded in the most relevant knowledge-base chunks. */
-	private String buildGroundedPrompt(AiRequestedPayload payload) {
-		List<RagChunk> context = retrieveContext(payload.prompt());
+	private String buildGroundedPrompt(AiRequestedPayload payload, String tenantId) {
+		List<RagChunk> context = retrieveContext(payload.prompt(), tenantId);
 		if (context.isEmpty()) {
 			return payload.prompt();
 		}
@@ -88,10 +89,16 @@ public class GeminiService {
 		return sb.toString();
 	}
 
-	/** Retrieval must never break generation — degrade to no context on error. */
-	private List<RagChunk> retrieveContext(String query) {
+	/**
+	 * Retrieval must never break generation — degrade to no context on error.
+	 *
+	 * <p>The tenant comes from the message envelope and is passed through rather than resolved
+	 * here: the knowledge base now holds each coach's own exercise library and client profiles, so
+	 * this argument is the only thing standing between one coach's question and another's data.
+	 */
+	private List<RagChunk> retrieveContext(String query, String tenantId) {
 		try {
-			return rag.retrieve(query, RAG_TOP_K);
+			return rag.retrieve(query, tenantId, ragProperties.topK());
 		} catch (Exception ex) {
 			log.warn("RAG retrieval failed, continuing without context: {}", ex.getMessage());
 			return List.of();

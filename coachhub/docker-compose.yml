@@ -129,10 +129,20 @@ services:
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?set in .env}
-      RAG_SEED_ON_STARTUP: ${RAG_SEED_ON_STARTUP:-true}
+      # Forwarded explicitly — compose does not pass .env into the container
+      # by itself. Accounts created after 2.5-flash's cutoff get a 404 for it
+      # and need a 3.x model.
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      # Knowledge-base source — same SELECT-only role analytics-service uses.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/core_db
+      SPRING_DATASOURCE_USERNAME: analytics_user
+      SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+      RAG_INGEST_ENABLED: ${RAG_INGEST_ENABLED:-true}
+      RAG_REBUILD_INDEX: ${RAG_REBUILD_INDEX:-false}
     ports:
       - "8081:8081"
     depends_on:
+      postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
     networks: [coachhub-net]
     healthcheck:

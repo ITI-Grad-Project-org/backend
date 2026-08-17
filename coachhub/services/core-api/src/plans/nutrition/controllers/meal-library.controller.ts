@@ -32,13 +32,42 @@ import { CreateMealDto } from '../dto/create-meal.dto';
 import { QueryMealsDto } from '../dto/query-meals.dto';
 import { ReplaceMealItemsDto } from '../dto/replace-meal-items.dto';
 import { UpdateMealDto } from '../dto/update-meal.dto';
+import { NutritionLibrarySeedService } from '../services/nutrition-library-seed.service';
 import { MealLibraryService } from '../services/meal-library.service';
 
 @ApiTags('Coach - Nutrition Meal Library')
 @ApiBearerAuth()
 @Controller('nutrition/library/meals')
 export class MealLibraryController {
-	constructor(private readonly mealLibraryService: MealLibraryService) {}
+	constructor(
+		private readonly mealLibraryService: MealLibraryService,
+		private readonly nutritionLibrarySeedService: NutritionLibrarySeedService,
+	) {}
+
+	@Post('initialize-library-from-defaults')
+	@ApiOperation({
+		summary: 'Copy the system starter foods and meals into this library',
+		description:
+			'Foods first, then meals — a meal is only copied when every one of its ' +
+			'ingredients resolved to a food this tenant now owns. Safe to run twice: ' +
+			'anything already present, by lineage or by name, is skipped. A nutrition ' +
+			'plan is assembled from meals, so with an empty library the AI can only ' +
+			'return daily targets with no meals on them.',
+	})
+	@ApiCreatedResponse({ description: 'Starter library copied' })
+	@ApiBadRequestResponse({ description: 'No active tenant selected' })
+	@ApiNotFoundResponse({
+		description: 'No default foods or meals are configured',
+	})
+	initializeLibrary(
+		@CurrentTenant() tenantId: string | null,
+		@CurrentUser('userId') coachId: string,
+	) {
+		return this.nutritionLibrarySeedService.initializeLibrary(
+			tenantId,
+			coachId,
+		);
+	}
 
 	@Post()
 	@ApiOperation({
@@ -168,7 +197,8 @@ export class MealLibraryController {
 		type: ClientNutritionApiErrorResponseDto,
 	})
 	@ApiNotFoundResponse({
-		description: 'The Meal or at least one requested active Food was not found.',
+		description:
+			'The Meal or at least one requested active Food was not found.',
 		type: ClientNutritionApiErrorResponseDto,
 	})
 	replaceMealItems(

@@ -4,10 +4,15 @@ import { randomUUID } from 'node:crypto';
 import { AiRequestedPayload, EventType } from '../messaging/events';
 
 interface RequestAiInput {
+	/**
+	 * Taken from the caller's verified access token. This becomes the envelope's
+	 * tenant, which is what ai-service scopes knowledge-base retrieval by — so it
+	 * must never be defaulted or accepted from a request body.
+	 */
 	tenantId: string;
-	clientId: string;
-	coachId: string;
-	coachEmail: string;
+	clientId: string | null;
+	coachId: string | null;
+	coachEmail: string | null;
 	kind: string;
 	prompt: string;
 }

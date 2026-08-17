@@ -6,3 +6,4 @@ export * from './intake.enums';
 export * from './workout.enums';
 export * from './nutrition.enums';
 export * from './checkin.enums';
+export * from './ai.enums';

@@ -31,6 +31,18 @@ spec:
               value: "8081"
             - name: SPRING_DATA_MONGODB_URI
               valueFrom: { secretKeyRef: { name: app-secrets, key: MONGODB_ATLAS_URI } }
+            # Knowledge-base source. Reuses the analytics read-only role rather
+            # than adding a second one: it already holds SELECT on every table
+            # plus ALTER DEFAULT PRIVILEGES for tables core-api creates later, so
+            # this needs no new grant on an existing volume — and a new role would
+            # need exactly the kind of first-init-only provisioning that left
+            # analytics unable to connect.
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/core_db
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom: { secretKeyRef: { name: app-secrets, key: ANALYTICS_DB_USER } }
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secrets, key: ANALYTICS_DB_PASSWORD } }
             - name: SPRING_RABBITMQ_HOST
               valueFrom: { configMapKeyRef: { name: app-config, key: RABBITMQ_HOST } }
             - name: SPRING_RABBITMQ_USERNAME
@@ -39,8 +51,22 @@ spec:
               valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_PASSWORD } }
             - name: GEMINI_API_KEY
               valueFrom: { secretKeyRef: { name: app-secrets, key: GEMINI_API_KEY } }
-            - name: RAG_SEED_ON_STARTUP
+            # Not a secret, so it is a literal rather than a Secret key. Pinned
+            # because the application.yml default (gemini-2.5-flash) 404s for any
+            # Google account created after that model was retired — and the model
+            # list still advertises it, so the failure reads as a bad key rather
+            # than a gated one.
+            - name: GEMINI_MODEL
+              value: "gemini-3.5-flash"
+            - name: RAG_INGEST_ENABLED
               value: "true"
+            # One-shot repair. The vector index only gains filter fields when it
+            # is CREATED, so a cluster whose index predates tenant filtering must
+            # rebuild it once or every search fails and the assistant silently
+            # answers with no knowledge base. Set "true", roll out, confirm the
+            # startup log reports the filters, then set it back to "false".
+            - name: RAG_REBUILD_INDEX
+              value: "false"
           startupProbe:
             httpGet: { path: /actuator/health/liveness, port: http }
             periodSeconds: 5
