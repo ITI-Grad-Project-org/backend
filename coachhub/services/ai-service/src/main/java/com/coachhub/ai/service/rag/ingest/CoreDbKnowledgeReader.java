@@ -21,6 +21,7 @@ public class CoreDbKnowledgeReader {
 	static final String SOURCE_FOOD = "food-library";
 	static final String SOURCE_NUTRITION = "nutrition-plan";
 	static final String SOURCE_INTAKE = "client-profile";
+	static final String SOURCE_CHECKIN = "client-checkin";
 
 	private static final Logger log = LoggerFactory.getLogger(CoreDbKnowledgeReader.class);
 
@@ -116,9 +117,39 @@ public class CoreDbKnowledgeReader {
 	 * assistant exists to answer and it cannot be answered without this, but it is also the reason
 	 * retrieval is tenant-filtered rather than filtered "later".
 	 */
+	/**
+	 * Check-ins carry the only running commentary in the system: how a week went, in the client's
+	 * words, with the coach's reply beside it.
+	 *
+	 * <p>Unlike every other source this is private to one client, so it selects {@code membership_id}
+	 * — that column becomes the retrieval filter and is the only thing standing between one client's
+	 * notes and another client of the same coach.
+	 *
+	 * <p>Rows with nothing written on them are skipped. A pending check-in is a scheduling artefact,
+	 * and embedding an empty week costs a call and returns noise.
+	 */
+	private static final String CHECKINS_SQL =
+					"""
+									SELECT ch.tenant_id,
+									       ch.membership_id,
+									       nullif(trim(coalesce(c.first_name, '') || ' ' ||
+									                   coalesce(c.last_name, '')), '') AS client_name,
+									       ch.scheduled_for::text AS scheduled_for,
+									       ch.client_notes,
+									       ch.coach_feedback,
+									       ch.metrics::text       AS metrics
+									FROM checkins ch
+									JOIN memberships m ON m.id = ch.membership_id
+									LEFT JOIN clients c ON c.id = m.client_id
+									WHERE m.deleted_at IS NULL
+									  AND (nullif(trim(ch.client_notes), '') IS NOT NULL
+									       OR nullif(trim(ch.coach_feedback), '') IS NOT NULL)
+									""";
+
 	private static final String INTAKES_SQL =
 					"""
 									SELECT ci.tenant_id,
+									       ci.membership_id,
 									       nullif(trim(coalesce(c.first_name, '') || ' ' ||
 									                   coalesce(c.last_name, '')), '') AS client_name,
 									       ci.goal::text                AS goal,
@@ -404,6 +435,53 @@ public class CoreDbKnowledgeReader {
 						integer(rs, "target_fiber_g"));
 	}
 
+	private static String mapCheckin(ResultSet rs) throws SQLException {
+		return renderCheckin(
+						rs.getString("client_name"),
+						rs.getString("scheduled_for"),
+						rs.getString("client_notes"),
+						rs.getString("coach_feedback"),
+						rs.getString("metrics"));
+	}
+
+	/**
+	 * Written as a short narrative rather than a field dump, because it is going to be embedded.
+	 * "Alice said her shoulder caught on overhead press" retrieves for a question about shoulders;
+	 * {@code client_notes: ...} retrieves for a question about client notes.
+	 */
+	static String renderCheckin(
+					String clientName,
+					String scheduledFor,
+					String clientNotes,
+					String coachFeedback,
+					String metrics) {
+		StringBuilder sb = new StringBuilder(256);
+		String who = (clientName == null || clientName.isBlank()) ? "The client" : clientName;
+
+		sb.append("Check-in for ").append(who);
+		if (scheduledFor != null && !scheduledFor.isBlank()) {
+			sb.append(" covering ").append(scheduledFor);
+		}
+		sb.append(".");
+
+		if (clientNotes != null && !clientNotes.isBlank()) {
+			sb.append(" ").append(who).append(" said: ").append(clientNotes.strip());
+			if (!clientNotes.strip().endsWith(".")) {
+				sb.append(".");
+			}
+		}
+		if (coachFeedback != null && !coachFeedback.isBlank()) {
+			sb.append(" The coach replied: ").append(coachFeedback.strip());
+			if (!coachFeedback.strip().endsWith(".")) {
+				sb.append(".");
+			}
+		}
+		if (metrics != null && !metrics.isBlank() && !"{}".equals(metrics.strip())) {
+			sb.append(" Reported metrics: ").append(metrics.strip()).append(".");
+		}
+		return sb.toString();
+	}
+
 	private static String mapIntake(ResultSet rs) throws SQLException {
 		return renderIntake(
 						rs.getString("client_name"),
@@ -458,8 +536,41 @@ public class CoreDbKnowledgeReader {
 		docs.addAll(read(SOURCE_MEAL, MEALS_SQL, CoreDbKnowledgeReader::mapMeal));
 		docs.addAll(read(SOURCE_FOOD, FOODS_SQL, CoreDbKnowledgeReader::mapFood));
 		docs.addAll(read(SOURCE_NUTRITION, NUTRITION_SQL, CoreDbKnowledgeReader::mapNutritionPlan));
-		docs.addAll(read(SOURCE_INTAKE, INTAKES_SQL, CoreDbKnowledgeReader::mapIntake));
+		// Both of these are one client's private material and are read per member.
+		// An intake carries injuries, medical conditions and allergies — more
+		// sensitive than the check-ins, and read through `read` it was tagged as
+		// belonging to nobody, which put it inside every filter in the tenant
+		// including the one a client's own question is answered under.
+		docs.addAll(readPerMember(SOURCE_INTAKE, INTAKES_SQL, CoreDbKnowledgeReader::mapIntake));
+		docs.addAll(readPerMember(SOURCE_CHECKIN, CHECKINS_SQL, CoreDbKnowledgeReader::mapCheckin));
 		return docs;
+	}
+
+	/**
+	 * Same as {@link #read}, for sources whose rows belong to one client.
+	 *
+	 * The extra column is the point: it becomes the document's member scope, and retrieval filters on
+	 * it. A row read through {@link #read} instead would be tagged as belonging to nobody and become
+	 * visible to every question in the tenant.
+	 */
+	private List<KnowledgeDocument> readPerMember(String source, String sql, RowText rowText) {
+		try {
+			List<KnowledgeDocument> docs =
+							jdbc.query(
+											sql,
+											(rs, rowNum) ->
+															KnowledgeDocument.of(
+																			rs.getString("tenant_id"),
+																			rs.getString("membership_id"),
+																			source,
+																			KnowledgeDocument.ORIGIN_CORE_DB,
+																			rowText.apply(rs)));
+			log.debug("read {} chunks from {}", docs.size(), source);
+			return docs;
+		} catch (Exception ex) {
+			log.warn("skipping source {} — {}", source, ex.getMessage());
+			return List.of();
+		}
 	}
 
 	private List<KnowledgeDocument> read(String source, String sql, RowText rowText) {

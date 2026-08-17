@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { ClientIntake } from '../clients/entities/client-intake.entity';
 import { ClientMembership } from '../clients/entities/client-membership.entity';
 import { EquipmentType, FitnessGoal, PlanSuggestionKind } from '../common';
+import { Checkin } from '../checkins/entities/checkin.entity';
 import { Exercise } from '../exercises/entities/exercise.entity';
+import { LoggedWorkout } from '../plans/training/entities/logged-workout.entity';
 import { Measurement } from '../measurements/entities/measurement.entity';
 import { Food } from '../plans/nutrition/entities/food.entity';
 import { Meal } from '../plans/nutrition/entities/meal.entity';
@@ -16,13 +18,26 @@ import {
 	PlanCandidates,
 	PlanClientProfile,
 	PlanConstraints,
+	PlanCheckinNote,
 	PlanGenerationContext,
 	PlanIntakeProfile,
 	PlanMeasurementPoint,
+	PlanSessionNote,
+	PlanTrainingHistory,
 } from './types/plan-suggestion.types';
 
 /** Measurements handed to the model, newest first — enough to show a trend. */
 const MEASUREMENT_HISTORY = 6;
+
+/**
+ * Check-ins and sessions carried into the prompt, newest first.
+ *
+ * Enough to show a pattern — a knee mentioned three weeks running, a fortnight
+ * of missed sessions — without spending the prompt budget on a year of history
+ * the model would skim anyway.
+ */
+const CHECKIN_HISTORY = 6;
+const SESSION_HISTORY = 10;
 
 /**
  * Ceiling on rows read from one library table per request. A guard against a
@@ -66,6 +81,10 @@ export class PlanContextService {
 		private readonly measurementRepository: Repository<Measurement>,
 		@InjectRepository(Exercise)
 		private readonly exerciseRepository: Repository<Exercise>,
+		@InjectRepository(Checkin)
+		private readonly checkinRepository: Repository<Checkin>,
+		@InjectRepository(LoggedWorkout)
+		private readonly loggedWorkoutRepository: Repository<LoggedWorkout>,
 		@InjectRepository(Meal)
 		private readonly mealRepository: Repository<Meal>,
 		@InjectRepository(Food)
@@ -73,9 +92,10 @@ export class PlanContextService {
 	) {}
 
 	async build(input: BuildPlanContextInput): Promise<PlanGenerationContext> {
-		const [intakeRow, measurementRows] = await Promise.all([
+		const [intakeRow, measurementRows, history] = await Promise.all([
 			this.findIntake(input.tenantId, input.membership.id),
 			this.findMeasurements(input.tenantId, input.membership.id),
+			this.findHistory(input.tenantId, input.membership.id),
 		]);
 
 		const intake = intakeRow ? this.toIntakeProfile(intakeRow) : null;
@@ -99,6 +119,7 @@ export class PlanContextService {
 				client: this.toClientProfile(input.membership, measurements),
 				intake,
 				measurements,
+				history,
 				constraints: this.resolveConstraints(input, intake),
 				library: {
 					counts: isTraining
@@ -124,6 +145,62 @@ export class PlanContextService {
 				membership: { id: membershipId },
 			},
 		});
+	}
+
+	/**
+	 * What has actually happened since the last plan.
+	 *
+	 * Read straight from Postgres rather than through the knowledge base, for the
+	 * same reason the exercise library is. This has to be *this client's* history
+	 * and all of it: vector retrieval is scoped by tenant, so a similarity search
+	 * could surface another client's check-in — and "the six most similar notes"
+	 * is the wrong shape for a question whose answer is "the six most recent".
+	 */
+	private async findHistory(
+		tenantId: string,
+		membershipId: string,
+	): Promise<PlanTrainingHistory> {
+		const [checkins, sessions] = await Promise.all([
+			// Only rows with something written on them. A pending check-in is a
+			// scheduling artefact, not feedback, and empty weeks in the prompt cost
+			// tokens while diluting the signal.
+			this.checkinRepository.find({
+				where: [
+					{ tenantId, membershipId, clientNotes: Not(IsNull()) },
+					{ tenantId, membershipId, coachFeedback: Not(IsNull()) },
+				],
+				order: { scheduledFor: 'DESC' },
+				take: CHECKIN_HISTORY,
+			}),
+			this.loggedWorkoutRepository.find({
+				where: [
+					{ tenantId, membershipId, clientNotes: Not(IsNull()) },
+					{ tenantId, membershipId, overallRpe: Not(IsNull()) },
+				],
+				order: { scheduledDate: 'DESC' },
+				take: SESSION_HISTORY,
+			}),
+		]);
+
+		return {
+			checkins: checkins.map(
+				(row): PlanCheckinNote => ({
+					date: row.scheduledFor,
+					clientNotes: row.clientNotes,
+					coachFeedback: row.coachFeedback,
+					metrics: row.metrics,
+				}),
+			),
+			sessions: sessions.map(
+				(row): PlanSessionNote => ({
+					date: row.scheduledDate,
+					clientNotes: row.clientNotes,
+					overallRpe: row.overallRpe,
+					durationMinutes: row.durationMinutes,
+					completed: row.completedAt !== null,
+				}),
+			),
+		};
 	}
 
 	private findMeasurements(tenantId: string, membershipId: string) {

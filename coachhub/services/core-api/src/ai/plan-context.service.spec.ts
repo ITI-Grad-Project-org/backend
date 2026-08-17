@@ -12,7 +12,9 @@ import {
 	ServingUnit,
 	TrainingExperience,
 } from '../common';
+import { Checkin } from '../checkins/entities/checkin.entity';
 import { Exercise } from '../exercises/entities/exercise.entity';
+import { LoggedWorkout } from '../plans/training/entities/logged-workout.entity';
 import { Measurement } from '../measurements/entities/measurement.entity';
 import { Food } from '../plans/nutrition/entities/food.entity';
 import { Meal } from '../plans/nutrition/entities/meal.entity';
@@ -126,6 +128,8 @@ describe('PlanContextService', () => {
 	let exerciseRepository: { find: jest.Mock };
 	let mealRepository: { find: jest.Mock };
 	let foodRepository: { find: jest.Mock };
+	let checkinRepository: { find: jest.Mock };
+	let loggedWorkoutRepository: { find: jest.Mock };
 	let service: PlanContextService;
 
 	beforeEach(() => {
@@ -134,11 +138,15 @@ describe('PlanContextService', () => {
 		exerciseRepository = { find: jest.fn().mockResolvedValue([]) };
 		mealRepository = { find: jest.fn().mockResolvedValue([]) };
 		foodRepository = { find: jest.fn().mockResolvedValue([]) };
+		checkinRepository = { find: jest.fn().mockResolvedValue([]) };
+		loggedWorkoutRepository = { find: jest.fn().mockResolvedValue([]) };
 
 		service = new PlanContextService(
 			intakeRepository as unknown as Repository<ClientIntake>,
 			measurementRepository as unknown as Repository<Measurement>,
 			exerciseRepository as unknown as Repository<Exercise>,
+			checkinRepository as unknown as Repository<Checkin>,
+			loggedWorkoutRepository as unknown as Repository<LoggedWorkout>,
 			mealRepository as unknown as Repository<Meal>,
 			foodRepository as unknown as Repository<Food>,
 		);
@@ -491,6 +499,122 @@ describe('PlanContextService', () => {
 				daysPerWeek: 3,
 				goal: null,
 			});
+		});
+	});
+
+	describe('training history', () => {
+		function checkin(overrides: Record<string, unknown> = {}) {
+			return {
+				scheduledFor: '2026-08-10',
+				clientNotes: 'Knee felt tight on squats again.',
+				coachFeedback: null,
+				metrics: null,
+				...overrides,
+			};
+		}
+
+		function session(overrides: Record<string, unknown> = {}) {
+			return {
+				scheduledDate: '2026-08-12',
+				clientNotes: 'Last set felt heavy.',
+				overallRpe: 9,
+				durationMinutes: 62,
+				completedAt: new Date('2026-08-12T18:00:00.000Z'),
+				...overrides,
+			};
+		}
+
+		it('carries what the client wrote and how the sessions went', async () => {
+			checkinRepository.find.mockResolvedValue([checkin()]);
+			loggedWorkoutRepository.find.mockResolvedValue([session()]);
+
+			const { snapshot } = await build();
+
+			expect(snapshot.history.checkins).toEqual([
+				{
+					date: '2026-08-10',
+					clientNotes: 'Knee felt tight on squats again.',
+					coachFeedback: null,
+					metrics: null,
+				},
+			]);
+			expect(snapshot.history.sessions).toEqual([
+				{
+					date: '2026-08-12',
+					clientNotes: 'Last set felt heavy.',
+					overallRpe: 9,
+					durationMinutes: 62,
+					completed: true,
+				},
+			]);
+		});
+
+		it('marks a session that was started but never finished', async () => {
+			loggedWorkoutRepository.find.mockResolvedValue([
+				session({ completedAt: null }),
+			]);
+
+			const { snapshot } = await build();
+
+			expect(snapshot.history.sessions[0].completed).toBe(false);
+		});
+
+		// A pending check-in is a scheduling artefact, not feedback. Asking the
+		// database for only the rows carrying text keeps empty weeks out of the
+		// prompt, where they would cost tokens and dilute the signal.
+		it('asks only for rows that actually say something', async () => {
+			await build();
+
+			expect(checkinRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: [
+						expect.objectContaining({ clientNotes: expect.anything() }),
+						expect.objectContaining({ coachFeedback: expect.anything() }),
+					],
+					order: { scheduledFor: 'DESC' },
+					take: 6,
+				}),
+			);
+			expect(loggedWorkoutRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					order: { scheduledDate: 'DESC' },
+					take: 10,
+				}),
+			);
+		});
+
+		it('scopes history to this membership, never the whole tenant', async () => {
+			await build();
+
+			for (const call of [
+				checkinRepository.find.mock.calls[0][0],
+				loggedWorkoutRepository.find.mock.calls[0][0],
+			]) {
+				for (const clause of call.where) {
+					expect(clause).toMatchObject({
+						tenantId: TENANT,
+						membershipId: 'membership-1',
+					});
+				}
+			}
+		});
+
+		it('is empty for a client who has never checked in or logged a session', async () => {
+			const { snapshot } = await build();
+
+			expect(snapshot.history).toEqual({ checkins: [], sessions: [] });
+		});
+
+		it('collects history for a nutrition plan too', async () => {
+			checkinRepository.find.mockResolvedValue([
+				checkin({ clientNotes: 'Hungry all week on the current calories.' }),
+			]);
+
+			const { snapshot } = await build({ kind: PlanSuggestionKind.NUTRITION });
+
+			expect(snapshot.history.checkins[0].clientNotes).toContain(
+				'Hungry all week',
+			);
 		});
 	});
 });

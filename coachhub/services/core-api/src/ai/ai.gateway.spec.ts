@@ -3,6 +3,7 @@ import { Socket } from 'socket.io';
 import { AiGateway } from './ai.gateway';
 import { AiService } from './ai.service';
 import { WsAuthService, WsPrincipal } from '../auth/services/ws-auth.service';
+import { AiSubjectService } from './ai-subject.service';
 import { EventType } from '../messaging/events';
 
 const COACH: WsPrincipal = {
@@ -37,6 +38,7 @@ describe('AiGateway', () => {
 		verify: jest.Mock;
 		extractToken: jest.Mock;
 	};
+	let subjects: { resolve: jest.Mock };
 	let gateway: AiGateway;
 
 	beforeEach(() => {
@@ -46,6 +48,7 @@ describe('AiGateway', () => {
 			verify: jest.fn(),
 			extractToken: jest.fn().mockReturnValue('a-token'),
 		};
+		subjects = { resolve: jest.fn().mockResolvedValue(null) };
 		const configService = {
 			aiConfig: { aiRequestTimeoutMs: 30000 },
 		} as never;
@@ -53,6 +56,7 @@ describe('AiGateway', () => {
 			aiService as unknown as AiService,
 			configService,
 			wsAuth as unknown as WsAuthService,
+			subjects as unknown as AiSubjectService,
 		);
 	});
 
@@ -197,6 +201,81 @@ describe('AiGateway', () => {
 			expect(socket.join).toHaveBeenCalledWith('ai:req:req-1');
 			expect(socket.emit).toHaveBeenCalledWith(EventType.AI_ACCEPTED, {
 				requestId: 'req-1',
+			});
+		});
+	});
+
+	// ── Who a question may be about ──────────────────────────────────────────
+	//
+	// The answer can be grounded in the named client's own check-ins, so this is
+	// the only security decision on the chat path. Getting it wrong does not
+	// produce a bad answer — it reads one client's notes out to another.
+
+	const MEMBERSHIP = '11111111-1111-4111-8111-111111111111';
+
+	async function ask(principal: WsPrincipal, body: Record<string, unknown>) {
+		wsAuth.verify.mockResolvedValue(principal);
+		const socket = fakeSocket();
+		socket.data.token = 'a-token';
+		await gateway.onAIRequested(socket, {
+			kind: 'advice',
+			prompt: 'how is it going?',
+			...body,
+		});
+		return socket;
+	}
+
+	describe('question subject', () => {
+		it('scopes a coach to the membership they named, once it is confirmed', async () => {
+			subjects.resolve.mockResolvedValue({ id: MEMBERSHIP });
+
+			await ask(COACH, { membershipId: MEMBERSHIP });
+
+			expect(subjects.resolve).toHaveBeenCalledWith(COACH, MEMBERSHIP);
+			expect(aiService.dispatch).toHaveBeenCalledWith(
+				expect.objectContaining({ membershipId: MEMBERSHIP }),
+			);
+		});
+
+		it('refuses a membership that is not in the coach’s tenant', async () => {
+			subjects.resolve.mockResolvedValue(null);
+
+			const socket = await ask(COACH, { membershipId: MEMBERSHIP });
+
+			expect(aiService.dispatch).not.toHaveBeenCalled();
+			expect(socket.emit).toHaveBeenCalledWith(EventType.AI_REJECTED, {
+				message: 'client not found in this tenant',
+			});
+		});
+
+		// A client naming someone else is the attack this exists to stop. The
+		// resolver ignores the field outright, so the id never reaches retrieval.
+		it('ignores a membershipId a client tries to supply', async () => {
+			subjects.resolve.mockResolvedValue({ id: 'their-own-membership' });
+
+			await ask(CLIENT, { membershipId: MEMBERSHIP });
+
+			expect(aiService.dispatch).toHaveBeenCalledWith(
+				expect.objectContaining({ membershipId: 'their-own-membership' }),
+			);
+		});
+
+		it('answers without private context when no client is named', async () => {
+			subjects.resolve.mockResolvedValue(null);
+
+			await ask(COACH, {});
+
+			expect(aiService.dispatch).toHaveBeenCalledWith(
+				expect.objectContaining({ membershipId: null }),
+			);
+		});
+
+		it('rejects a membershipId that is not a uuid', async () => {
+			const socket = await ask(COACH, { membershipId: 'not-a-uuid' });
+
+			expect(aiService.dispatch).not.toHaveBeenCalled();
+			expect(socket.emit).toHaveBeenCalledWith(EventType.AI_REJECTED, {
+				message: 'membershipId must be a UUID',
 			});
 		});
 	});

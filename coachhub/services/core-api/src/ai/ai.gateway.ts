@@ -14,6 +14,7 @@ import { ConfigService } from '../config';
 import { allowedOrigins } from '../config/configuration';
 import { WsAuthService, WsPrincipal } from '../auth/services/ws-auth.service';
 import { AiCompletedPayload, EventType } from '../messaging/events';
+import { AiSubjectService } from './ai-subject.service';
 
 /** Longest prompt accepted, in characters. */
 const MAX_PROMPT_LENGTH = 4000;
@@ -25,6 +26,14 @@ interface AiRequestBody {
 	prompt?: unknown;
 	/** Optional: the client a coach is asking about. */
 	clientId?: unknown;
+	/**
+	 * Optional: which client's own material the answer may draw on.
+	 *
+	 * Honoured only for a coach, and only after the membership is confirmed to be
+	 * in their tenant. A client's socket may send this and it is ignored — they
+	 * are always scoped to themselves.
+	 */
+	membershipId?: unknown;
 }
 
 @WebSocketGateway({
@@ -45,6 +54,7 @@ export class AiGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		private readonly aiService: AiService,
 		private readonly configService: ConfigService,
 		private readonly wsAuth: WsAuthService,
+		private readonly subjects: AiSubjectService,
 	) {
 		this.timeoutMs = this.configService.aiConfig.aiRequestTimeoutMs;
 	}
@@ -97,17 +107,36 @@ export class AiGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			return;
 		}
 
-		// Request metadata, not a security boundary: retrieval is scoped by tenant
-		// alone, and the answer is only ever emitted back to the socket that asked.
+		// Request metadata, not a security boundary: the answer is only ever emitted
+		// back to the socket that asked.
 		const subjectClientId = this.readClientId(body, principal);
 		if (subjectClientId === undefined) {
 			this.reject(client, 'clientId must be a UUID');
 			return;
 		}
 
+		const requestedMembershipId = this.readMembershipId(body);
+		if (requestedMembershipId === undefined) {
+			this.reject(client, 'membershipId must be a UUID');
+			return;
+		}
+
+		// This one IS a security boundary. The answer can be grounded in the named
+		// client's own check-ins, so who may name whom is decided against the
+		// database, never taken from the message.
+		const subject = await this.subjects.resolve(
+			principal,
+			requestedMembershipId,
+		);
+		if (requestedMembershipId && principal.coachId && !subject) {
+			this.reject(client, 'client not found in this tenant');
+			return;
+		}
+
 		const requestId = await this.aiService.dispatch({
 			tenantId: principal.tenantId,
 			clientId: subjectClientId,
+			membershipId: subject?.id ?? null,
 			coachId: principal.coachId,
 			coachEmail: principal.coachId ? principal.email : null,
 			kind,
@@ -158,6 +187,23 @@ export class AiGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			return undefined;
 		}
 		return body.clientId;
+	}
+
+	/**
+	 * @returns the requested membership, null when none was asked for, or
+	 *   `undefined` when the value is not a uuid.
+	 */
+	private readMembershipId(body: AiRequestBody): string | null | undefined {
+		if (body?.membershipId === undefined || body?.membershipId === null) {
+			return null;
+		}
+		if (
+			typeof body.membershipId !== 'string' ||
+			!UUID_PATTERN.test(body.membershipId)
+		) {
+			return undefined;
+		}
+		return body.membershipId;
 	}
 
 	private reject(client: Socket, message: string) {

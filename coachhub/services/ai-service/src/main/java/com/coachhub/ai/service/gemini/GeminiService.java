@@ -71,7 +71,7 @@ public class GeminiService {
 
 	/** Builds a prompt grounded in the most relevant knowledge-base chunks. */
 	private String buildGroundedPrompt(AiRequestedPayload payload, String tenantId) {
-		List<RagChunk> context = retrieveContext(payload.prompt(), tenantId);
+		List<RagChunk> context = retrieveContext(payload.prompt(), tenantId, payload.membershipId());
 		if (context.isEmpty()) {
 			return payload.prompt();
 		}
@@ -96,9 +96,9 @@ public class GeminiService {
 	 * here: the knowledge base now holds each coach's own exercise library and client profiles, so
 	 * this argument is the only thing standing between one coach's question and another's data.
 	 */
-	private List<RagChunk> retrieveContext(String query, String tenantId) {
+	private List<RagChunk> retrieveContext(String query, String tenantId, String membershipId) {
 		try {
-			return rag.retrieve(query, tenantId, ragProperties.topK());
+			return rag.retrieve(query, tenantId, membershipId, ragProperties.topK());
 		} catch (Exception ex) {
 			log.warn("RAG retrieval failed, continuing without context: {}", ex.getMessage());
 			return List.of();

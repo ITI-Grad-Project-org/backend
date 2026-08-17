@@ -45,7 +45,7 @@ class PlanValidatorTest {
 										List.of());
 		PlanContext context =
 						new PlanContext(
-										null, null, List.of(),
+										null, null, List.of(), PlanContext.TrainingHistory.empty(),
 										new PlanContext.Constraints(4, daysPerWeek, "fat_loss"),
 										new PlanContext.LibraryDescriptor(Map.of(), List.of(), List.of(), false),
 										null);

@@ -42,7 +42,7 @@ class SpringAiRagServiceTest {
 		VectorStore store = mock(VectorStore.class);
 		when(store.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
-		new SpringAiRagService(store, PROPS).retrieve("how much protein", "tenant-a", 6);
+		new SpringAiRagService(store, PROPS).retrieve("how much protein", "tenant-a", null, 6);
 
 		SearchRequest request = capture(store);
 		assertThat(request.getSimilarityThreshold()).isEqualTo(0.62);
@@ -58,7 +58,7 @@ class SpringAiRagServiceTest {
 		VectorStore store = mock(VectorStore.class);
 		when(store.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
-		new SpringAiRagService(store, PROPS).retrieve("shoulder rehab", "tenant-a", 6);
+		new SpringAiRagService(store, PROPS).retrieve("shoulder rehab", "tenant-a", null, 6);
 
 		Filter.Expression expression = capture(store).getFilterExpression();
 		assertThat(expression).isNotNull();
@@ -73,7 +73,7 @@ class SpringAiRagServiceTest {
 		VectorStore store = mock(VectorStore.class);
 		when(store.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
-		new SpringAiRagService(store, PROPS).retrieve("anything", "  ", 6);
+		new SpringAiRagService(store, PROPS).retrieve("anything", "  ", null, 6);
 
 		Filter.Expression expression = capture(store).getFilterExpression();
 		assertThat(expression).isNotNull();
@@ -97,7 +97,7 @@ class SpringAiRagServiceTest {
 														        .score(0.81)
 														        .build()));
 
-		List<RagChunk> chunks = new SpringAiRagService(store, PROPS).retrieve("deload", "t", 6);
+		List<RagChunk> chunks = new SpringAiRagService(store, PROPS).retrieve("deload", "t", null, 6);
 
 		assertThat(chunks).hasSize(1);
 		assertThat(chunks.get(0).source()).isEqualTo("programming");
@@ -111,6 +111,41 @@ class SpringAiRagServiceTest {
 		VectorStore store = mock(VectorStore.class);
 		when(store.similaritySearch(any(SearchRequest.class))).thenReturn(null);
 
-		assertThat(new SpringAiRagService(store, PROPS).retrieve("q", "t", 6)).isEmpty();
+		assertThat(new SpringAiRagService(store, PROPS).retrieve("q", "t", null, 6)).isEmpty();
+	}
+
+	// ── Member scoping ────────────────────────────────────────────────────────
+	//
+	// Check-ins are private to one client and live in the same tenant as every
+	// other client of that coach. A tenant-only filter would return them happily,
+	// so this is the filter that keeps one client's words away from another.
+
+	@Test
+	@DisplayName("a named client sees their own material and the shared corpus, nothing else")
+	void filtersByMember() {
+		VectorStore store = mock(VectorStore.class);
+		when(store.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+		new SpringAiRagService(store, PROPS).retrieve("how is it going", "tenant-a", "member-1", 6);
+
+		String filter = capture(store).getFilterExpression().toString();
+		assertThat(filter).contains("member-1").contains(RagService.NO_MEMBER);
+		assertThat(filter).contains("tenant-a");
+	}
+
+	@Test
+	@DisplayName("with no client named, nothing client-private is reachable at all")
+	void excludesPrivateMaterialWithoutAMember() {
+		VectorStore store = mock(VectorStore.class);
+		when(store.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+		new SpringAiRagService(store, PROPS).retrieve("how is it going", "tenant-a", null, 6);
+
+		// Only the sentinel. Asking about "a client" without naming one must not
+		// quietly return whichever client happened to score highest.
+		String filter = capture(store).getFilterExpression().toString();
+		assertThat(filter).contains(RagService.NO_MEMBER);
+		assertThat(filter).doesNotContain("member-1");
 	}
 }
+

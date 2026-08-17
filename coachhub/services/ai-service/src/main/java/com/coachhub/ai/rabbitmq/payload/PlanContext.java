@@ -18,12 +18,14 @@ public record PlanContext(
 				ClientProfile client,
 				IntakeProfile intake,
 				List<MeasurementPoint> measurements,
+				TrainingHistory history,
 				Constraints constraints,
 				LibraryDescriptor library,
 				String coachNotes) {
 
 	public PlanContext {
 		measurements = measurements == null ? List.of() : List.copyOf(measurements);
+		history = history == null ? TrainingHistory.empty() : history;
 	}
 
 	public record ClientProfile(
@@ -63,6 +65,41 @@ public record PlanContext(
 					Double hipsCm,
 					Double armCm,
 					Double thighCm) {}
+
+	/**
+	 * What has happened since the last plan: the client's own words and how the
+	 * sessions actually went.
+	 *
+	 * The intake says what the client wanted at signup. This says whether it has
+	 * been working — a knee mentioned three weeks running, a fortnight of missed
+	 * sessions, an RPE of 9 on everything. A plan written months later that
+	 * ignores all of it is just the first plan again.
+	 */
+	public record TrainingHistory(List<CheckinNote> checkins, List<SessionNote> sessions) {
+
+		public TrainingHistory {
+			checkins = checkins == null ? List.of() : List.copyOf(checkins);
+			sessions = sessions == null ? List.of() : List.copyOf(sessions);
+		}
+
+		public static TrainingHistory empty() {
+			return new TrainingHistory(List.of(), List.of());
+		}
+
+		public boolean isEmpty() {
+			return checkins.isEmpty() && sessions.isEmpty();
+		}
+	}
+
+	public record CheckinNote(
+					String date, String clientNotes, String coachFeedback, Map<String, Double> metrics) {}
+
+	public record SessionNote(
+					String date,
+					String clientNotes,
+					Integer overallRpe,
+					Integer durationMinutes,
+					Boolean completed) {}
 
 	/** What the coach asked for, after core-api applied the intake's own defaults. */
 	public record Constraints(Integer durationWeeks, Integer daysPerWeek, String goal) {}

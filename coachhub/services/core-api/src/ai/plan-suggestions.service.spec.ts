@@ -34,6 +34,7 @@ const CONTEXT: PlanGenerationContext = {
 		client: { ageYears: 30, gender: null, heightCm: 180, weightKg: 80 },
 		intake: null,
 		measurements: [],
+		history: { checkins: [], sessions: [] },
 		constraints: { durationWeeks: 4, daysPerWeek: 3, goal: null },
 		library: {
 			counts: { exercises: 2 },

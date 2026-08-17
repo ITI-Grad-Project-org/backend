@@ -37,7 +37,7 @@ class GeminiServiceTest {
 
 	private static final AiRequestedPayload PAYLOAD =
 					new AiRequestedPayload(
-									"req-1", "client-1", "coach-1", "coach@example.com", "advice",
+									"req-1", "client-1", "membership-1", "coach-1", "coach@example.com", "advice",
 									"How much protein does my client need?");
 
 	private GeminiClient gemini;
@@ -70,7 +70,7 @@ class GeminiServiceTest {
 	@Test
 	@DisplayName("retrieved context is prepended to the prompt with its sources")
 	void groundsThePrompt() {
-		when(rag.retrieve(anyString(), anyString(), anyInt()))
+		when(rag.retrieve(anyString(), anyString(), any(), anyInt()))
 						.thenReturn(
 										List.of(
 														new RagChunk(
@@ -91,19 +91,19 @@ class GeminiServiceTest {
 	@Test
 	@DisplayName("the envelope's tenant is what scopes retrieval")
 	void passesTenantToRetrieval() {
-		when(rag.retrieve(anyString(), anyString(), anyInt())).thenReturn(List.of());
+		when(rag.retrieve(anyString(), anyString(), any(), anyInt())).thenReturn(List.of());
 
 		service.process(PAYLOAD, "tenant-a", "corr-1");
 
 		// If this argument ever stops being threaded through, one coach's question
 		// starts retrieving another coach's client profiles.
-		verify(rag).retrieve(eq(PAYLOAD.prompt()), eq("tenant-a"), eq(6));
+		verify(rag).retrieve(eq(PAYLOAD.prompt()), eq("tenant-a"), eq("membership-1"), eq(6));
 	}
 
 	@Test
 	@DisplayName("retrieval failure degrades to the raw prompt instead of failing the request")
 	void retrievalFailureDegrades() {
-		when(rag.retrieve(anyString(), anyString(), anyInt()))
+		when(rag.retrieve(anyString(), anyString(), any(), anyInt()))
 						.thenThrow(new IllegalStateException("atlas unreachable"));
 
 		service.process(PAYLOAD, "tenant-a", "corr-1");
@@ -117,7 +117,7 @@ class GeminiServiceTest {
 	@Test
 	@DisplayName("no chunks above the threshold means an ungrounded prompt, not an empty context block")
 	void emptyRetrievalSendsRawPrompt() {
-		when(rag.retrieve(anyString(), anyString(), anyInt())).thenReturn(List.of());
+		when(rag.retrieve(anyString(), anyString(), any(), anyInt())).thenReturn(List.of());
 
 		service.process(PAYLOAD, "tenant-a", "corr-1");
 

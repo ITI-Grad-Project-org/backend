@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +25,7 @@ public class SpringAiRagService implements RagService {
 	}
 
 	@Override
-	public List<RagChunk> retrieve(String query, String tenantId, int topK) {
+	public List<RagChunk> retrieve(String query, String tenantId, String membershipId, int topK) {
 
 		List<Object> scopes =
 						(tenantId == null || tenantId.isBlank())
@@ -40,10 +41,11 @@ public class SpringAiRagService implements RagService {
 						             // query about billing is grounded with squat cues purely
 						             // because they were the least-bad of a short list.
 						             .similarityThreshold(properties.similarityThreshold())
-						             .filterExpression(
-										             new FilterExpressionBuilder()
-														             .in(TENANT_KEY, scopes)
-														             .build())
+						             // Two scopes, both closed lists. The member filter is what keeps
+						             // one client's check-ins away from another client of the same
+						             // coach: without it a tenant-only filter would happily return
+						             // them, because they are in the same tenant by definition.
+						             .filterExpression(buildFilter(scopes, membershipId))
 						             .build();
 
 		List<Document> results = vectorStore.similaritySearch(request);
@@ -76,5 +78,21 @@ public class SpringAiRagService implements RagService {
 							      .toList());
 		}
 		return chunks;
+	}
+
+	/**
+	 * Tenant AND member, both as membership tests against a closed list.
+	 *
+	 * With no member the search sees only material tied to nobody in particular — the exercise
+	 * library, the curated corpus. Asking about a client without naming one should not quietly
+	 * return whichever client happened to score highest.
+	 */
+	private static Filter.Expression buildFilter(List<Object> scopes, String membershipId) {
+		FilterExpressionBuilder builder = new FilterExpressionBuilder();
+		List<Object> members =
+						(membershipId == null || membershipId.isBlank())
+										? List.of(NO_MEMBER)
+										: List.of(membershipId, NO_MEMBER);
+		return builder.and(builder.in(TENANT_KEY, scopes), builder.in(MEMBER_KEY, members)).build();
 	}
 }

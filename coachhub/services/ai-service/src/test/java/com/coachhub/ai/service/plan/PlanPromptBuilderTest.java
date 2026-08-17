@@ -32,14 +32,35 @@ class PlanPromptBuilderTest {
 						"Prefers early morning sessions.");
 	}
 
+	private static PlanContext.TrainingHistory history() {
+		return new PlanContext.TrainingHistory(
+						List.of(new PlanContext.CheckinNote(
+										"2026-08-10",
+										"Knee felt tight on squats again this week.",
+										"Swap to goblet squats for now.",
+										Map.of("sleepHours", 6.5))),
+						List.of(new PlanContext.SessionNote("2026-08-12", "Last set felt heavy.", 9, 62, true),
+										new PlanContext.SessionNote("2026-08-09", null, 8, null, false)));
+	}
+
 	private static AiPlanRequestedPayload request(
 					String kind, PlanContext.IntakeProfile intake, PlanCandidates candidates, String coachNotes) {
+		return request(kind, intake, candidates, coachNotes, PlanContext.TrainingHistory.empty());
+	}
+
+	private static AiPlanRequestedPayload request(
+					String kind,
+					PlanContext.IntakeProfile intake,
+					PlanCandidates candidates,
+					String coachNotes,
+					PlanContext.TrainingHistory history) {
 		PlanContext context =
 						new PlanContext(
 										new PlanContext.ClientProfile(30, "male", 180.0, 79.4),
 										intake,
 										List.of(new PlanContext.MeasurementPoint(
 														"2026-08-10", 79.4, 22.0, null, 84.0, null, null, null)),
+										history,
 										new PlanContext.Constraints(4, 3, "fat_loss"),
 										new PlanContext.LibraryDescriptor(Map.of(), List.of("dumbbells"), List.of(), false),
 										coachNotes);
@@ -159,4 +180,65 @@ class PlanPromptBuilderTest {
 
 		assertThat(prompt).doesNotContain("@").doesNotContainIgnoringCase("name:");
 	}
+
+	// ── Training history ──────────────────────────────────────────────────────
+	//
+	// The point of the whole feature: a plan written months after the intake
+	// should react to what has happened since, not repeat the first plan.
+
+	@Test
+	@DisplayName("check-ins reach the prompt in the client's own words")
+	void carriesCheckins() {
+		String prompt = builder.build(
+						request("training", intake(), trainingLibrary(), null, history()));
+
+		assertThat(prompt)
+						.contains("How training has actually been going")
+						.contains("Knee felt tight on squats again this week.")
+						.contains("Swap to goblet squats for now.")
+						.contains("sleepHours 6.5");
+	}
+
+	@Test
+	@DisplayName("session RPE and unfinished sessions reach the prompt")
+	void carriesSessions() {
+		String prompt = builder.build(
+						request("training", intake(), trainingLibrary(), null, history()));
+
+		assertThat(prompt)
+						.contains("RPE 9")
+						.contains("62 min")
+						.contains("Last set felt heavy.")
+						// The 2026-08-09 session was never completed — that is the signal.
+						.contains("not finished");
+	}
+
+	@Test
+	@DisplayName("the model is told to act on a repeated complaint, not just shown it")
+	void instructsTheModelToReact() {
+		String prompt = builder.build(
+						request("training", intake(), trainingLibrary(), null, history()));
+
+		assertThat(prompt).contains("Act on the training history");
+	}
+
+	@Test
+	@DisplayName("the nutrition prompt gets the history too")
+	void nutritionCarriesHistory() {
+		String prompt = builder.build(
+						request("nutrition", intake(), nutritionLibrary(), null, history()));
+
+		assertThat(prompt)
+						.contains("Knee felt tight on squats again this week.")
+						.contains("Act on the training history");
+	}
+
+	@Test
+	@DisplayName("a client with no history gets no empty section")
+	void omitsAnEmptyHistory() {
+		String prompt = builder.build(request("training", intake(), trainingLibrary(), null));
+
+		assertThat(prompt).doesNotContain("How training has actually been going");
+	}
 }
+

@@ -93,7 +93,7 @@ class PlanGenerationServiceTest {
 		PlanContext context =
 						new PlanContext(
 										new PlanContext.ClientProfile(30, "male", 180.0, 80.0),
-										null, List.of(),
+										null, List.of(), PlanContext.TrainingHistory.empty(),
 										new PlanContext.Constraints(4, daysPerWeek, "fat_loss"),
 										new PlanContext.LibraryDescriptor(Map.of(), List.of(), List.of(), false),
 										null);

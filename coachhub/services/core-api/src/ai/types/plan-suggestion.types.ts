@@ -85,6 +85,46 @@ export interface PlanMeasurementPoint {
 	thighCm: number | null;
 }
 
+/**
+ * One check-in the client wrote and, where it exists, the coach's reply.
+ *
+ * The intake says what the client wanted at signup. This says how it has
+ * actually been going — which is the part a plan written three months later
+ * should be reacting to.
+ */
+export interface PlanCheckinNote {
+	/** The period the check-in covers, not when it was submitted. */
+	date: string;
+	clientNotes: string | null;
+	coachFeedback: string | null;
+	/** Whatever the coach asks for each week; deliberately unstructured. */
+	metrics: Record<string, number> | null;
+}
+
+/** One logged session, and how hard it felt. */
+export interface PlanSessionNote {
+	date: string;
+	clientNotes: string | null;
+	/** Session RPE, 1-10. The cheapest signal that a plan is too hard or too easy. */
+	overallRpe: number | null;
+	durationMinutes: number | null;
+	completed: boolean;
+}
+
+/**
+ * What has happened since the last plan.
+ *
+ * Only entries carrying something to read are collected — a pending check-in
+ * with no text and a session with no notes and no RPE say nothing, and padding
+ * the prompt with them costs tokens and dilutes the signal.
+ */
+export interface PlanTrainingHistory {
+	/** Newest first. */
+	checkins: PlanCheckinNote[];
+	/** Newest first. */
+	sessions: PlanSessionNote[];
+}
+
 /** What the coach asked for, after intake fallbacks have been applied. */
 export interface PlanConstraints {
 	durationWeeks: number;
@@ -130,6 +170,8 @@ export interface PlanInputSnapshot {
 	intake: PlanIntakeProfile | null;
 	/** Newest first. */
 	measurements: PlanMeasurementPoint[];
+	/** Check-ins and logged sessions since the last plan; empty for a new client. */
+	history: PlanTrainingHistory;
 	constraints: PlanConstraints;
 	library: PlanLibraryDescriptor;
 	coachNotes: string | null;

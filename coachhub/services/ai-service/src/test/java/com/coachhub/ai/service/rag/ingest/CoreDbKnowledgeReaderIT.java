@@ -1,5 +1,6 @@
 package com.coachhub.ai.service.rag.ingest;
 
+import com.coachhub.ai.service.rag.RagService;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.DisplayName;
@@ -67,5 +68,47 @@ class CoreDbKnowledgeReaderIT {
 			assertThat(d.text()).doesNotContain("null");
 		});
 		assertThat(docs.stream().map(KnowledgeDocument::id).distinct().count()).isEqualTo(docs.size());
+	}
+
+	/**
+	 * Which sources carry one client's private material, and must therefore be scoped to that client.
+	 *
+	 * <p>This is the assertion that would have caught the intake leak. An intake was read through
+	 * {@code read} rather than {@code readPerMember}, so every one of them was tagged {@code __none__}
+	 * — the sentinel for "about nobody in particular" — which is a member every filter includes. A
+	 * client asking their own question retrieved another client's injuries, medical conditions and
+	 * allergies, and nothing failed: the answer was simply grounded in the wrong person's file.
+	 *
+	 * <p>It has to run against real data. The routing is one method call per source and reads
+	 * correctly either way; only the rows coming back prove which one was used.
+	 */
+	@Test
+	@DisplayName("private sources are scoped to a member, shared sources are not")
+	void scopesPrivateSourcesToTheirMember() {
+		List<KnowledgeDocument> docs = new CoreDbKnowledgeReader(jdbc()).readAll();
+
+		List<String> privateSources =
+						List.of(CoreDbKnowledgeReader.SOURCE_INTAKE, CoreDbKnowledgeReader.SOURCE_CHECKIN);
+
+		assertThat(docs)
+						.filteredOn(d -> privateSources.contains(d.source()))
+						.isNotEmpty()
+						.allSatisfy(
+										d ->
+														assertThat(d.membershipId())
+																		.as("%s must belong to one client", d.source())
+																		.isNotEqualTo(RagService.NO_MEMBER));
+
+		// The other way round matters just as much: tagging the exercise library with a
+		// member would hide a coach's own library from every question that did not name
+		// a client, which looks like the assistant having forgotten it.
+		assertThat(docs)
+						.filteredOn(d -> !privateSources.contains(d.source()))
+						.isNotEmpty()
+						.allSatisfy(
+										d ->
+														assertThat(d.membershipId())
+																		.as("%s belongs to no one client", d.source())
+																		.isEqualTo(RagService.NO_MEMBER));
 	}
 }

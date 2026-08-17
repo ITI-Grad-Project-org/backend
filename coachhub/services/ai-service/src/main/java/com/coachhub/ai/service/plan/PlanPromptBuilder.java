@@ -33,6 +33,7 @@ public class PlanPromptBuilder {
 
 		appendClient(sb, context);
 		appendMeasurements(sb, context);
+		appendHistory(sb, context);
 		appendBrief(sb, request, context);
 		appendRules(sb, request);
 
@@ -111,6 +112,68 @@ public class PlanPromptBuilder {
 		sb.append('\n');
 	}
 
+	/**
+	 * What has happened since the last plan.
+	 *
+	 * This is the difference between designing for the client who filled in an intake form six
+	 * months ago and designing for the one who has been training since. A knee mentioned three weeks
+	 * running should change the programme — without this section the model has no way to know it was
+	 * ever mentioned once.
+	 */
+	private void appendHistory(StringBuilder sb, PlanContext context) {
+		PlanContext.TrainingHistory history = context == null ? null : context.history();
+		if (history == null || history.isEmpty()) {
+			return;
+		}
+
+		sb.append("=== How training has actually been going (newest first) ===\n");
+
+		for (PlanContext.CheckinNote note : history.checkins()) {
+			StringJoiner line = new StringJoiner(" | ");
+			addText(line, "client", note.clientNotes());
+			addText(line, "coach", note.coachFeedback());
+			if (note.metrics() != null && !note.metrics().isEmpty()) {
+				StringJoiner metrics = new StringJoiner(", ");
+				note.metrics().forEach((key, value) -> metrics.add(key + " " + number(value)));
+				line.add(metrics.toString());
+			}
+			if (line.length() > 0) {
+				sb.append("check-in ").append(note.date()).append(" — ").append(line).append('\n');
+			}
+		}
+
+		for (PlanContext.SessionNote note : history.sessions()) {
+			StringJoiner line = new StringJoiner(", ");
+			if (note.overallRpe() != null) {
+				line.add("RPE " + note.overallRpe());
+			}
+			if (note.durationMinutes() != null) {
+				line.add(note.durationMinutes() + " min");
+			}
+			// Only worth saying when it is false; "finished" is the unremarkable case.
+			if (Boolean.FALSE.equals(note.completed())) {
+				line.add("not finished");
+			}
+			addText(line, null, note.clientNotes());
+			if (line.length() > 0) {
+				sb.append("session ").append(note.date()).append(" — ").append(line).append('\n');
+			}
+		}
+
+		sb.append('\n');
+	}
+
+	private void addText(StringJoiner joiner, String label, String value) {
+		if (value == null || value.isBlank()) {
+			return;
+		}
+		String trimmed = value.strip();
+		if (trimmed.length() > MAX_NOTE_LENGTH) {
+			trimmed = trimmed.substring(0, MAX_NOTE_LENGTH);
+		}
+		joiner.add(label == null ? "\"" + trimmed + "\"" : label + ": " + trimmed);
+	}
+
 	private void appendBrief(StringBuilder sb, AiPlanRequestedPayload request, PlanContext context) {
 		PlanContext.Constraints constraints = context == null ? null : context.constraints();
 		Integer weeks = constraints == null ? null : constraints.durationWeeks();
@@ -159,6 +222,10 @@ public class PlanPromptBuilder {
 							never both, unless setType is amrap, to_failure or drop_set.
 							6. Work around every injury and medical condition listed above. If that rules out an \
 							obvious choice, say so in coachNotes on the exercise you used instead.
+							7. Act on the training history if there is one. Something the client has raised more \
+							than once is a pattern, not a one-off: change the plan rather than repeating it, and \
+							say what you changed in the description. Sessions consistently at RPE 9-10 mean the \
+							last plan was too hard; sessions left unfinished usually mean it was too long.
 							""");
 		} else {
 			sb.append("""
@@ -171,6 +238,9 @@ public class PlanPromptBuilder {
 							4. Respect every dietary preference listed above. Nothing may contain a listed allergen.
 							5. Set the daily targets yourself from the client's body, activity level and goal, and \
 							explain the reasoning in one sentence of the description.
+							6. Act on the training history if there is one. What the client says about hunger, \
+							energy and adherence matters more than the arithmetic — a plan they did not follow \
+							is worth less than a smaller change they will.
 							""");
 		}
 		sb.append('\n');

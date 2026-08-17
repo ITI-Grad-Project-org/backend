@@ -11,6 +11,8 @@ interface RequestAiInput {
 	 */
 	tenantId: string;
 	clientId: string | null;
+	/** Already authorized by the caller — see AiSubjectService. */
+	membershipId: string | null;
 	coachId: string | null;
 	coachEmail: string | null;
 	kind: string;
@@ -26,6 +28,7 @@ export class AiService {
 		const payload: AiRequestedPayload = {
 			requestId,
 			clientId: input.clientId,
+			membershipId: input.membershipId,
 			coachId: input.coachId,
 			coachEmail: input.coachEmail,
 			kind: input.kind,

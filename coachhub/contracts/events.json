@@ -119,6 +119,7 @@
       "payload": {
         "requestId": "string (UUID)",
         "clientId": "string (UUID) | null — set when a client asks, or the client a coach asks about",
+        "membershipId": "string (UUID) | null — the client the question is about. The retrieval scope for anything private to a client (check-ins and the coach's replies); core-api has already verified the asker may ask about this membership. Null retrieves only material tied to no client.",
         "coachId": "string (UUID) | null — set when a coach asks",
         "coachEmail": "string (email) | null — set when a coach asks",
         "kind": "string (e.g. plan_suggestion | form_review)",

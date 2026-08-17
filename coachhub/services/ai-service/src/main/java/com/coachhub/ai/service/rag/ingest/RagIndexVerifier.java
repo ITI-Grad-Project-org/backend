@@ -38,9 +38,22 @@ public class RagIndexVerifier implements ApplicationRunner {
 
 	private static final Logger log = LoggerFactory.getLogger(RagIndexVerifier.class);
 
-	/** Paths retrieval filters on; both must be declared as filter fields. */
+	/**
+	 * Paths retrieval filters on; every one must be declared as a filter field.
+	 *
+	 * <p>Adding to this list is not a config change you can simply deploy. Atlas fixes an index's
+	 * filter fields when it is CREATED, and Spring AI's {@code initialize-schema} then sees an index
+	 * that no longer matches, tries to create one of the same name, and the whole context fails to
+	 * start on {@code IndexAlreadyExists} — before this runner ever gets a chance to fix it. Roll the
+	 * change out with {@code SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA=false} and {@code
+	 * RAG_REBUILD_INDEX=true} together, so the store leaves the index alone at boot and this drops
+	 * and recreates it afterwards.
+	 */
 	private static final List<String> REQUIRED_FILTER_PATHS =
-					List.of("metadata." + RagService.TENANT_KEY, "metadata.source");
+					List.of(
+									"metadata." + RagService.TENANT_KEY,
+									"metadata." + RagService.MEMBER_KEY,
+									"metadata.source");
 
 	private final MongoTemplate mongoTemplate;
 	private final EmbeddingModel embeddingModel;

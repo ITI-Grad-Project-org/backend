@@ -243,6 +243,9 @@ public class KnowledgeIngestService {
 	private static Document toSpringAiDocument(KnowledgeDocument doc) {
 		Map<String, Object> metadata = new HashMap<>();
 		metadata.put(RagService.TENANT_KEY, doc.tenantId());
+		// Always written, sentinel included. A document with the field missing would
+		// fall outside every member filter and become permanently unretrievable.
+		metadata.put(RagService.MEMBER_KEY, doc.membershipId());
 		metadata.put("source", doc.source());
 		metadata.put("origin", doc.origin());
 		// Explicit id, not the generated default — this is the whole basis of the

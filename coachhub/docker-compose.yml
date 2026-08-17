@@ -90,7 +90,10 @@ services:
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?set in .env}
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-30000}
+      # Must outlast a retried Gemini call, not just a healthy one. ai-service
+      # retries 503/429 three times with backoff, so 30s now expires while the
+      # answer is still coming and the socket is told it timed out.
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-120000}
       # core-api proxies the coach-facing analytics routes; analytics-service is
       # never reached by the browser directly.
       ANALYTICS_SERVICE_URL: http://analytics-service:8082
@@ -139,6 +142,12 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD}
       RAG_INGEST_ENABLED: ${RAG_INGEST_ENABLED:-true}
       RAG_REBUILD_INDEX: ${RAG_REBUILD_INDEX:-false}
+      # Adding a filter field to the vector index needs BOTH of these: Atlas fixes
+      # filter fields at creation, so Spring AI sees a mismatched index, tries to
+      # create one of the same name, and the context dies on IndexAlreadyExists
+      # before RagIndexVerifier can drop it. Turn initialize-schema off for that
+      # one roll-out and let the verifier rebuild.
+      SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA: ${SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA:-true}
     ports:
       - "8081:8081"
     depends_on:

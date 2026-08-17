@@ -113,6 +113,15 @@ export interface PlanAssignedPayload {
 export interface AiRequestedPayload {
 	requestId: string;
 	clientId: string | null;
+	/**
+	 * The client the question is about, when there is one.
+	 *
+	 * This is the retrieval scope, not metadata. Everything private to a client —
+	 * their check-ins and the coach's replies — is filtered on it, so core-api has
+	 * already verified the asker is entitled to this membership before it is set.
+	 * Null retrieves only material tied to no client at all.
+	 */
+	membershipId: string | null;
 	coachId: string | null;
 	coachEmail: string | null;
 	kind: string;

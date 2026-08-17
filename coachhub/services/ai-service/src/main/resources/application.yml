@@ -84,13 +84,14 @@ spring:
         collection-name: ${RAG_COLLECTION:rag_knowledge}
         index-name: ${RAG_INDEX:vector_index}
         path-name: embedding
-        # tenantId is load-bearing, not decorative: the store holds every coach's
-        # own exercise library and client profiles, and this is what lets Atlas
-        # filter a search down to one tenant. NOTE: these become filter fields in
+        # tenantId and membershipId are load-bearing, not decorative. The store
+        # holds every coach's own library and every client's check-ins;
+        # tenantId keeps one coach away from another's data, and membershipId
+        # keeps one client's notes away from another client of the SAME coach. NOTE: these become filter fields in
         # the index ONLY when the index is first created — adding one here does
         # not alter an index that already exists. RagIndexVerifier checks the live
         # index at startup and says so if it has drifted.
-        metadata-fields-to-filter: source,tenantId
+        metadata-fields-to-filter: source,tenantId,membershipId
 
 # ── CoachHub RAG ────────────────────────────────────────────────────────────
 coachhub:
