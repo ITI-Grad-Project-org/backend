@@ -5,16 +5,14 @@ import {
 	Injectable,
 	Logger,
 	NotFoundException,
-	UnauthorizedException,
 } from '@nestjs/common';
-import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
-import { ConfigService } from 'src/config';
 import { ClientMembershipService } from '../../clients/client-membership.service';
 import { ClientService } from '../../clients/client.service';
 import { CreateClientDto } from '../../clients/dto/create-client.dto';
 import { Client } from '../../clients/entities/client.entity';
 import { ClientAuthPayload, MembershipStatus } from '../../common';
 import { TokenProvider } from '../providers/token.provider';
+import { GoogleTokenProvider } from '../providers/google-token.provider';
 import { EventPublisherService } from '../../messaging/event-publisher.service';
 import { EventType } from '../../messaging/events';
 import { PasswordResetOtpProvider } from '../providers/password-reset-otp.provider';
@@ -22,20 +20,15 @@ import { PasswordResetOtpProvider } from '../providers/password-reset-otp.provid
 @Injectable()
 export class ClientAuthService {
 	private readonly logger = new Logger(ClientAuthService.name);
-	private readonly googleClient: OAuth2Client;
 
 	constructor(
 		private readonly clientService: ClientService,
 		private readonly membershipService: ClientMembershipService,
 		private readonly tokenProvider: TokenProvider,
-		private readonly configService: ConfigService,
 		private readonly eventPublisherService: EventPublisherService,
 		private readonly otpProvider: PasswordResetOtpProvider,
-	) {
-		this.googleClient = new OAuth2Client(
-			this.configService.googleOauthConfig.clientId,
-		);
-	}
+		private readonly googleTokenProvider: GoogleTokenProvider,
+	) {}
 
 	async register(createClientDto: CreateClientDto) {
 		const existing = await this.clientService.findOneByEmail(
@@ -69,7 +62,7 @@ export class ClientAuthService {
 	}
 
 	async signInWithGoogle(idToken: string) {
-		const payload = await this.verifyGoogleIdToken(idToken);
+		const payload = await this.googleTokenProvider.verifyIdToken(idToken);
 
 		const email = payload.email!.toLowerCase().trim();
 		const googleId = payload.sub;
@@ -298,29 +291,6 @@ export class ClientAuthService {
 			throw new NotFoundException('Client not found');
 		}
 		return client;
-	}
-
-	private async verifyGoogleIdToken(idToken: string): Promise<TokenPayload> {
-		let ticket: LoginTicket;
-		try {
-			ticket = await this.googleClient.verifyIdToken({
-				idToken,
-				audience: this.configService.googleOauthConfig.clientId,
-			});
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			this.logger.warn(`Google ID token verification failed: ${message}`);
-			throw new UnauthorizedException('Invalid Google ID token');
-		}
-
-		const payload = ticket.getPayload();
-		if (!payload || !payload.sub || !payload.email) {
-			throw new UnauthorizedException('Invalid Google ID token payload');
-		}
-		if (!payload.email_verified) {
-			throw new UnauthorizedException('Google email is not verified');
-		}
-		return payload;
 	}
 
 	private async validateClient(

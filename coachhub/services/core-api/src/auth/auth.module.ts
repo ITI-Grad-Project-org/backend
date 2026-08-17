@@ -9,6 +9,7 @@ import { ClientAuthController } from './client-auth.controller';
 import { ClientAuthService } from './services/client-auth.service';
 import { TokenProvider } from './providers/token.provider';
 import { PasswordResetOtpProvider } from './providers/password-reset-otp.provider';
+import { GoogleTokenProvider } from './providers/google-token.provider';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { ClientJwtStrategy } from './strategies/client-jwt.strategy';
@@ -56,6 +57,7 @@ import { MessagingModule } from '../messaging/messaging.module';
 		ClientAuthService,
 		TokenProvider,
 		PasswordResetOtpProvider,
+		GoogleTokenProvider,
 		JwtStrategy,
 		JwtRefreshStrategy,
 		ClientJwtStrategy,
