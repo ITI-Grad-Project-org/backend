@@ -6,6 +6,7 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { TokenProvider } from '../providers/token.provider';
+import { GoogleTokenProvider } from '../providers/google-token.provider';
 import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
 import { LoginDto } from '../dto/login.dto';
 import { Coach } from '../../coaches/entities/coach.entity';
@@ -22,6 +23,7 @@ export class AuthService {
 		private readonly tokenProvider: TokenProvider,
 		private readonly eventPublisherService: EventPublisherService,
 		private readonly otpProvider: PasswordResetOtpProvider,
+		private readonly googleTokenProvider: GoogleTokenProvider,
 	) {}
 
 	async register(registerDto: RegisterCoachDto) {
@@ -58,6 +60,44 @@ export class AuthService {
 			throw new UnauthorizedException('Invalid credentials');
 		}
 		return this.issueTokens(validatedCoach);
+	}
+
+	async signInWithGoogle(idToken: string) {
+		const payload = await this.googleTokenProvider.verifyIdToken(idToken);
+
+		const email = payload.email!.toLowerCase().trim();
+		const googleId = payload.sub;
+
+		let coach = await this.coachesService.findOneByGoogleId(googleId);
+
+		if (!coach) {
+			const byEmail = await this.coachesService.findOneByEmail(email);
+			if (byEmail) {
+				await this.coachesService.updateGoogleInfo(byEmail.id, {
+					googleId,
+					avatarUrl: byEmail.avatarUrl ?? payload.picture,
+				});
+				coach = await this.coachesService.findProfileById(byEmail.id);
+			}
+		}
+
+		if (!coach) {
+			coach = await this.coachesService.createFromGoogle({
+				firstName:
+					payload.given_name ??
+					payload.name?.split(' ')[0] ??
+					email.split('@')[0],
+				lastName:
+					payload.family_name ??
+					payload.name?.split(' ').slice(1).join(' ') ??
+					'',
+				email,
+				googleId,
+				avatarUrl: payload.picture,
+			});
+		}
+
+		return this.issueTokens(coach!);
 	}
 
 	async refreshTokens(coachId: string, refreshToken: string) {
@@ -192,7 +232,7 @@ export class AuthService {
 	): Promise<Coach | null> {
 		const coach = await this.coachesService.findOneByEmail(email);
 
-		if (!coach) {
+		if (!coach || !coach.password) {
 			return null;
 		}
 

@@ -37,8 +37,13 @@ export class Coach {
 	@Column({ length: 20, unique: true, nullable: true })
 	phone: string | null;
 
-	@Column({ name: 'password_hash', select: false })
-	password: string;
+	@Column({
+		name: 'password_hash',
+		type: 'text',
+		nullable: true,
+		select: false,
+	})
+	password: string | null;
 
 	@Column({ name: 'first_name', length: 100 })
 	firstName: string;
@@ -48,6 +53,9 @@ export class Coach {
 
 	@Column({ name: 'avatar_url', type: 'text', nullable: true })
 	avatarUrl: string | null;
+
+	@Column({ nullable: true, unique: true })
+	googleId: string | null;
 
 	@Column({ type: 'text', nullable: true })
 	bio: string | null;

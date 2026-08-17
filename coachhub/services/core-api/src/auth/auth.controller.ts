@@ -25,6 +25,7 @@ import { AuthPayload } from 'src/common/interfaces/authPayload.interface';
 import { JwtAuthGuard, JwtRefreshGuard } from './guards';
 import { CurrentUser, Public } from './decorators';
 import { RegisterCoachDto } from '../coaches/dto/register-coach.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -84,6 +85,22 @@ export class AuthController {
 	@HttpCode(HttpStatus.OK)
 	login(@Body() loginDto: LoginDto) {
 		return this.authService.login(loginDto);
+	}
+
+	@Public()
+	@Throttle({ default: { ttl: 60_000, limit: 10 } })
+	@Post('google')
+	@ApiOperation({
+		summary: 'Coach sign in or register with a Google ID token',
+		description:
+			'Pass an ID token obtained from the Google Sign-In SDK. If a coach account with the email already exists it is auto-linked to the Google identity; otherwise a new coach and tenant are created.',
+	})
+	@ApiBody({ type: GoogleAuthDto })
+	@ApiResponse({ status: 200, description: 'Signed in successfully' })
+	@ApiResponse({ status: 401, description: 'Invalid Google ID token' })
+	@HttpCode(HttpStatus.OK)
+	google(@Body() dto: GoogleAuthDto) {
+		return this.authService.signInWithGoogle(dto.idToken);
 	}
 
 	@Public()
