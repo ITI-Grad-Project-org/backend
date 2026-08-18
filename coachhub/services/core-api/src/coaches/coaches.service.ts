@@ -38,25 +38,73 @@ export class CoachesService {
 	) {}
 
 	async create(registerDto: RegisterCoachDto): Promise<Coach> {
+		return this.createWithTenant({
+			firstName: registerDto.firstName,
+			lastName: registerDto.lastName,
+			email: registerDto.email,
+			password: registerDto.password,
+			businessName: registerDto.businessName,
+			timezone: registerDto.timezone,
+			currency: registerDto.currency,
+		});
+	}
+
+	/** Auto-creates a coach + tenant from a verified Google identity — no password, no chosen business name yet. */
+	async createFromGoogle(data: {
+		firstName: string;
+		lastName: string;
+		email: string;
+		googleId: string;
+		avatarUrl?: string;
+	}): Promise<Coach> {
+		const businessName =
+			`${data.firstName} ${data.lastName}`.trim() || data.email.split('@')[0];
+
+		const coach = await this.createWithTenant({
+			firstName: data.firstName,
+			lastName: data.lastName,
+			email: data.email,
+			password: null,
+			businessName,
+		});
+
+		await this.updateGoogleInfo(coach.id, {
+			googleId: data.googleId,
+			avatarUrl: data.avatarUrl,
+		});
+		coach.googleId = data.googleId;
+		coach.avatarUrl = data.avatarUrl ?? coach.avatarUrl;
+		return coach;
+	}
+
+	private async createWithTenant(data: {
+		firstName: string;
+		lastName: string;
+		email: string;
+		password: string | null;
+		businessName: string;
+		timezone?: string;
+		currency?: string;
+	}): Promise<Coach> {
 		const slug = await this.tenantService.generateAvailableSlug(
-			registerDto.businessName,
+			data.businessName,
 		);
 
 		const savedCoach = await this.dataSource.transaction(async (manager) => {
 			const coach = manager.create(Coach, {
-				firstName: registerDto.firstName,
-				lastName: registerDto.lastName,
-				email: registerDto.email,
-				password: registerDto.password,
+				firstName: data.firstName,
+				lastName: data.lastName,
+				email: data.email,
+				password: data.password,
 			});
 			const savedCoach = await manager.save(coach);
 
 			const tenant = manager.create(Tenant, {
 				ownerCoach: savedCoach,
-				name: registerDto.businessName,
+				name: data.businessName,
 				slug,
-				...(registerDto.timezone ? { timezone: registerDto.timezone } : {}),
-				...(registerDto.currency ? { currency: registerDto.currency } : {}),
+				...(data.timezone ? { timezone: data.timezone } : {}),
+				...(data.currency ? { currency: data.currency } : {}),
 			});
 			const savedTenant = await manager.save(tenant);
 
@@ -106,6 +154,7 @@ export class CoachesService {
 				password: true,
 				firstName: true,
 				lastName: true,
+				avatarUrl: true,
 			},
 			relations: { tenants: true },
 		});
@@ -124,6 +173,18 @@ export class CoachesService {
 			where: { id },
 			relations: { tenants: true },
 		});
+	}
+
+	/** Includes tenants — the caller needs it to issue a tenant-scoped token pair. */
+	findOneByGoogleId(googleId: string) {
+		return this.coachRepository.findOne({
+			where: { googleId },
+			relations: { tenants: true },
+		});
+	}
+
+	updateGoogleInfo(id: string, data: { googleId: string; avatarUrl?: string }) {
+		return this.coachRepository.update(id, data);
 	}
 
 	async findByValidResetToken(hashedToken: string) {

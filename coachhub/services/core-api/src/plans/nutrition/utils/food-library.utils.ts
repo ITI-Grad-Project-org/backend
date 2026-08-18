@@ -24,9 +24,9 @@ export function normalizeFoodLookupText(value?: string | null) {
 }
 
 /** Escapes PostgreSQL LIKE control characters for a literal substring search. */
-export function escapePostgresLikePattern(value: string) {
-	return value.replace(/[\\%_]/g, '\\$&');
-}
+// Compatibility re-export: this moved to common/utils so the clients feature can
+// use it without importing from nutrition.
+export { escapePostgresLikePattern } from '../../../common/utils/sql-pattern.utils';
 
 export function normalizeFoodDietaryTags(tags?: DietaryPreference[]) {
 	return [...new Set(tags ?? [])];

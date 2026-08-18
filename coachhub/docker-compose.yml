@@ -90,7 +90,10 @@ services:
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?set in .env}
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-30000}
+      # Must outlast a retried Gemini call, not just a healthy one. ai-service
+      # retries 503/429 three times with backoff, so 30s now expires while the
+      # answer is still coming and the socket is told it timed out.
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-120000}
       # core-api proxies the coach-facing analytics routes; analytics-service is
       # never reached by the browser directly.
       ANALYTICS_SERVICE_URL: http://analytics-service:8082
@@ -129,10 +132,32 @@ services:
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-coachhub}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?set in .env}
-      RAG_SEED_ON_STARTUP: ${RAG_SEED_ON_STARTUP:-true}
+      # Forwarded explicitly — compose does not pass .env into the container
+      # by itself. Accounts created after 2.5-flash's cutoff get a 404 for it
+      # and need a 3.x model.
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      # Knowledge-base source — same SELECT-only role analytics-service uses.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/core_db
+      SPRING_DATASOURCE_USERNAME: analytics_user
+      SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+      RAG_INGEST_ENABLED: ${RAG_INGEST_ENABLED:-true}
+      RAG_REBUILD_INDEX: ${RAG_REBUILD_INDEX:-false}
+      # Default false, not true: spring-ai-mongodb-atlas-store 1.1.5's
+      # IndexAlreadyExists catch only matches UncategorizedMongoDbException, but
+      # Spring Data Mongo's exception translator turns that Mongo error into
+      # DataIntegrityViolationException instead, so the catch never fires. With
+      # this left true, the app crashes on every boot once vector_index exists —
+      # not just the first one. Same fix as production (deploy/k8s/40-apps/ai-service.yaml).
+      # First-ever boot against a brand-new Atlas cluster (no index yet): export
+      # SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA=true for that one run only,
+      # or create the index by hand per README §9. To add a filter field to an
+      # existing index, use RAG_REBUILD_INDEX=true instead (README §9) — leave
+      # this false and let RagIndexVerifier do the rebuild.
+      SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA: ${SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA:-false}
     ports:
       - "8081:8081"
     depends_on:
+      postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
     networks: [coachhub-net]
     healthcheck:

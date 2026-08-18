@@ -16,6 +16,7 @@ import {
 	ServingUnit,
 } from '../../../common';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
+import { DefaultFood } from './default-food.entity';
 
 @Entity('foods')
 @Index('ux_foods_tenant_name_brand', ['tenantId', 'name', 'brand'], {
@@ -42,6 +43,14 @@ export class Food {
 	@ManyToOne(() => Coach, { nullable: false, onDelete: 'RESTRICT' })
 	@JoinColumn({ name: 'created_by' })
 	createdBy: Coach;
+
+	/** Lineage back to the system starter set; NULL for a coach's own food. */
+	@Column({ name: 'source_seed_id', type: 'uuid', nullable: true })
+	sourceSeedId: string | null;
+
+	@ManyToOne(() => DefaultFood, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'source_seed_id' })
+	sourceSeed: DefaultFood | null;
 
 	@Column({ length: 150 })
 	name: string;

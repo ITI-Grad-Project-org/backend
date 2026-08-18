@@ -9,10 +9,12 @@ import { ClientAuthController } from './client-auth.controller';
 import { ClientAuthService } from './services/client-auth.service';
 import { TokenProvider } from './providers/token.provider';
 import { PasswordResetOtpProvider } from './providers/password-reset-otp.provider';
+import { GoogleTokenProvider } from './providers/google-token.provider';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { ClientJwtStrategy } from './strategies/client-jwt.strategy';
 import { ClientJwtRefreshStrategy } from './strategies/client-jwt-refresh.strategy';
+import { WsAuthService } from './services/ws-auth.service';
 import { TenantModule } from '../tenant/tenant.module';
 
 import { ConfigModule } from 'src/config/config.module';
@@ -55,11 +57,13 @@ import { MessagingModule } from '../messaging/messaging.module';
 		ClientAuthService,
 		TokenProvider,
 		PasswordResetOtpProvider,
+		GoogleTokenProvider,
 		JwtStrategy,
 		JwtRefreshStrategy,
 		ClientJwtStrategy,
 		ClientJwtRefreshStrategy,
+		WsAuthService,
 	],
-	exports: [AuthService, ClientAuthService, TokenProvider],
+	exports: [AuthService, ClientAuthService, TokenProvider, WsAuthService],
 })
 export class AuthModule {}

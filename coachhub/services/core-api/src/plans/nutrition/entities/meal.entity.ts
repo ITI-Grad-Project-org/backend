@@ -12,6 +12,7 @@ import {
 import { DietaryPreference } from '../../../common';
 import { Coach } from '../../../coaches/entities/coach.entity';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
+import { DefaultMeal } from './default-meal.entity';
 import { MealIngredient } from './meal-ingredient.entity';
 
 @Entity('meals')
@@ -31,6 +32,14 @@ export class Meal {
 	@ManyToOne(() => Coach, { nullable: false, onDelete: 'RESTRICT' })
 	@JoinColumn({ name: 'created_by' })
 	createdBy: Coach;
+
+	/** Lineage back to the system starter set; NULL for a coach's own meal. */
+	@Column({ name: 'source_seed_id', type: 'uuid', nullable: true })
+	sourceSeedId: string | null;
+
+	@ManyToOne(() => DefaultMeal, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'source_seed_id' })
+	sourceSeed: DefaultMeal | null;
 
 	@Column({ length: 150 })
 	name: string;
