@@ -1,6 +1,7 @@
 import {
 	Column,
 	Entity,
+	Index,
 	JoinColumn,
 	ManyToOne,
 	PrimaryGeneratedColumn,
@@ -8,10 +9,16 @@ import {
 } from 'typeorm';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { ClientMembership } from '../../clients/entities/client-membership.entity';
+import { Coach } from '../../coaches/entities/coach.entity';
 import { numericTransformer } from '../../common';
 
 @Entity('measurements')
 @Unique(['membership', 'measuredAt'])
+@Index('ix_measurements_tenant_review', [
+	'tenantId',
+	'reviewedAt',
+	'measuredAt',
+])
 export class Measurement {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
@@ -109,4 +116,17 @@ export class Measurement {
 
 	@Column({ type: 'jsonb', default: () => "'[]'" })
 	photos: string[];
+
+	@Column({ name: 'reviewed_at', type: 'timestamptz', nullable: true })
+	reviewedAt: Date | null;
+
+	@Column({ name: 'reviewed_by', type: 'uuid', nullable: true })
+	reviewedBy: string | null;
+
+	@ManyToOne(() => Coach, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'reviewed_by' })
+	reviewer: Coach | null;
+
+	@Column({ name: 'coach_feedback', type: 'text', nullable: true })
+	coachFeedback: string | null;
 }
