@@ -15,6 +15,9 @@ export const ConfigSchema = z.object({
 	rabbitmq: z.object({
 		url: z.string(),
 	}),
+	redis: z.object({
+		url: z.string().url(),
+	}),
 	ai: z.object({
 		geminiApiKey: z.string(),
 		aiRequestTimeoutMs: z.coerce.number().default(30000),

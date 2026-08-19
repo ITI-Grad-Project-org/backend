@@ -1,5 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import {
 	deriveInclusiveEndDate,
 	getDateOnlyInTimeZone,
@@ -32,6 +33,7 @@ export class NutritionPlanLifecycleService {
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly clientNutritionPlansService: ClientNutritionPlansService,
+		private readonly planBuilderCache: PlanBuilderCacheService,
 	) {}
 
 	async publishClientPlan(tenantId: string | null, planId: string) {
@@ -66,6 +68,11 @@ export class NutritionPlanLifecycleService {
 			plan.status = NutritionPlanStatus.PUBLISHED;
 			await manager.getRepository(NutritionPlan).save(plan);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
 
 		return {
 			plan: await this.clientNutritionPlansService.getClientPlan(
@@ -112,6 +119,11 @@ export class NutritionPlanLifecycleService {
 			await assertNoPublishedNutritionOverlap(manager, plan);
 			await manager.getRepository(NutritionPlan).save(plan);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
 
 		return this.clientNutritionPlansService.getClientPlan(
 			activeTenantId,
@@ -132,6 +144,11 @@ export class NutritionPlanLifecycleService {
 			plan.status = NutritionPlanStatus.CANCELLED;
 			await manager.getRepository(NutritionPlan).save(plan);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
 
 		return this.clientNutritionPlansService.getClientPlan(
 			activeTenantId,
@@ -142,12 +159,22 @@ export class NutritionPlanLifecycleService {
 	async archiveClientPlan(tenantId: string | null, planId: string) {
 		const activeTenantId = assertNutritionTenant(tenantId);
 		await this.setArchived(activeTenantId, planId, true);
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
 		return { message: 'Client nutrition plan archived' };
 	}
 
 	async unarchiveClientPlan(tenantId: string | null, planId: string) {
 		const activeTenantId = assertNutritionTenant(tenantId);
 		await this.setArchived(activeTenantId, planId, false);
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
 		return { message: 'Client nutrition plan unarchived' };
 	}
 

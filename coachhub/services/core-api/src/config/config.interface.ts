@@ -15,6 +15,10 @@ export interface RabbitmqConfig {
 	url: string;
 }
 
+export interface RedisConfig {
+	url: string;
+}
+
 export interface JwtTokenConfig {
 	secret: string;
 	expiresIn: string;
@@ -80,6 +84,7 @@ export interface Config {
 	app: AppConfig;
 	database: DatabaseConfig;
 	rabbitmq: RabbitmqConfig;
+	redis: RedisConfig;
 	jwt: JwtConfig;
 	aws: AwsConfig;
 	imageTypes: ImageTypes;
