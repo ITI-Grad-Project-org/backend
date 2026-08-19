@@ -10,6 +10,7 @@ import { ClientMembership } from '../clients/entities/client-membership.entity';
 import { MembershipStatus, PaginatedResponse } from '../common';
 import { CreateMeasurementDto } from './dto/create-measurement.dto';
 import { QueryMeasurementsDto } from './dto/query-measurements.dto';
+import { ReviewMeasurementDto } from './dto/review-measurement.dto';
 import { UpdateMeasurementDto } from './dto/update-measurement.dto';
 import { Measurement } from './entities/measurement.entity';
 import { S3UploadService } from '../s3-upload/s3-upload.service';
@@ -103,14 +104,80 @@ export class MeasurementsService {
 		return this.getOwnedMeasurementOrThrow(membership.id, measurementId);
 	}
 
+	async findPendingMeasurementsForCoach(
+		tenantId: string,
+		query: QueryMeasurementsDto,
+	) {
+		this.assertValidDateRange(query);
+		const page = query.page ?? 1;
+		const limit = query.limit ?? 10;
+		const queryBuilder = this.measurementRepository
+			.createQueryBuilder('measurement')
+			.innerJoinAndSelect('measurement.membership', 'membership')
+			.innerJoinAndSelect('membership.client', 'client')
+			.where('measurement.tenant_id = :tenantId', { tenantId })
+			.andWhere('membership.tenant_id = :tenantId', { tenantId })
+			.andWhere('membership.deleted_at IS NULL')
+			.andWhere('measurement.reviewed_at IS NULL');
+
+		if (query.from) {
+			queryBuilder.andWhere('measurement.measured_at >= :from', {
+				from: query.from,
+			});
+		}
+
+		if (query.to) {
+			queryBuilder.andWhere('measurement.measured_at <= :to', {
+				to: query.to,
+			});
+		}
+
+		const [measurements, total] = await queryBuilder
+			.orderBy('measurement.measuredAt', 'DESC')
+			.addOrderBy('measurement.id', 'DESC')
+			.skip((page - 1) * limit)
+			.take(limit)
+			.getManyAndCount();
+
+		return {
+			docs: measurements.map((measurement) =>
+				this.toPendingReviewResponse(measurement),
+			),
+			meta: {
+				total,
+				page,
+				limit,
+				totalPages: Math.ceil(total / limit),
+			},
+		};
+	}
+
+	async reviewMeasurement(
+		tenantId: string,
+		coachId: string,
+		measurementId: string,
+		dto: ReviewMeasurementDto,
+	) {
+		const measurement = await this.getTenantMeasurementOrThrow(
+			tenantId,
+			measurementId,
+		);
+
+		measurement.reviewedAt = new Date();
+		measurement.reviewedBy = coachId;
+		if (dto.coachFeedback !== undefined) {
+			measurement.coachFeedback = this.normalizeOptionalText(dto.coachFeedback);
+		}
+
+		return this.measurementRepository.save(measurement);
+	}
+
 	private async findMeasurementsForMembership(
 		membershipId: string,
 		query: QueryMeasurementsDto,
 		order: 'ASC' | 'DESC',
 	): Promise<PaginatedResponse<Measurement>> {
-		if (query.from && query.to && query.from > query.to) {
-			throw new BadRequestException('from must be on or before to');
-		}
+		this.assertValidDateRange(query);
 
 		const page = query.page ?? 1;
 		const limit = query.limit ?? 10;
@@ -171,6 +238,7 @@ export class MeasurementsService {
 			membership.id,
 			measurementId,
 		);
+		this.assertMeasurementIsEditable(measurement);
 
 		const replacedPhotos = photos.length > 0 ? (measurement.photos ?? []) : [];
 		const photoUrls = await this.uploadPhotos(photos);
@@ -208,6 +276,7 @@ export class MeasurementsService {
 			membership.id,
 			measurementId,
 		);
+		this.assertMeasurementIsEditable(measurement);
 
 		await this.measurementRepository.delete(measurement.id);
 		return { message: 'Measurement deleted' };
@@ -273,6 +342,72 @@ export class MeasurementsService {
 		}
 
 		return measurement;
+	}
+
+	private async getTenantMeasurementOrThrow(
+		tenantId: string,
+		measurementId: string,
+	) {
+		const measurement = await this.measurementRepository
+			.createQueryBuilder('measurement')
+			.innerJoin('measurement.membership', 'membership')
+			.where('measurement.id = :measurementId', { measurementId })
+			.andWhere('measurement.tenant_id = :tenantId', { tenantId })
+			.andWhere('membership.tenant_id = :tenantId', { tenantId })
+			.andWhere('membership.deleted_at IS NULL')
+			.getOne();
+
+		if (!measurement) {
+			throw new NotFoundException('Measurement not found');
+		}
+
+		return measurement;
+	}
+
+	private assertMeasurementIsEditable(measurement: Measurement) {
+		if (measurement.reviewedAt) {
+			throw new ConflictException(
+				'Reviewed measurements cannot be updated or deleted',
+			);
+		}
+	}
+
+	private assertValidDateRange(query: QueryMeasurementsDto) {
+		if (query.from && query.to && query.from > query.to) {
+			throw new BadRequestException('from must be on or before to');
+		}
+	}
+
+	private normalizeOptionalText(value: string | null) {
+		const normalized = value?.trim();
+		return normalized ? normalized : null;
+	}
+
+	private toPendingReviewResponse(measurement: Measurement) {
+		const client = measurement.membership.client;
+		return {
+			id: measurement.id,
+			measuredAt: measurement.measuredAt,
+			weightKg: measurement.weightKg,
+			bodyFatPct: measurement.bodyFatPct,
+			chestCm: measurement.chestCm,
+			waistCm: measurement.waistCm,
+			hipsCm: measurement.hipsCm,
+			armCm: measurement.armCm,
+			thighCm: measurement.thighCm,
+			photos: measurement.photos,
+			reviewedAt: measurement.reviewedAt,
+			reviewedBy: measurement.reviewedBy,
+			coachFeedback: measurement.coachFeedback,
+			client: client
+				? {
+						id: client.id,
+						firstName: client.firstName,
+						lastName: client.lastName,
+						avatarUrl: client.avatarUrl,
+					}
+				: null,
+		};
 	}
 
 	private getTodayDateString() {

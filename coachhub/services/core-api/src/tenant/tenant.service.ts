@@ -37,6 +37,12 @@ export class TenantService {
 		return tenant;
 	}
 
+	async updateName(id: string, name: string): Promise<Tenant> {
+		const tenant = await this.findOne(id);
+		tenant.name = name;
+		return this.tenantRepository.save(tenant);
+	}
+
 	/** Uploads a new brand logo and swaps it in, removing the old one. */
 	async updateLogo(id: string, logo: Express.Multer.File): Promise<Tenant> {
 		const tenant = await this.findOne(id);

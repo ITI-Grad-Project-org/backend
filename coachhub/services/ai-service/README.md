@@ -338,6 +338,7 @@ All settings live in `application.yml` and are driven by environment variables.
 | `RAG_INGEST_INTERVAL`       | `30m`                            | How often to re-check core_db             |
 | `RAG_INGEST_BATCH_SIZE`     | `25`                             | Documents per embedding request           |
 | `RAG_REBUILD_INDEX`         | `false`                          | One-shot index repair — see §9            |
+| `SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA` | `false` (compose/AKS); `true` in `application.yml` | Creates `vector_index` at boot — leave `false` once it exists, see §9 |
 
 > **Why `analytics_user` and not a new role.** It already holds `SELECT` on every
 > table plus `ALTER DEFAULT PRIVILEGES` for tables core-api creates later, so this
@@ -413,9 +414,17 @@ docker compose up --build         # builds the multi-stage image and runs it
 2. Allow your IP under **Network Access**.
 3. Use the database `spring-rag-service` (already in the connection string).
 4. **Vector index** — with `initialize-schema: true` the app creates
-   `vector_index` automatically at startup. If your tier/version rejects
-   programmatic index creation, set `initialize-schema: false` and create it once
-   in the Atlas UI on collection `rag_knowledge`:
+   `vector_index` automatically at startup, but **only leave that set for the
+   first boot against a brand-new cluster**. Once the index exists, Spring AI's
+   attempt to re-create it on every later boot crashes the app instead of being
+   a no-op (a real bug in spring-ai-mongodb-atlas-store 1.1.5 — its
+   `IndexAlreadyExists` catch doesn't match the exception type Spring Data
+   Mongo actually throws for that error). `docker-compose.yml` defaults
+   `SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA` to `false` for exactly this
+   reason — flip it to `true` for one run to create the index, then unset it (or
+   leave it `false`) for every run after. If your tier/version rejects
+   programmatic index creation entirely, create it once by hand instead, in the
+   Atlas UI on collection `rag_knowledge`:
 
    ```json
    {
@@ -439,23 +448,29 @@ docker compose up --build         # builds the multi-stage image and runs it
 
 ### Upgrading an index created before tenant filtering
 
-Atlas will not add filter fields to an existing index, and Spring AI ignores the
-`IndexAlreadyExists` error, so a cluster that ran an earlier build keeps an index
-that cannot filter by tenant. The symptom is silent: searches fail, retrieval
-degrades to "no context" exactly as designed, and the assistant answers with no
-knowledge base at all.
+Atlas will not add filter fields to an existing index, so a cluster that ran an
+earlier build keeps an index that cannot filter by tenant. The symptom is
+silent: searches fail, retrieval degrades to "no context" exactly as designed,
+and the assistant answers with no knowledge base at all.
 
-`RagIndexVerifier` checks for this at startup and logs an ERROR naming the fix.
-To apply it, start once with:
+`RagIndexVerifier` checks for this at startup and logs an ERROR naming the fix
+— but it can only run if the app boots at all, and with `initialize-schema:
+true` it won't: Spring AI's attempt to re-create the already-existing index
+throws instead of being ignored (see §9 above), which crashes the context
+before `RagIndexVerifier` ever gets a turn. Start once with **both**:
 
 ```bash
+SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA=false
 RAG_REBUILD_INDEX=true
 ```
 
-It drops and recreates the index with the right fields. The documents survive —
-only the index is rebuilt — but searches return nothing until Atlas finishes
-reindexing, which is why it is opt-in. Confirm the startup log reads
-`tenant isolation active`, then set it back to `false`.
+The first stops the store from trying to create the index at boot; the second
+tells `RagIndexVerifier` to drop and recreate it with the right fields. The
+documents survive — only the index is rebuilt — but searches return nothing
+until Atlas finishes reindexing, which is why it is opt-in. Confirm the
+startup log reads `tenant isolation active`, then set `RAG_REBUILD_INDEX` back
+to `false` (leave `SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA=false` —
+see §9).
 
 ---
 

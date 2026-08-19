@@ -20,11 +20,17 @@ import java.util.List;
  *
  * <h2>Why this needs checking at all</h2>
  *
- * {@code initialize-schema: true} only ever <em>creates</em> the index. Spring AI issues
- * {@code createSearchIndexes} and swallows the {@code IndexAlreadyExists} error, so on any
- * environment whose index already exists — which is every environment that ran an earlier build —
- * adding {@code tenantId} to {@code metadata-fields-to-filter} changes the configuration and
- * nothing else. The index keeps the fields it was born with.
+ * {@code initialize-schema: true} only ever <em>creates</em> the index. Spring AI's
+ * {@code MongoDBAtlasVectorStore.createSearchIndex()} is meant to swallow {@code IndexAlreadyExists},
+ * but in spring-ai-mongodb-atlas-store 1.1.5 that catch only matches
+ * {@code UncategorizedMongoDbException} — Spring Data Mongo's exception translator turns Mongo error
+ * code 68 into a {@code DataIntegrityViolationException} instead, so the catch never fires and the
+ * {@code vectorStore} bean throws, taking the whole app context down. This is NOT a swallowed no-op:
+ * on any environment whose index already exists — which is every environment that ran an earlier
+ * build — leaving {@code initialize-schema: true} crashes the app on every boot, not just the one
+ * where {@code tenantId} was added to {@code metadata-fields-to-filter}. Production (see
+ * {@code deploy/k8s/40-apps/ai-service.yaml}) pins {@code SPRING_AI_VECTORSTORE_MONGODB_INITIALIZE_SCHEMA=false}
+ * permanently for this reason — do not revert that to rely on the swallow, it does not work.
  *
  * <p>That failure is invisible in the worst way. Atlas rejects a {@code $vectorSearch} filtering on
  * an undeclared path, retrieval catches the error and degrades to "no context" exactly as designed,
