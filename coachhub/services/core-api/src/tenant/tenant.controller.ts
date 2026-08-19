@@ -24,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantNameDto } from './dto/update-tenant-name.dto';
 import { CurrentTenant } from '../auth/decorators/current-tenant.decorator';
 import { fileUploadMulterOptions } from '../s3-upload/multer.config';
 
@@ -40,6 +41,22 @@ export class TenantController {
 	@HttpCode(HttpStatus.CREATED)
 	create(@Body() createTenantDto: CreateTenantDto) {
 		return this.tenantService.create(createTenantDto);
+	}
+
+	@Patch('me')
+	@ApiBearerAuth()
+	@ApiOperation({ summary: "Update my tenant's name" })
+	@ApiBody({ type: UpdateTenantNameDto })
+	@ApiResponse({ status: 200, description: 'Tenant name updated' })
+	@ApiResponse({ status: 400, description: 'Validation error' })
+	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiResponse({ status: 404, description: 'Tenant not found' })
+	@HttpCode(HttpStatus.OK)
+	updateName(
+		@CurrentTenant() tenantId: string,
+		@Body() updateTenantNameDto: UpdateTenantNameDto,
+	) {
+		return this.tenantService.updateName(tenantId, updateTenantNameDto.name);
 	}
 
 	@Patch('me/logo')
