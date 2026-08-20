@@ -34,3 +34,18 @@ data:
   MAIL_SMTP_STARTTLS: "true"
   # Gmail only sends as the authenticated account (or a verified alias).
   MAIL_FROM: "ahmedhossam9226@gmail.com"
+  # ── Paymob (payments) ──────────────────────────────────────────────────────
+  # Non-secret half of the Paymob config; the four keys live in app-secrets.
+  PAYMOB_BASE_URL: "https://accept.paymob.com"
+  # "Card" payment integration from Paymob → Developers → Payment Integrations.
+  # Each payment method (card, wallet, kiosk) has its own integration id.
+  PAYMOB_INTEGRATION_ID_CARD: "5863435"
+  # Server-to-server callback ("Transaction Processed"). Must match the URL
+  # configured on the integration in Paymob's dashboard, or the callback is
+  # sent somewhere else and the payment is never recorded. Signed with
+  # PAYMOB_HMAC_SECRET — verify it before trusting the body.
+  PAYMOB_NOTIFICATION_URL: "https://api.20.54.71.51.nip.io/billing/paymob/webhook"
+  # Browser redirect ("Transaction Response") — where the payer lands after
+  # paying. A user-visible page, not a source of truth: the webhook above is.
+  PAYMOB_REDIRECTION_URL: "https://uply-gamma.vercel.app/billing/result"
+  PAYMOB_REQUEST_TIMEOUT_MS: "15000"

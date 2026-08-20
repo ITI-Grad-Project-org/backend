@@ -83,6 +83,32 @@ spec:
               valueFrom: { configMapKeyRef: { name: app-config, key: FRONTEND_URL } }
             - name: ALLOWED_ORIGINS
               valueFrom: { configMapKeyRef: { name: app-config, key: ALLOWED_ORIGINS } }
+            # ── Paymob (payments) ────────────────────────────────────────────
+            # This Deployment maps every variable explicitly rather than using
+            # envFrom, so adding a key to app-secrets/app-config alone does
+            # nothing until it is listed here as well.
+            - name: PAYMOB_API_KEY
+              valueFrom: { secretKeyRef: { name: app-secrets, key: PAYMOB_API_KEY } }
+            - name: PAYMOB_PUBLIC_KEY
+              valueFrom: { secretKeyRef: { name: app-secrets, key: PAYMOB_PUBLIC_KEY } }
+            - name: PAYMOB_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: app-secrets, key: PAYMOB_SECRET_KEY } }
+            # Verifies the HMAC Paymob signs its webhook callbacks with. The
+            # webhook is a public, unauthenticated endpoint by necessity, so
+            # this is the only thing separating a real "paid" callback from a
+            # forged one.
+            - name: PAYMOB_HMAC_SECRET
+              valueFrom: { secretKeyRef: { name: app-secrets, key: PAYMOB_HMAC_SECRET } }
+            - name: PAYMOB_BASE_URL
+              valueFrom: { configMapKeyRef: { name: app-config, key: PAYMOB_BASE_URL } }
+            - name: PAYMOB_INTEGRATION_ID_CARD
+              valueFrom: { configMapKeyRef: { name: app-config, key: PAYMOB_INTEGRATION_ID_CARD } }
+            - name: PAYMOB_NOTIFICATION_URL
+              valueFrom: { configMapKeyRef: { name: app-config, key: PAYMOB_NOTIFICATION_URL } }
+            - name: PAYMOB_REDIRECTION_URL
+              valueFrom: { configMapKeyRef: { name: app-config, key: PAYMOB_REDIRECTION_URL } }
+            - name: PAYMOB_REQUEST_TIMEOUT_MS
+              valueFrom: { configMapKeyRef: { name: app-config, key: PAYMOB_REQUEST_TIMEOUT_MS } }
           # No depends_on in K8s: the generous startup window covers Postgres/RabbitMQ
           # arriving late (TypeORM retries 10×3s; AMQP reconnects in the background).
           startupProbe:
