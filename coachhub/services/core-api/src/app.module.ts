@@ -23,6 +23,7 @@ import { PlansModule } from './plans/plans.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { TenantModule } from './tenant/tenant.module';
 import { ExercisesModule } from './exercises/exercises.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
 	imports: [
@@ -34,6 +35,7 @@ import { ExercisesModule } from './exercises/exercises.module';
 			},
 		]),
 		DatabaseModule,
+		BillingModule,
 		ActivityModule,
 		AnalyticsModule,
 		AuthModule,

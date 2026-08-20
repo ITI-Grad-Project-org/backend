@@ -23,12 +23,14 @@ import { Food } from '../plans/nutrition/entities/food.entity';
 import { Meal } from '../plans/nutrition/entities/meal.entity';
 import { ConfigService } from '../config';
 import { AuthModule } from '../auth/auth.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
 	imports: [
 		ConfigModule,
 		MessagingModule,
 		AuthModule,
+		BillingModule,
 		TypeOrmModule.forFeature([
 			AiPlanSuggestion,
 			ClientIntake,

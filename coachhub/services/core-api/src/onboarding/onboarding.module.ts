@@ -6,10 +6,16 @@ import { Invitation } from '../invitation/entities/invitation.entity';
 import { ClientModule } from '../clients/client.module';
 import { AuthModule } from '../auth/auth.module';
 import { OtpProvider } from '../common';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
 	controllers: [OnboardingController],
 	providers: [OnboardingService, OtpProvider],
-	imports: [TypeOrmModule.forFeature([Invitation]), ClientModule, AuthModule],
+	imports: [
+		TypeOrmModule.forFeature([Invitation]),
+		ClientModule,
+		AuthModule,
+		BillingModule,
+	],
 })
 export class OnboardingModule {}

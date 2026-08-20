@@ -14,6 +14,7 @@ import { EventPublisherService } from '../messaging/event-publisher.service';
 import { EventType } from '../messaging/events';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { OtpProvider } from '../common';
+import { EntitlementService } from '../billing/entitlement.service';
 
 /** Approval codes live as long as coach invites — a week to open the app. */
 const APPROVAL_OTP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -36,6 +37,7 @@ export class JoinRequestService {
 		private readonly eventPublisherService: EventPublisherService,
 		private readonly configService: ConfigService,
 		private readonly otpProvider: OtpProvider,
+		private readonly entitlementService: EntitlementService,
 	) {}
 
 	private buildUrl(path: string): string {
@@ -132,6 +134,7 @@ export class JoinRequestService {
 		let otp: string | null = null;
 		let decided;
 		if (approved) {
+			await this.entitlementService.assertCanAddActiveClient(tenantId);
 			otp = this.otpProvider.generateOtp();
 			decided = await this.membershipService.approveWithOtp(
 				membership,

@@ -63,6 +63,26 @@ export default () => ({
 			parseInt(process.env.ANALYTICS_REQUEST_TIMEOUT_MS as string, 10) || 10000,
 	},
 
+	paymob: {
+		baseUrl: process.env.PAYMOB_BASE_URL || 'https://accept.paymob.com',
+		apiKey: process.env.PAYMOB_API_KEY,
+		publicKey: process.env.PAYMOB_PUBLIC_KEY,
+		secretKey: process.env.PAYMOB_SECRET_KEY,
+		hmacSecret: process.env.PAYMOB_HMAC_SECRET,
+		cardIntegrationId: parseInt(
+			process.env.PAYMOB_INTEGRATION_ID_CARD as string,
+			10,
+		),
+		notificationUrl:
+			process.env.PAYMOB_NOTIFICATION_URL ||
+			'http://localhost:3000/billing/paymob/webhook',
+		redirectionUrl:
+			process.env.PAYMOB_REDIRECTION_URL ||
+			`${process.env.FRONTEND_URL || 'http://localhost:5173'}/billing/result`,
+		requestTimeoutMs:
+			parseInt(process.env.PAYMOB_REQUEST_TIMEOUT_MS as string, 10) || 15000,
+	},
+
 	aws: {
 		region: process.env.AWS_REGION || 'us-east-1',
 		accessKeyId: process.env.AWS_ACCESS_KEY_ID,

@@ -26,6 +26,17 @@ export const ConfigSchema = z.object({
 		baseUrl: z.string().url(),
 		timeoutMs: z.coerce.number().default(10000),
 	}),
+	paymob: z.object({
+		baseUrl: z.string().url(),
+		apiKey: z.string().min(1),
+		publicKey: z.string().min(1),
+		secretKey: z.string().min(1),
+		hmacSecret: z.string().min(1),
+		cardIntegrationId: z.number().int().positive(),
+		notificationUrl: z.string().url(),
+		redirectionUrl: z.string().url(),
+		requestTimeoutMs: z.number().int().positive(),
+	}),
 	jwt: z.object({
 		accessToken: z.object({
 			secret: z.string(),
