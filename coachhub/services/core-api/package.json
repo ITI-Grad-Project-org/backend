@@ -20,7 +20,11 @@
     "migration:generate": "npm run typeorm -- migration:generate -d src/data-source.ts",
     "migration:run": "npm run typeorm -- migration:run -d src/data-source.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/data-source.ts",
-    "migration:run:prod": "node node_modules/typeorm/cli.js migration:run -d dist/data-source.js"
+    "migration:run:prod": "node node_modules/typeorm/cli.js migration:run -d dist/data-source.js",
+    "seed:demo": "ts-node -r reflect-metadata src/seed/demo-seed.ts",
+    "seed:demo:prod": "node -r reflect-metadata dist/seed/demo-seed.js",
+    "seed:coach1-clients": "ts-node -r reflect-metadata src/seed/add-coach1-clients.ts",
+    "seed:coach1-clients:prod": "node -r reflect-metadata dist/seed/add-coach1-clients.js"
   },
   "dependencies": {
     "@golevelup/nestjs-rabbitmq": "^5.7.0",
