@@ -30,6 +30,10 @@ export default () => ({
 		url: process.env.RABBITMQ_URL || 'amqp://localhost:5672',
 	},
 
+	redis: {
+		url: process.env.REDIS_URL || 'redis://localhost:6379',
+	},
+
 	jwt: {
 		accessToken: {
 			secret: process.env.JWT_ACCESS_SECRET,

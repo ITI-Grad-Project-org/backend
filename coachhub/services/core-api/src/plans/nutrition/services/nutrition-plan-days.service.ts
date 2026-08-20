@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import { UpdateNutritionPlanDayDto } from '../dto/nutrition-builder.dto';
 import { NutritionPlanDay } from '../entities/nutrition-plan-day.entity';
 import { lockEditableNutritionDay } from '../persistence/nutrition-builder.persistence';
@@ -14,6 +15,7 @@ export class NutritionPlanDaysService {
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly clientNutritionPlansService: ClientNutritionPlansService,
+		private readonly planBuilderCache: PlanBuilderCacheService,
 	) {}
 
 	async updatePlanDay(
@@ -58,6 +60,11 @@ export class NutritionPlanDaysService {
 
 			await manager.getRepository(NutritionPlanDay).save(day);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
 
 		const plan = await this.clientNutritionPlansService.getClientPlan(
 			activeTenantId,

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import { MembershipStatus, ProgramStatus, ProgramType } from '../../../common';
 import { Tenant } from '../../../tenant/entities/tenant.entity';
@@ -31,6 +32,7 @@ export class ClientProgramsService {
 		@InjectRepository(Program)
 		private readonly programRepository: Repository<Program>,
 		private readonly dataSource: DataSource,
+		private readonly planBuilderCache: PlanBuilderCacheService,
 	) {}
 
 	async createClientProgram(
@@ -160,6 +162,11 @@ export class ClientProgramsService {
 
 	async getClientProgram(tenantId: string | null, programId: string) {
 		const activeTenantId = assertActiveTenant(tenantId);
+		const cached = await this.planBuilderCache.getBuilder<
+			ReturnType<typeof mapBuilderProgram>
+		>('training', activeTenantId, programId);
+		if (cached) return cached;
+
 		const program = await this.programRepository.findOne({
 			where: {
 				id: programId,
@@ -198,7 +205,14 @@ export class ClientProgramsService {
 			throw new NotFoundException('Tenant not found');
 		}
 
-		return mapBuilderProgram(program, tenant.timezone);
+		const response = mapBuilderProgram(program, tenant.timezone);
+		await this.planBuilderCache.setBuilder(
+			'training',
+			activeTenantId,
+			programId,
+			response,
+		);
+		return response;
 	}
 
 	async updateClientProgram(
@@ -245,6 +259,11 @@ export class ClientProgramsService {
 		}
 
 		await this.programRepository.save(program);
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			program.id,
+		);
 		return this.getClientProgram(activeTenantId, program.id);
 	}
 }

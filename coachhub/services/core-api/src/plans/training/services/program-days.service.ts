@@ -1,5 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import { UpdateProgramDayDto } from '../dto/workout-builder.dto';
 import { PlannedExercise } from '../entities/planned-exercise.entity';
 import { ProgramDay } from '../entities/program-day.entity';
@@ -11,7 +12,10 @@ import {
 
 @Injectable()
 export class ProgramDaysService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly planBuilderCache: PlanBuilderCacheService,
+	) {}
 
 	async updateProgramDay(
 		tenantId: string | null,
@@ -20,7 +24,7 @@ export class ProgramDaysService {
 		body: UpdateProgramDayDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
+		const updatedDay = await this.dataSource.transaction(async (manager) => {
 			const day = await lockEditableDay(
 				manager,
 				activeTenantId,
@@ -53,5 +57,11 @@ export class ProgramDaysService {
 
 			return manager.getRepository(ProgramDay).save(day);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
+		return updatedDay;
 	}
 }

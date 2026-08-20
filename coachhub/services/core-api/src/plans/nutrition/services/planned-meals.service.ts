@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import {
 	AddMealFromLibraryDto,
 	CreateLibraryMealAndAddDto,
@@ -40,7 +41,10 @@ import { assertRealisticMealFoodAmount } from '../utils/nutrition-validation.uti
 
 @Injectable()
 export class PlannedMealsService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly planBuilderCache: PlanBuilderCacheService,
+	) {}
 
 	async addMealFromLibrary(
 		tenantId: string | null,
@@ -49,7 +53,7 @@ export class PlannedMealsService {
 		body: AddMealFromLibraryDto,
 	) {
 		const activeTenantId = assertNutritionTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
+		const plannedMeal = await this.dataSource.transaction(async (manager) => {
 			const day = await lockEditableNutritionDay(
 				manager,
 				activeTenantId,
@@ -63,6 +67,12 @@ export class PlannedMealsService {
 			);
 			return insertPlannedMealSnapshot(manager, day, meal, body);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
+		return plannedMeal;
 	}
 
 	async createLibraryMealAndAdd(
@@ -76,7 +86,7 @@ export class PlannedMealsService {
 		assertUniqueMealFoods(body.meal.items);
 
 		try {
-			return await this.dataSource.transaction(async (manager) => {
+			const result = await this.dataSource.transaction(async (manager) => {
 				const day = await lockEditableNutritionDay(
 					manager,
 					activeTenantId,
@@ -161,6 +171,12 @@ export class PlannedMealsService {
 					plannedMeal,
 				};
 			});
+			await this.planBuilderCache.invalidateBuilder(
+				'nutrition',
+				activeTenantId,
+				planId,
+			);
+			return result;
 		} catch (error) {
 			throwMealConflictForUniqueViolation(error);
 			throw error;
@@ -174,7 +190,7 @@ export class PlannedMealsService {
 		body: UpdatePlannedMealDto,
 	) {
 		const activeTenantId = assertNutritionTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
+		const updatedMeal = await this.dataSource.transaction(async (manager) => {
 			const planned = await getEditablePlannedMeal(
 				manager,
 				activeTenantId,
@@ -218,6 +234,12 @@ export class PlannedMealsService {
 			);
 			return mapPlannedMealResponse(updated);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
+		return updatedMeal;
 	}
 
 	async replacePlannedMealItems(
@@ -229,7 +251,7 @@ export class PlannedMealsService {
 		const activeTenantId = assertNutritionTenant(tenantId);
 		assertUniquePlannedFoodIds(body.items);
 
-		return this.dataSource.transaction(async (manager) => {
+		const updatedMeal = await this.dataSource.transaction(async (manager) => {
 			const planned = await getEditablePlannedMeal(
 				manager,
 				activeTenantId,
@@ -275,6 +297,12 @@ export class PlannedMealsService {
 			);
 			return mapPlannedMealResponse(updated);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
+		return updatedMeal;
 	}
 
 	async deletePlannedMeal(
@@ -283,7 +311,7 @@ export class PlannedMealsService {
 		plannedMealId: string,
 	) {
 		const activeTenantId = assertNutritionTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
+		const result = await this.dataSource.transaction(async (manager) => {
 			const planned = await getEditablePlannedMeal(
 				manager,
 				activeTenantId,
@@ -303,5 +331,11 @@ export class PlannedMealsService {
 			await rewritePlannedMealPositions(manager, remaining, remaining);
 			return { message: 'Planned Meal deleted' };
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+		);
+		return result;
 	}
 }

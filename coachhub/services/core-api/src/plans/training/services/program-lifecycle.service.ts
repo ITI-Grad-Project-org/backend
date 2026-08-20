@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import { MembershipStatus, ProgramStatus, ProgramType } from '../../../common';
 import { RescheduleClientProgramDto } from '../dto/program-lifecycle.dto';
@@ -31,6 +32,7 @@ export class ProgramLifecycleService {
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly clientProgramsService: ClientProgramsService,
+		private readonly planBuilderCache: PlanBuilderCacheService,
 	) {}
 
 	async publishClientProgram(tenantId: string | null, programId: string) {
@@ -58,6 +60,11 @@ export class ProgramLifecycleService {
 			program.status = ProgramStatus.PUBLISHED;
 			await manager.getRepository(Program).save(program);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
 
 		return this.clientProgramsService.getClientProgram(
 			activeTenantId,
@@ -104,6 +111,11 @@ export class ProgramLifecycleService {
 			await assertNoPublishedOverlap(manager, program);
 			await manager.getRepository(Program).save(program);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
 
 		return this.clientProgramsService.getClientProgram(
 			activeTenantId,
@@ -126,6 +138,11 @@ export class ProgramLifecycleService {
 			program.status = ProgramStatus.CANCELLED;
 			await manager.getRepository(Program).save(program);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
 
 		return this.clientProgramsService.getClientProgram(
 			activeTenantId,
@@ -144,6 +161,11 @@ export class ProgramLifecycleService {
 			program.isArchived = true;
 			await manager.getRepository(Program).save(program);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
 
 		return { message: 'Client program archived' };
 	}
@@ -159,6 +181,11 @@ export class ProgramLifecycleService {
 			program.isArchived = false;
 			await manager.getRepository(Program).save(program);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
 
 		return this.clientProgramsService.getClientProgram(
 			activeTenantId,

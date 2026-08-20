@@ -18,6 +18,10 @@ export class ConfigService {
 		return this.configService.getOrThrow<Config['rabbitmq']>('rabbitmq');
 	}
 
+	get redisConfig(): Config['redis'] {
+		return this.configService.getOrThrow<Config['redis']>('redis');
+	}
+
 	get jwtConfig(): Config['jwt'] {
 		return this.configService.getOrThrow<Config['jwt']>('jwt');
 	}
