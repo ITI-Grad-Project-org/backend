@@ -44,6 +44,8 @@ done
 
 # Optional values fall back to safe placeholders (core-api requires the vars
 # to exist; the features simply stay unconfigured until you set real ones).
+# The PAYMOB_* keys are deliberately optional too — an environment with no
+# payment credentials should still be deployable; billing just stays off.
 POSTGRES_SUPERUSER="$(getval POSTGRES_SUPERUSER)"
 RABBITMQ_USER="$(getval RABBITMQ_USER)"
 
@@ -67,6 +69,10 @@ kubectl -n "$NAMESPACE" create secret generic app-secrets \
   --from-literal=AWS_ACCESS_KEY_ID="$(getval AWS_ACCESS_KEY_ID)" \
   --from-literal=AWS_SECRET_ACCESS_KEY="$(getval AWS_SECRET_ACCESS_KEY)" \
   --from-literal=AWS_S3_BUCKET="$(getval AWS_S3_BUCKET)" \
+  --from-literal=PAYMOB_API_KEY="$(getval PAYMOB_API_KEY)" \
+  --from-literal=PAYMOB_PUBLIC_KEY="$(getval PAYMOB_PUBLIC_KEY)" \
+  --from-literal=PAYMOB_SECRET_KEY="$(getval PAYMOB_SECRET_KEY)" \
+  --from-literal=PAYMOB_HMAC_SECRET="$(getval PAYMOB_HMAC_SECRET)" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "✔ Secret ${NAMESPACE}/app-secrets created/updated from ${ENV_FILE}"
