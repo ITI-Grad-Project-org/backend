@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import { ClientIntake } from '../../../clients/entities/client-intake.entity';
 import { ClientMembership } from '../../../clients/entities/client-membership.entity';
 import {
@@ -38,6 +39,7 @@ export class ClientNutritionPlansService {
 		@InjectRepository(NutritionPlan)
 		private readonly nutritionPlanRepository: Repository<NutritionPlan>,
 		private readonly dataSource: DataSource,
+		private readonly planBuilderCache: PlanBuilderCacheService,
 	) {}
 
 	async createClientPlan(
@@ -181,6 +183,11 @@ export class ClientNutritionPlansService {
 
 	async getClientPlan(tenantId: string | null, planId: string) {
 		const activeTenantId = assertNutritionTenant(tenantId);
+		const cached = await this.planBuilderCache.getBuilder<
+			ReturnType<typeof mapClientNutritionPlanBuilder>
+		>('nutrition', activeTenantId, planId);
+		if (cached) return cached;
+
 		const plan = await this.nutritionPlanRepository.findOne({
 			where: {
 				id: planId,
@@ -219,11 +226,18 @@ export class ClientNutritionPlansService {
 				})
 			: null;
 
-		return mapClientNutritionPlanBuilder(
+		const response = mapClientNutritionPlanBuilder(
 			plan,
 			plan.tenant.timezone,
 			dietaryProfile,
 		);
+		await this.planBuilderCache.setBuilder(
+			'nutrition',
+			activeTenantId,
+			planId,
+			response,
+		);
+		return response;
 	}
 
 	async updateClientPlan(
@@ -280,6 +294,11 @@ export class ClientNutritionPlansService {
 		}
 
 		await this.nutritionPlanRepository.save(plan);
+		await this.planBuilderCache.invalidateBuilder(
+			'nutrition',
+			activeTenantId,
+			plan.id,
+		);
 		return this.getClientPlan(activeTenantId, plan.id);
 	}
 }

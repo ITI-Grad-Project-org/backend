@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityModule } from '../../activity/activity.module';
+import { PlanBuilderCacheModule } from '../../cache/plan-builder-cache.module';
 import { ClientMembership } from '../../clients/entities/client-membership.entity';
 import { Exercise } from '../../exercises/entities/exercise.entity';
 import { ClientTrainingController } from './client-training.controller';
@@ -27,6 +28,7 @@ import { WorkoutLogReviewService } from './services/workout-log-review.service';
 @Module({
 	imports: [
 		ActivityModule,
+		PlanBuilderCacheModule,
 		TypeOrmModule.forFeature([
 			Program,
 			ProgramWeek,

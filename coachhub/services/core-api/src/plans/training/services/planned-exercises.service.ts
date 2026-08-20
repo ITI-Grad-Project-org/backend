@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { DataSource, QueryFailedError } from 'typeorm';
+import { PlanBuilderCacheService } from '../../../cache/plan-builder-cache.service';
 import { Exercise } from '../../../exercises/entities/exercise.entity';
 import { PrescribeExerciseDto } from '../dto/prescribe-exercise.dto';
 import {
@@ -30,7 +31,10 @@ import {
 
 @Injectable()
 export class PlannedExercisesService {
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly planBuilderCache: PlanBuilderCacheService,
+	) {}
 
 	async addExerciseFromLibrary(
 		tenantId: string | null,
@@ -39,28 +43,36 @@ export class PlannedExercisesService {
 		body: PrescribeExerciseDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
-			const day = await lockEditableDay(
-				manager,
-				activeTenantId,
-				programId,
-				programDayId,
-			);
-			assertWorkoutDay(day);
+		const plannedExercise = await this.dataSource.transaction(
+			async (manager) => {
+				const day = await lockEditableDay(
+					manager,
+					activeTenantId,
+					programId,
+					programDayId,
+				);
+				assertWorkoutDay(day);
 
-			const exercise = await manager.getRepository(Exercise).findOne({
-				where: {
-					id: body.exerciseId,
-					tenantId: activeTenantId,
-					isActive: true,
-				},
-			});
-			if (!exercise) {
-				throw new NotFoundException('Active library exercise not found');
-			}
+				const exercise = await manager.getRepository(Exercise).findOne({
+					where: {
+						id: body.exerciseId,
+						tenantId: activeTenantId,
+						isActive: true,
+					},
+				});
+				if (!exercise) {
+					throw new NotFoundException('Active library exercise not found');
+				}
 
-			return insertExerciseSnapshot(manager, day, exercise, body);
-		});
+				return insertExerciseSnapshot(manager, day, exercise, body);
+			},
+		);
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
+		return plannedExercise;
 	}
 
 	async createLibraryExerciseAndAdd(
@@ -71,7 +83,7 @@ export class PlannedExercisesService {
 		body: CreateAndPrescribeExerciseDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
+		const result = await this.dataSource.transaction(async (manager) => {
 			const day = await lockEditableDay(
 				manager,
 				activeTenantId,
@@ -129,6 +141,12 @@ export class PlannedExercisesService {
 			);
 			return { exercise, plannedExercise };
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
+		return result;
 	}
 
 	async updatePlannedExercise(
@@ -138,46 +156,56 @@ export class PlannedExercisesService {
 		body: UpdatePlannedExerciseDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
-			const planned = await getEditablePlannedExercise(
-				manager,
-				activeTenantId,
-				programId,
-				plannedExerciseId,
-			);
-			const repository = manager.getRepository(PlannedExercise);
+		const updatedExercise = await this.dataSource.transaction(
+			async (manager) => {
+				const planned = await getEditablePlannedExercise(
+					manager,
+					activeTenantId,
+					programId,
+					plannedExerciseId,
+				);
+				const repository = manager.getRepository(PlannedExercise);
 
-			if (body.position !== undefined && body.position !== planned.position) {
-				const ordered = await repository.find({
-					where: { programDayId: planned.programDayId },
-					order: { position: 'ASC' },
-				});
-				if (body.position > ordered.length) {
-					throw new BadRequestException(
-						`position must be between 1 and ${ordered.length}`,
+				if (body.position !== undefined && body.position !== planned.position) {
+					const ordered = await repository.find({
+						where: { programDayId: planned.programDayId },
+						order: { position: 'ASC' },
+					});
+					if (body.position > ordered.length) {
+						throw new BadRequestException(
+							`position must be between 1 and ${ordered.length}`,
+						);
+					}
+					const withoutCurrent = ordered.filter(
+						(item) => item.id !== planned.id,
 					);
+					withoutCurrent.splice(body.position - 1, 0, planned);
+					await rewriteExercisePositions(manager, ordered, withoutCurrent);
+					planned.position = body.position;
 				}
-				const withoutCurrent = ordered.filter((item) => item.id !== planned.id);
-				withoutCurrent.splice(body.position - 1, 0, planned);
-				await rewriteExercisePositions(manager, ordered, withoutCurrent);
-				planned.position = body.position;
-			}
 
-			if (body.supersetGroup !== undefined)
-				planned.supersetGroup = body.supersetGroup;
-			if (body.restSeconds !== undefined)
-				planned.restSeconds = body.restSeconds;
-			if (body.tempo !== undefined) planned.tempo = body.tempo;
-			if (body.coachNotes !== undefined)
-				planned.coachNotes = normalizeOptionalText(body.coachNotes);
+				if (body.supersetGroup !== undefined)
+					planned.supersetGroup = body.supersetGroup;
+				if (body.restSeconds !== undefined)
+					planned.restSeconds = body.restSeconds;
+				if (body.tempo !== undefined) planned.tempo = body.tempo;
+				if (body.coachNotes !== undefined)
+					planned.coachNotes = normalizeOptionalText(body.coachNotes);
 
-			await repository.save(planned);
-			return repository.findOne({
-				where: { id: planned.id },
-				relations: { sets: true },
-				order: { sets: { setNumber: 'ASC' } },
-			});
-		});
+				await repository.save(planned);
+				return repository.findOne({
+					where: { id: planned.id },
+					relations: { sets: true },
+					order: { sets: { setNumber: 'ASC' } },
+				});
+			},
+		);
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
+		return updatedExercise;
 	}
 
 	async replacePlannedSets(
@@ -187,7 +215,7 @@ export class PlannedExercisesService {
 		body: ReplacePlannedSetsDto,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
+		const sets = await this.dataSource.transaction(async (manager) => {
 			const planned = await getEditablePlannedExercise(
 				manager,
 				activeTenantId,
@@ -207,6 +235,12 @@ export class PlannedExercisesService {
 			);
 			return setRepository.save(sets);
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
+		return sets;
 	}
 
 	async deletePlannedExercise(
@@ -215,7 +249,7 @@ export class PlannedExercisesService {
 		plannedExerciseId: string,
 	) {
 		const activeTenantId = assertActiveTenant(tenantId);
-		return this.dataSource.transaction(async (manager) => {
+		const result = await this.dataSource.transaction(async (manager) => {
 			const planned = await getEditablePlannedExercise(
 				manager,
 				activeTenantId,
@@ -232,5 +266,11 @@ export class PlannedExercisesService {
 			await rewriteExercisePositions(manager, remaining, remaining);
 			return { message: 'Planned exercise deleted' };
 		});
+		await this.planBuilderCache.invalidateBuilder(
+			'training',
+			activeTenantId,
+			programId,
+		);
+		return result;
 	}
 }
