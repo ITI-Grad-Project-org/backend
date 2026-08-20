@@ -80,6 +80,18 @@ export interface AnalyticsConfig {
 	timeoutMs: number;
 }
 
+export interface PaymobConfig {
+	baseUrl: string;
+	apiKey: string;
+	publicKey: string;
+	secretKey: string;
+	hmacSecret: string;
+	cardIntegrationId: number;
+	notificationUrl: string;
+	redirectionUrl: string;
+	requestTimeoutMs: number;
+}
+
 export interface Config {
 	app: AppConfig;
 	database: DatabaseConfig;
@@ -92,4 +104,5 @@ export interface Config {
 	googleOauth: GoogleOAuthConfig;
 	ai: AiConfig;
 	analytics: AnalyticsConfig;
+	paymob: PaymobConfig;
 }

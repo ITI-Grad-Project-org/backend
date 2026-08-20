@@ -8,6 +8,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 import { Coach } from '../../coaches/entities/coach.entity';
+import { SubscriptionPlan } from '../../billing/enums/subscription-plan.enum';
 
 @Entity('tenants')
 export class Tenant {
@@ -41,6 +42,22 @@ export class Tenant {
 
 	@Column({ type: 'char', length: 3, default: 'EGP' })
 	currency: string;
+
+	@Column({
+		name: 'subscription_plan',
+		type: 'enum',
+		enum: SubscriptionPlan,
+		enumName: 'subscription_plan',
+		default: SubscriptionPlan.FREE,
+	})
+	subscriptionPlan: SubscriptionPlan;
+
+	@Column({
+		name: 'subscription_expires_at',
+		type: 'timestamptz',
+		nullable: true,
+	})
+	subscriptionExpiresAt: Date | null;
 
 	@Column({ type: 'jsonb', default: () => `'{}'` })
 	settings: Record<string, unknown>;

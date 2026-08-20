@@ -47,4 +47,8 @@ export class ConfigService {
 	get aiConfig(): Config['ai'] {
 		return this.configService.getOrThrow<Config['ai']>('ai');
 	}
+
+	get paymobConfig(): Config['paymob'] {
+		return this.configService.getOrThrow<Config['paymob']>('paymob');
+	}
 }

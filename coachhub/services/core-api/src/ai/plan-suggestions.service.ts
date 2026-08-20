@@ -31,6 +31,7 @@ import {
 	PlanSuggestionDetail,
 	PlanSuggestionSummary,
 } from './utils/plan-suggestion.utils';
+import { EntitlementService } from '../billing/entitlement.service';
 
 const PENDING_TIMEOUT_MS = 10 * 60 * 1_000;
 
@@ -62,6 +63,7 @@ export class PlanSuggestionsService {
 		private readonly planContext: PlanContextService,
 		private readonly acceptance: PlanAcceptanceService,
 		private readonly events: EventPublisherService,
+		private readonly entitlementService: EntitlementService,
 	) {}
 
 	/**
@@ -74,6 +76,7 @@ export class PlanSuggestionsService {
 		dto: CreatePlanSuggestionDto,
 	) {
 		const activeTenantId = this.assertActiveTenant(tenantId);
+		await this.entitlementService.assertCanGenerateAiPlan(activeTenantId);
 		const membership = await this.resolveActiveMembership(
 			activeTenantId,
 			dto.membershipId,
