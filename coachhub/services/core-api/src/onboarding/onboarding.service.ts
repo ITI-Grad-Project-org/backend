@@ -15,6 +15,7 @@ import { ClientIntakeService } from '../clients/client-intake.service';
 import { ClientAuthService } from '../auth/services/client-auth.service';
 import { MembershipStatus, OtpProvider } from '../common';
 import { ConfirmOnboardingDto } from './dto/confirm-onboarding.dto';
+import { EntitlementService } from '../billing/entitlement.service';
 
 /** What a valid code resolved to — the app shows this before asking for intake. */
 export interface OnboardingCodeInfo {
@@ -48,6 +49,7 @@ export class OnboardingService {
 		private readonly intakeService: ClientIntakeService,
 		private readonly clientAuthService: ClientAuthService,
 		private readonly otpProvider: OtpProvider,
+		private readonly entitlementService: EntitlementService,
 	) {}
 
 	/** Check a code without consuming it — lets the app gate the intake screen. */
@@ -68,6 +70,7 @@ export class OnboardingService {
 		if (resolved.kind === 'invitation') {
 			const { invitation } = resolved;
 			tenantId = invitation.tenant.id;
+			await this.entitlementService.assertCanAddActiveClient(tenantId);
 			membership = await this.membershipService.createMembership(
 				clientId,
 				tenantId,
@@ -80,6 +83,7 @@ export class OnboardingService {
 			await this.invitationRepository.save(invitation);
 		} else {
 			tenantId = resolved.membership.tenant.id;
+			await this.entitlementService.assertCanAddActiveClient(tenantId);
 			membership = await this.membershipService.activateInvited(
 				resolved.membership,
 			);

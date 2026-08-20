@@ -6,6 +6,7 @@ import { Invitation } from './entities/invitation.entity';
 import { MessagingModule } from '../messaging/messaging.module';
 import { CoachesModule } from '../coaches/coaches.module';
 import { OtpProvider } from '../common';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
 	controllers: [InvitationController],
@@ -14,6 +15,7 @@ import { OtpProvider } from '../common';
 		TypeOrmModule.forFeature([Invitation]),
 		MessagingModule,
 		CoachesModule,
+		BillingModule,
 	],
 	exports: [InvitationService],
 })

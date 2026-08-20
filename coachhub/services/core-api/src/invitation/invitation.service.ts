@@ -14,6 +14,7 @@ import { EventPublisherService } from '../messaging/event-publisher.service';
 import { EventType } from '../messaging/events';
 import { CoachesService } from '../coaches/coaches.service';
 import { OtpProvider } from '../common';
+import { EntitlementService } from '../billing/entitlement.service';
 
 const INVITATION_TTL_DAYS = 7;
 
@@ -31,6 +32,7 @@ export class InvitationService {
 		private readonly eventPublisherService: EventPublisherService,
 		private readonly coachesService: CoachesService,
 		private readonly otpProvider: OtpProvider,
+		private readonly entitlementService: EntitlementService,
 	) {}
 
 	async create(
@@ -52,6 +54,8 @@ export class InvitationService {
 				'A pending invitation already exists for this email',
 			);
 		}
+
+		await this.entitlementService.assertCanAddActiveClient(tenantId);
 
 		const coach = await this.coachesService.findOne(coachId);
 		if (!coach) {

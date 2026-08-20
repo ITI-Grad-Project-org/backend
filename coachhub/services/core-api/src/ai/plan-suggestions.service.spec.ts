@@ -19,6 +19,7 @@ import { PlanAcceptanceService } from './plan-acceptance.service';
 import { PlanContextService } from './plan-context.service';
 import { PlanSuggestionsService } from './plan-suggestions.service';
 import { PlanGenerationContext } from './types/plan-suggestion.types';
+import { EntitlementService } from '../billing/entitlement.service';
 
 const TENANT = 'tenant-1';
 const COACH = 'coach-1';
@@ -112,6 +113,7 @@ describe('PlanSuggestionsService', () => {
 	let planContext: { build: jest.Mock };
 	let acceptance: { accept: jest.Mock };
 	let events: { publish: jest.Mock };
+	let entitlements: { assertCanGenerateAiPlan: jest.Mock };
 	let service: PlanSuggestionsService;
 
 	beforeEach(() => {
@@ -139,6 +141,9 @@ describe('PlanSuggestionsService', () => {
 			accept: jest.fn().mockResolvedValue({ programId: 'program-1' }),
 		};
 		events = { publish: jest.fn().mockResolvedValue('correlation-1') };
+		entitlements = {
+			assertCanGenerateAiPlan: jest.fn().mockResolvedValue(undefined),
+		};
 
 		service = new PlanSuggestionsService(
 			suggestionRepository as unknown as Repository<AiPlanSuggestion>,
@@ -146,6 +151,7 @@ describe('PlanSuggestionsService', () => {
 			planContext as unknown as PlanContextService,
 			acceptance as unknown as PlanAcceptanceService,
 			events as unknown as EventPublisherService,
+			entitlements as unknown as EntitlementService,
 		);
 	});
 
@@ -154,6 +160,12 @@ describe('PlanSuggestionsService', () => {
 			BadRequestException,
 		);
 		expect(membershipRepository.findOne).not.toHaveBeenCalled();
+	});
+
+	it('checks AI access before starting a new generation', async () => {
+		await service.request(TENANT, COACH, DTO);
+
+		expect(entitlements.assertCanGenerateAiPlan).toHaveBeenCalledWith(TENANT);
 	});
 
 	it('looks the membership up inside the caller’s own tenant', async () => {
