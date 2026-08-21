@@ -413,7 +413,7 @@ concurrently without ambiguity.
 
 ## 9. Token expiry, and why your chat dies after fifteen minutes
 
-Access tokens default to **15 minutes** (`JWT_ACCESS_EXPIRES_IN`). The gateway
+Access tokens default to **7 days** (`JWT_ACCESS_EXPIRES_IN`). The gateway
 re-verifies on every message. So the failure mode is precise and easy to
 reproduce: open the assistant, leave the tab for twenty minutes, ask a question
 — `ai.unauthorized`, socket closed, nothing on screen but a spinner.

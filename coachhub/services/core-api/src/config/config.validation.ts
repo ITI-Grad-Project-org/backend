@@ -40,7 +40,7 @@ export const ConfigSchema = z.object({
 	jwt: z.object({
 		accessToken: z.object({
 			secret: z.string(),
-			expiresIn: z.string().default('15m'),
+			expiresIn: z.string().default('7d'),
 		}),
 		refreshToken: z.object({
 			secret: z.string(),

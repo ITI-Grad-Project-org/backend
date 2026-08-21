@@ -296,7 +296,7 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-coachhub}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in .env}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set in .env}
-      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-7d}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     ports:
@@ -420,7 +420,7 @@ RABBITMQ_PASSWORD=change-me-rabbit
 # ── core-api ─────────────────────────────────────────────────────────────
 JWT_ACCESS_SECRET=change-me-32-bytes-min
 JWT_REFRESH_SECRET=change-me-32-bytes-min
-JWT_ACCESS_EXPIRES_IN=15m
+JWT_ACCESS_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
 FRONTEND_URL=http://localhost:5173
 
