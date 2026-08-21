@@ -83,7 +83,7 @@ services:
       # K8s/production runs with DB_SYNCHRONIZE=false + the migration Job.
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
       DATABASE_URL: postgresql://core_user:${CORE_DB_PASSWORD}@postgres:5432/core_db
-      REDIS_URL: redis://redis:6379          # not consumed by the app yet
+      REDIS_URL: redis://redis:6379          # plan-builder cache + socket.io adapter
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-coachhub}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in .env}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set in .env}

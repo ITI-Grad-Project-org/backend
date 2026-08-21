@@ -24,7 +24,9 @@
     "seed:demo": "ts-node -r reflect-metadata src/seed/demo-seed.ts",
     "seed:demo:prod": "node -r reflect-metadata dist/seed/demo-seed.js",
     "seed:coach1-clients": "ts-node -r reflect-metadata src/seed/add-coach1-clients.ts",
-    "seed:coach1-clients:prod": "node -r reflect-metadata dist/seed/add-coach1-clients.js"
+    "seed:coach1-clients:prod": "node -r reflect-metadata dist/seed/add-coach1-clients.js",
+    "seed:pending-checkins": "ts-node -r reflect-metadata src/seed/add-pending-checkins.ts",
+    "seed:pending-checkins:prod": "node -r reflect-metadata dist/seed/add-pending-checkins.js"
   },
   "dependencies": {
     "@golevelup/nestjs-rabbitmq": "^5.7.0",
@@ -43,6 +45,7 @@
     "@nestjs/throttler": "^5.2.0",
     "@nestjs/typeorm": "^10.0.0",
     "@nestjs/websockets": "^10.4.22",
+    "@socket.io/redis-adapter": "^8.3.0",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.3",
     "aws-sdk": "^2.1693.0",
@@ -56,6 +59,7 @@
     "multer": "^2.2.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.11.0",
+    "redis": "^5.12.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.35.2",

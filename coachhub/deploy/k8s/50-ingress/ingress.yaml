@@ -15,6 +15,29 @@ metadata:
     # core-api serves a socket.io gateway — keep websocket connections alive.
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # ── Socket.IO session affinity ──────────────────────────────────────────
+    # An engine.io session (its `sid`) lives in one core-api process, and the
+    # Deployment runs more than one replica. socket.io-client opens on HTTP
+    # long-polling, so without affinity the handshake lands on pod A and the
+    # next poll is round-robined to pod B, which answers
+    # {"code":1,"message":"Session ID unknown"} — the browser reports
+    # `connect_error` and reconnects in a loop. Measured before this was added:
+    # 4 of 7 connections died that way.
+    #
+    # SameSite=None is required because the cookie is set on api.<...>.nip.io
+    # and read from the frontend's origin; the client must connect with
+    # `withCredentials: true` or the browser will not send it back.
+    #
+    # This pins the connection. It does NOT share rooms between pods — that is
+    # RedisIoAdapter's job (services/core-api/src/common/adapters).
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
+    nginx.ingress.kubernetes.io/session-cookie-name: "coachhub-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-path: "/"
+    nginx.ingress.kubernetes.io/session-cookie-samesite: "None"
+    nginx.ingress.kubernetes.io/session-cookie-secure: "true"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "86400"
 spec:
   ingressClassName: nginx
   tls:

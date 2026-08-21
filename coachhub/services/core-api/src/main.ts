@@ -3,14 +3,22 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { GlobalExceptionFilter } from './common';
+import { GlobalExceptionFilter, RedisIoAdapter } from './common';
 
+import { ConfigService } from './config';
 import { allowedOrigins } from './config/configuration';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
 
 	app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+	// A Socket.IO room lives in one process, so on more than one replica the
+	// gateways need a shared adapter or half of every broadcast lands in an empty
+	// room. Must happen before listen(), while the gateways are still being built.
+	const socketAdapter = new RedisIoAdapter(app);
+	await socketAdapter.connect(app.get(ConfigService).redisConfig.url);
+	app.useWebSocketAdapter(socketAdapter);
 
 	const config = new DocumentBuilder()
 		.setTitle('UPLY')

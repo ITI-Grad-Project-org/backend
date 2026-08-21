@@ -46,7 +46,7 @@ spec:
               valueFrom: { secretKeyRef: { name: app-secrets, key: CORE_DB_PASSWORD } }
             - name: DATABASE_URL
               value: postgresql://$(CORE_DB_USER):$(CORE_DB_PASSWORD)@postgres:5432/core_db
-            - name: REDIS_URL                         # provisioned; app code not wired to it yet
+            - name: REDIS_URL                         # plan-builder cache + socket.io adapter
               valueFrom: { configMapKeyRef: { name: app-config, key: REDIS_URL } }
             - name: RABBITMQ_USER
               valueFrom: { secretKeyRef: { name: app-secrets, key: RABBITMQ_USER } }
