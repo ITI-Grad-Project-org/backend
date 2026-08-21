@@ -3,6 +3,7 @@ import {
 	MessageBody,
 	OnGatewayConnection,
 	OnGatewayDisconnect,
+	OnGatewayInit,
 	SubscribeMessage,
 	WebSocketGateway,
 	WebSocketServer,
@@ -20,6 +21,16 @@ import { AiSubjectService } from './ai-subject.service';
 const MAX_PROMPT_LENGTH = 4000;
 const UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Socket.IO serialises `message` and `data` from a middleware error into the
+ * client's `connect_error`, which is the only channel a refused socket has.
+ */
+function handshakeError(code: string, message: string): Error {
+	const error = new Error(message) as Error & { data?: unknown };
+	error.data = { code };
+	return error;
+}
 
 interface AiRequestBody {
 	kind?: unknown;
@@ -42,7 +53,9 @@ interface AiRequestBody {
 		credentials: true,
 	},
 })
-export class AiGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class AiGateway
+	implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
 	@WebSocketServer()
 	private server: Server;
 
@@ -59,20 +72,67 @@ export class AiGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		this.timeoutMs = this.configService.aiConfig.aiRequestTimeoutMs;
 	}
 
-	async handleConnection(client: Socket) {
+	/**
+	 * Authenticate during the handshake rather than after it.
+	 *
+	 * Refusing a socket from `handleConnection` means the client fires `connect`
+	 * first and is dropped a moment later, which reads to whoever is integrating
+	 * as a flaky network rather than a refused credential — and the
+	 * `ai.unauthorized` frame races the teardown, so it can be lost entirely.
+	 * A connection middleware is Socket.IO's own mechanism for this: `connect`
+	 * never fires, and the reason arrives on `connect_error` where a client can
+	 * actually act on it.
+	 */
+	afterInit(server: Server) {
+		server.use((socket, next) => {
+			void this.authenticateHandshake(socket, next);
+		});
+	}
+
+	private async authenticateHandshake(
+		client: Socket,
+		next: (err?: Error) => void,
+	) {
 		try {
 			const principal = await this.wsAuth.authenticate(client);
 			client.data.principal = principal;
 			// Kept so every message can re-verify it; see onAIRequested.
 			client.data.token = this.wsAuth.extractToken(client);
-			this.logger.debug(
-				`ws connected: ${client.id} (tenant=${principal.tenantId})`,
-			);
+			next();
 		} catch (error) {
+			// Sent nothing, or sent something that doesn't verify? Those need
+			// different fixes from the caller, and telling them which one it is
+			// discloses nothing they don't already know about their own request.
+			// Why the token failed — expired, wrong signature, wrong type — stays
+			// in the log.
+			const sentSomething = Boolean(this.wsAuth.extractToken(client));
 			this.logger.warn(`ws rejected: ${client.id} — ${this.messageOf(error)}`);
+			next(
+				handshakeError(
+					sentSomething ? 'INVALID_TOKEN' : 'NO_TOKEN',
+					sentSomething
+						? 'Access token is invalid or expired.'
+						: 'No access token on the connection. Send it as ' +
+								'auth: { token } when opening the socket.',
+				),
+			);
+		}
+	}
+
+	handleConnection(client: Socket) {
+		const principal = client.data?.principal as WsPrincipal | undefined;
+		if (!principal) {
+			// Unreachable while the middleware is registered. If it ever is
+			// reached the middleware did not run, so fail closed rather than serve
+			// an unauthenticated socket.
+			this.logger.error(`ws reached connect unauthenticated: ${client.id}`);
 			client.emit(EventType.AI_UNAUTHORIZED, { message: 'Unauthorized' });
 			client.disconnect(true);
+			return;
 		}
+		this.logger.debug(
+			`ws connected: ${client.id} (tenant=${principal.tenantId})`,
+		);
 	}
 
 	handleDisconnect(client: Socket) {

@@ -60,22 +60,66 @@ describe('AiGateway', () => {
 		);
 	});
 
-	describe('handleConnection', () => {
+	describe('handshake authentication', () => {
+		/** Runs the middleware afterInit registers, the way Socket.IO would. */
+		function handshake(socket: Socket) {
+			let middleware: (s: Socket, next: (e?: Error) => void) => void;
+			gateway.afterInit({
+				use: (fn: never) => {
+					middleware = fn;
+				},
+			} as never);
+			return new Promise<Error | undefined>((resolve) => {
+				middleware(socket, resolve);
+			});
+		}
+
 		it('stores the principal on an authenticated socket', async () => {
 			wsAuth.authenticate.mockResolvedValue(COACH);
 			const socket = fakeSocket();
 
-			await gateway.handleConnection(socket);
+			const error = await handshake(socket);
 
+			expect(error).toBeUndefined();
 			expect(socket.data.principal).toEqual(COACH);
 			expect(socket.disconnect).not.toHaveBeenCalled();
 		});
 
-		it('closes a socket that cannot authenticate', async () => {
+		it('refuses the handshake when the token does not verify', async () => {
 			wsAuth.authenticate.mockRejectedValue(new UnauthorizedException('nope'));
 			const socket = fakeSocket();
 
-			await gateway.handleConnection(socket);
+			const error = await handshake(socket);
+
+			// connect_error, not a connect followed by a drop.
+			expect(error).toBeDefined();
+			expect((error as Error & { data: { code: string } }).data.code).toBe(
+				'INVALID_TOKEN',
+			);
+			expect(socket.data.principal).toBeUndefined();
+		});
+
+		it('tells a caller that sent no token that it sent no token', async () => {
+			wsAuth.authenticate.mockRejectedValue(
+				new UnauthorizedException('No access token on the connection'),
+			);
+			wsAuth.extractToken.mockReturnValue(null);
+			const socket = fakeSocket();
+
+			const error = await handshake(socket);
+
+			expect((error as Error & { data: { code: string } }).data.code).toBe(
+				'NO_TOKEN',
+			);
+			expect(error?.message).toContain('auth: { token }');
+		});
+	});
+
+	describe('handleConnection', () => {
+		it('fails closed if a socket arrives without a principal', () => {
+			const socket = fakeSocket();
+
+			gateway.handleConnection(socket);
 
 			expect(socket.emit).toHaveBeenCalledWith(
 				EventType.AI_UNAUTHORIZED,
