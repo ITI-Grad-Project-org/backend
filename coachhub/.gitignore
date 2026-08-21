@@ -9,6 +9,14 @@ dist/
 *.local
 # K8s secret files with real values (the committed one is only a template)
 *.local.yaml
+
+# Shell scripts that carry real credentials. A key was once committed as the
+# default in `${GEMINI_API_KEY:...}` and Google's scanner disabled it, so
+# anything that holds a live value stays out of the repo by name.
+secret.sh
+secrets.sh
+*-secrets.local.sh
+set-secrets.sh
 # personal notes stay ignored; docs that the code and other docs link to are
 # part of the repo and are allowlisted individually
 docs/*
